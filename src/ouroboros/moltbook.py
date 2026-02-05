@@ -123,6 +123,10 @@ class RunnerConfig:
     keyword_allowlist: Optional[List[str]] = None
     default_submolt: str = "general"
     dry_run: bool = False
+    enable_telegram_notifications: bool = False
+    telegram_bot_token: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    telegram_error_min_interval_seconds: int = 300
     self_improve_interval_hours: int = 24
     self_improve_model: str = "gpt-4o-mini"
     self_question_hours: int = 8
@@ -150,6 +154,12 @@ def load_runner_config() -> RunnerConfig:
         keyword_allowlist=data.get("keyword_allowlist"),
         default_submolt=data.get("default_submolt", "general"),
         dry_run=bool(data.get("dry_run", False)),
+        enable_telegram_notifications=bool(data.get("enable_telegram_notifications", False)),
+        telegram_bot_token=data.get("telegram_bot_token"),
+        telegram_chat_id=data.get("telegram_chat_id"),
+        telegram_error_min_interval_seconds=int(
+            data.get("telegram_error_min_interval_seconds", 300)
+        ),
         self_improve_interval_hours=int(data.get("self_improve_interval_hours", 24)),
         self_improve_model=str(data.get("self_improve_model", "gpt-4o-mini")),
         self_question_hours=int(data.get("self_question_hours", 8)),
@@ -200,6 +210,48 @@ def save_state(state: Dict[str, Any]) -> None:
         finally:
             fcntl.flock(f, fcntl.LOCK_UN)
     os.replace(tmp_path, path)
+
+
+def _send_telegram_message(token: str, chat_id: str, text: str) -> None:
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = json.dumps({"chat_id": chat_id, "text": text}).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
+    except Exception:
+        log.exception("Failed to send Telegram message")
+
+
+def _notify(
+    cfg: RunnerConfig,
+    state: Dict[str, Any],
+    message: str,
+    *,
+    is_error: bool = False,
+) -> None:
+    if not cfg.enable_telegram_notifications:
+        return
+    if not cfg.telegram_bot_token or not cfg.telegram_chat_id:
+        return
+    if is_error:
+        now = int(time.time())
+        last_ts = int(state.get("last_telegram_error_ts", 0) or 0)
+        if now - last_ts < cfg.telegram_error_min_interval_seconds:
+            return
+        state["last_telegram_error_ts"] = now
+    _send_telegram_message(cfg.telegram_bot_token, cfg.telegram_chat_id, message)
+
+
+def _shorten(text: str, limit: int = 400) -> str:
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3] + "..."
 
 
 def _trim_self_question_log(state: Dict[str, Any]) -> None:
@@ -356,6 +408,7 @@ def run_loop() -> int:
     openai_key = llm.load_openai_key()
     openai_client = llm.make_client(openai_key)
     log.info("Moltbook runner starting (dry_run=%s)", cfg.dry_run)
+    _notify(cfg, state, f"Moltbook runner started (dry_run={cfg.dry_run})")
 
     consecutive_errors = 0
 
@@ -408,6 +461,12 @@ def run_loop() -> int:
                     else:
                         create_comment(creds.api_key, post.get("id"), comment_text)
                         log.info("Commented on post %s", post.get("id"))
+                        _notify(
+                            cfg,
+                            state,
+                            f"Commented on post {post.get('id')}: "
+                            f"{_shorten(post.get('title', '') or '', 120)}",
+                        )
 
                     state.setdefault("comment_history", []).append(
                         {
@@ -450,6 +509,13 @@ def run_loop() -> int:
                     did_self_question = True
                     latest_answer = answer
                     latest_area = question.area
+                    _notify(
+                        cfg,
+                        state,
+                        "Self-question "
+                        f"[{question.area}]: {_shorten(question.question, 200)}\n"
+                        f"Answer: {_shorten(answer, 600)}",
+                    )
 
             # -- Auto-posting based on self-reflection --
             if cfg.enable_auto_post and cfg.post_after_self_question and did_self_question and latest_answer:
@@ -481,6 +547,13 @@ def run_loop() -> int:
                                     "[auto-post] Created post: %s (id: %s)",
                                     post_data["title"],
                                     result.get("id"),
+                                )
+                                _notify(
+                                    cfg,
+                                    state,
+                                    "Post created: "
+                                    f"{_shorten(post_data['title'], 200)} "
+                                    f"(id: {result.get('id')})",
                                 )
                             except Exception:
                                 log.exception("Failed to create autonomous post")
@@ -563,6 +636,14 @@ def run_loop() -> int:
                                                 )
                                                 modify_runner_config(config_changes)
                                                 config_was_modified = True
+                                                _notify(
+                                                    cfg,
+                                                    state,
+                                                    "Applied config change from comment by "
+                                                    f"{suggestion.get('commenter', 'unknown')}: "
+                                                    f"{_shorten(suggestion.get('description', ''), 200)} "
+                                                    f"Changes: {config_changes}",
+                                                )
 
                                                 # Track what was changed
                                                 state.setdefault("self_upgrades", []).append(
@@ -589,6 +670,12 @@ def run_loop() -> int:
 
                     except Exception:
                         log.exception("Error during comment-based upgrade check")
+                        _notify(
+                            cfg,
+                            state,
+                            "Error during comment-based upgrade check",
+                            is_error=True,
+                        )
 
             # -- Hot-reload config if it was modified --
             if config_was_modified:
@@ -610,6 +697,13 @@ def run_loop() -> int:
                     if success:
                         state["last_git_push"] = now
                         log.info("[auto-git] Next push in %d hours", cfg.git_push_interval_hours)
+                        _notify(
+                            cfg,
+                            state,
+                            f"Auto-git push succeeded. Next push in {cfg.git_push_interval_hours}h.",
+                        )
+                    else:
+                        _notify(cfg, state, "Auto-git push failed.", is_error=True)
 
             _trim_self_question_log(state)
             _trim_comment_history(state)
@@ -620,6 +714,13 @@ def run_loop() -> int:
             consecutive_errors += 1
             backoff = min(cfg.interval_seconds * (2 ** (consecutive_errors - 1)), MAX_BACKOFF_SECONDS)
             log.exception("Error in run_loop cycle (%d consecutive). Backing off %ds.", consecutive_errors, backoff)
+            _notify(
+                cfg,
+                state,
+                f"Error in run_loop cycle ({consecutive_errors} consecutive). "
+                f"Backing off {backoff}s.",
+                is_error=True,
+            )
             if not _shutdown_event.is_set():
                 _interruptible_sleep(backoff)
             continue
@@ -629,5 +730,6 @@ def run_loop() -> int:
             _interruptible_sleep(cfg.interval_seconds)
 
     log.info("Moltbook runner stopped.")
+    _notify(cfg, state, "Moltbook runner stopped.")
     save_state(state)
     return 0

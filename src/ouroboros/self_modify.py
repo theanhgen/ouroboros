@@ -98,5 +98,9 @@ def get_current_config() -> Dict[str, Any]:
             "self_improve_model": runner.self_improve_model,
             "enable_auto_git_push": runner.enable_auto_git_push,
             "git_push_interval_hours": runner.git_push_interval_hours,
+            "enable_telegram_notifications": runner.enable_telegram_notifications,
+            "telegram_bot_token": "***" if runner.telegram_bot_token else None,
+            "telegram_chat_id": runner.telegram_chat_id,
+            "telegram_error_min_interval_seconds": runner.telegram_error_min_interval_seconds,
         }
     }
