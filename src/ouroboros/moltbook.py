@@ -103,17 +103,39 @@ def create_comment(api_key: str, post_id: str, content: str, parent_id: Optional
     return _request("POST", f"/posts/{post_id}/comments", api_key, body)
 
 
+def get_post_comments(api_key: str, post_id: str) -> Dict[str, Any]:
+    """Fetch all comments for a specific post."""
+    return _request("GET", f"/posts/{post_id}/comments", api_key)
+
+
+def get_my_posts(api_key: str, agent_name: str, limit: int = 10) -> List[Dict[str, Any]]:
+    """Fetch posts authored by this agent."""
+    feed = get_feed(api_key, sort="new", limit=50)
+    posts = feed.get("posts", [])
+    return [p for p in posts if p.get("author", {}).get("name") == agent_name][:limit]
+
+
 @dataclass
 class RunnerConfig:
     interval_seconds: int = 1800
-    enable_auto_post: bool = False
-    enable_auto_comment: bool = False
+    enable_auto_post: bool = True
+    enable_auto_comment: bool = True
     keyword_allowlist: Optional[List[str]] = None
     default_submolt: str = "general"
-    dry_run: bool = True
+    dry_run: bool = False
+    self_improve_interval_hours: int = 24
+    self_improve_model: str = "gpt-4o-mini"
     self_question_hours: int = 8
     max_comments_per_cycle: int = 3
     min_comment_interval_seconds: int = 300
+    enable_self_modification: bool = True
+    post_after_self_question: bool = True
+    min_post_interval_hours: int = 12
+    enable_comment_based_upgrades: bool = True
+    comment_check_interval_hours: int = 4
+    auto_apply_config_suggestions: bool = True
+    enable_auto_git_push: bool = True
+    git_push_interval_hours: int = 24
 
 
 def load_runner_config() -> RunnerConfig:
@@ -123,14 +145,24 @@ def load_runner_config() -> RunnerConfig:
     data = _read_json_file(cfg_path)
     return RunnerConfig(
         interval_seconds=int(data.get("interval_seconds", 1800)),
-        enable_auto_post=bool(data.get("enable_auto_post", False)),
-        enable_auto_comment=bool(data.get("enable_auto_comment", False)),
+        enable_auto_post=bool(data.get("enable_auto_post", True)),
+        enable_auto_comment=bool(data.get("enable_auto_comment", True)),
         keyword_allowlist=data.get("keyword_allowlist"),
         default_submolt=data.get("default_submolt", "general"),
-        dry_run=bool(data.get("dry_run", True)),
+        dry_run=bool(data.get("dry_run", False)),
+        self_improve_interval_hours=int(data.get("self_improve_interval_hours", 24)),
+        self_improve_model=str(data.get("self_improve_model", "gpt-4o-mini")),
         self_question_hours=int(data.get("self_question_hours", 8)),
         max_comments_per_cycle=int(data.get("max_comments_per_cycle", 3)),
         min_comment_interval_seconds=int(data.get("min_comment_interval_seconds", 300)),
+        enable_self_modification=bool(data.get("enable_self_modification", True)),
+        post_after_self_question=bool(data.get("post_after_self_question", True)),
+        min_post_interval_hours=int(data.get("min_post_interval_hours", 12)),
+        enable_comment_based_upgrades=bool(data.get("enable_comment_based_upgrades", True)),
+        comment_check_interval_hours=int(data.get("comment_check_interval_hours", 4)),
+        auto_apply_config_suggestions=bool(data.get("auto_apply_config_suggestions", True)),
+        enable_auto_git_push=bool(data.get("enable_auto_git_push", True)),
+        git_push_interval_hours=int(data.get("git_push_interval_hours", 24)),
     )
 
 
@@ -145,9 +177,11 @@ def load_state() -> Dict[str, Any]:
             "last_check": None,
             "last_post": None,
             "last_self_question": None,
+            "last_self_improve": None,
             "last_comment_time": None,
             "self_question_index": 0,
             "self_question_log": [],
+            "comment_history": [],
             "seen_post_ids": [],
         }
     return _read_json_file(path)
@@ -174,10 +208,136 @@ def _trim_self_question_log(state: Dict[str, Any]) -> None:
         state["self_question_log"] = log_list[-MAX_SELF_QUESTION_LOG:]
 
 
+def _trim_comment_history(state: Dict[str, Any], limit: int = 80) -> None:
+    history = state.get("comment_history", [])
+    if len(history) > limit:
+        state["comment_history"] = history[-limit:]
+
+
 def _interruptible_sleep(seconds: int) -> None:
     """Sleep that returns early when shutdown is requested."""
     log.debug("Sleeping %ds (next cycle)", seconds)
     _shutdown_event.wait(timeout=seconds)
+
+
+def _auto_git_push(state: Dict[str, Any], dry_run: bool = False) -> bool:
+    """Commit and push state/config to git. Returns True if successful."""
+    import subprocess
+
+    try:
+        # Check if we're in a git repo
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            capture_output=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            log.debug("Not in a git repository, skipping auto-push")
+            return False
+
+        repo_root = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        ).stdout.strip()
+
+        # Collect stats for commit message
+        upgrade_count = len(state.get("self_upgrades", []))
+        question_count = len(state.get("self_question_log", []))
+        post_count = 1 if state.get("last_post") else 0
+
+        # Build commit message
+        commit_msg = f"""Autonomous update - {time.strftime('%Y-%m-%d %H:%M:%S')}
+
+Stats:
+- Self-upgrades applied: {upgrade_count}
+- Self-questions answered: {question_count}
+- Last post: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(state.get('last_post', 0))) if state.get('last_post') else 'never'}
+- Last upgrade: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(state['self_upgrades'][-1]['ts'])) if state.get('self_upgrades') else 'none'}
+
+🤖 Generated autonomously by Ouroboros
+"""
+
+        if dry_run:
+            log.info("[dry-run] Would git commit and push with message:\n%s", commit_msg)
+            return True
+
+        # Add config and state files
+        config_file = os.path.expanduser("~/.config/moltbook/agent.json")
+        state_file = os.path.expanduser("~/.config/moltbook/state.json")
+
+        def _is_under_repo(path: str, repo_root: str) -> bool:
+            try:
+                return os.path.commonpath([os.path.abspath(path), repo_root]) == repo_root
+            except ValueError:
+                return False
+
+        # Check if these files exist and are inside the repo
+        files_to_add = []
+        if os.path.exists(config_file) and _is_under_repo(config_file, repo_root):
+            files_to_add.append(config_file)
+        else:
+            log.debug("Config file not in repo, skipping: %s", config_file)
+
+        if os.path.exists(state_file) and _is_under_repo(state_file, repo_root):
+            files_to_add.append(state_file)
+        else:
+            log.debug("State file not in repo, skipping: %s", state_file)
+
+        if not files_to_add:
+            log.debug("No config/state files to commit")
+            return False
+
+        # Stage files
+        subprocess.run(
+            ["git", "add"] + files_to_add,
+            cwd=repo_root,
+            check=True,
+            timeout=10,
+        )
+
+        # Check if there are changes to commit
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--quiet"],
+            cwd=repo_root,
+            timeout=5,
+        )
+
+        if result.returncode == 0:
+            log.debug("No changes to commit")
+            return True
+
+        # Commit
+        subprocess.run(
+            ["git", "commit", "-m", commit_msg],
+            cwd=repo_root,
+            check=True,
+            timeout=10,
+        )
+
+        # Push
+        subprocess.run(
+            ["git", "push"],
+            cwd=repo_root,
+            check=True,
+            timeout=30,
+        )
+
+        log.info("[auto-git] Successfully committed and pushed to git")
+        return True
+
+    except subprocess.TimeoutExpired:
+        log.warning("Git operation timed out")
+        return False
+    except subprocess.CalledProcessError as e:
+        log.warning("Git operation failed: %s", e)
+        return False
+    except Exception:
+        log.exception("Unexpected error during git auto-push")
+        return False
 
 
 def run_loop() -> int:
@@ -249,6 +409,16 @@ def run_loop() -> int:
                         create_comment(creds.api_key, post.get("id"), comment_text)
                         log.info("Commented on post %s", post.get("id"))
 
+                    state.setdefault("comment_history", []).append(
+                        {
+                            "post_id": post.get("id"),
+                            "title": post.get("title", ""),
+                            "content": post.get("content", ""),
+                            "comment": comment_text,
+                            "ts": int(time.time()),
+                        }
+                    )
+
                     comments_this_cycle += 1
                     state["last_comment_time"] = int(time.time())
                     last_comment_time = state["last_comment_time"]
@@ -264,6 +434,10 @@ def run_loop() -> int:
             # -- Self-questioning with LLM answers --
             last_sq = state.get("last_self_question")
             now = int(time.time())
+            did_self_question = False
+            latest_answer = None
+            latest_area = None
+
             if last_sq is None or now - int(last_sq) >= cfg.self_question_hours * 3600:
                 question, idx = choose_question(state, DEFAULT_QUESTIONS)
                 answer = llm.answer_question(openai_client, question.question)
@@ -273,8 +447,172 @@ def run_loop() -> int:
                 log.info("[self-question] %s: %s", question.area, question.question)
                 if answer:
                     log.info("[self-answer] %s", answer)
+                    did_self_question = True
+                    latest_answer = answer
+                    latest_area = question.area
+
+            # -- Auto-posting based on self-reflection --
+            if cfg.enable_auto_post and cfg.post_after_self_question and did_self_question and latest_answer:
+                last_post_time = state.get("last_post")
+                can_post = (
+                    last_post_time is None or
+                    (now - int(last_post_time)) >= cfg.min_post_interval_hours * 3600
+                )
+
+                if can_post:
+                    post_data = llm.generate_post(openai_client, latest_answer, latest_area)
+                    if post_data and "title" in post_data and "content" in post_data:
+                        if cfg.dry_run:
+                            log.info(
+                                "[dry-run] Would create post:\nTitle: %s\nContent: %s",
+                                post_data["title"],
+                                post_data["content"][:200],
+                            )
+                        else:
+                            try:
+                                result = create_post(
+                                    creds.api_key,
+                                    cfg.default_submolt,
+                                    post_data["title"],
+                                    content=post_data["content"],
+                                )
+                                state["last_post"] = now
+                                log.info(
+                                    "[auto-post] Created post: %s (id: %s)",
+                                    post_data["title"],
+                                    result.get("id"),
+                                )
+                            except Exception:
+                                log.exception("Failed to create autonomous post")
+                    else:
+                        log.warning("LLM failed to generate valid post data")
+                else:
+                    log.debug(
+                        "Skipping post: min interval not elapsed (%dh since last)",
+                        (now - int(last_post_time)) // 3600 if last_post_time else 0,
+                    )
+
+            # -- Comment-based self-upgrades --
+            config_was_modified = False
+            if cfg.enable_comment_based_upgrades and cfg.enable_self_modification:
+                last_comment_check = state.get("last_comment_check")
+                should_check_comments = (
+                    last_comment_check is None or
+                    (now - int(last_comment_check)) >= cfg.comment_check_interval_hours * 3600
+                )
+
+                if should_check_comments:
+                    try:
+                        my_posts = get_my_posts(creds.api_key, creds.agent_name, limit=5)
+                        log.debug("[upgrade-check] Found %d own posts to check", len(my_posts))
+
+                        for post in my_posts:
+                            post_id = post.get("id")
+                            if not post_id:
+                                continue
+
+                            # Check if we've already processed this post's comments
+                            processed = state.get("processed_comment_posts", [])
+                            if post_id in processed:
+                                continue
+
+                            comment_data = get_post_comments(creds.api_key, post_id)
+                            comments = comment_data.get("comments", [])
+
+                            if not comments:
+                                continue
+
+                            log.info(
+                                "[upgrade-check] Analyzing %d comments on post: %s",
+                                len(comments),
+                                post.get("title", "")[:50],
+                            )
+
+                            analysis = llm.analyze_comments_for_upgrades(
+                                openai_client,
+                                post.get("title", ""),
+                                post.get("content", ""),
+                                comments,
+                            )
+
+                            if analysis and analysis.get("has_suggestions"):
+                                suggestions = analysis.get("suggestions", [])
+                                log.info(
+                                    "[upgrade-check] Found %d actionable suggestions",
+                                    len(suggestions),
+                                )
+
+                                for suggestion in suggestions:
+                                    if suggestion.get("type") == "config_change" and cfg.auto_apply_config_suggestions:
+                                        config_changes = suggestion.get("config_changes", {})
+                                        if config_changes:
+                                            from .self_modify import modify_runner_config
+
+                                            if cfg.dry_run:
+                                                log.info(
+                                                    "[dry-run] Would apply config: %s (suggested by %s)",
+                                                    config_changes,
+                                                    suggestion.get("commenter", "unknown"),
+                                                )
+                                            else:
+                                                log.info(
+                                                    "[self-upgrade] Applying config: %s (suggested by %s: %s)",
+                                                    config_changes,
+                                                    suggestion.get("commenter", "unknown"),
+                                                    suggestion.get("description", ""),
+                                                )
+                                                modify_runner_config(config_changes)
+                                                config_was_modified = True
+
+                                                # Track what was changed
+                                                state.setdefault("self_upgrades", []).append(
+                                                    {
+                                                        "ts": now,
+                                                        "post_id": post_id,
+                                                        "commenter": suggestion.get("commenter"),
+                                                        "description": suggestion.get("description"),
+                                                        "changes": config_changes,
+                                                    }
+                                                )
+                                    else:
+                                        log.info(
+                                            "[upgrade-check] Suggestion logged (type=%s): %s",
+                                            suggestion.get("type"),
+                                            suggestion.get("description", "")[:80],
+                                        )
+
+                            # Mark as processed
+                            state.setdefault("processed_comment_posts", []).append(post_id)
+                            state["processed_comment_posts"] = state["processed_comment_posts"][-50:]
+
+                        state["last_comment_check"] = now
+
+                    except Exception:
+                        log.exception("Error during comment-based upgrade check")
+
+            # -- Hot-reload config if it was modified --
+            if config_was_modified:
+                log.info("[hot-reload] Configuration was modified, reloading...")
+                cfg = load_runner_config()
+                log.info("[hot-reload] Config reloaded - changes now active")
+
+            # -- Auto git push (once per day) --
+            if cfg.enable_auto_git_push:
+                last_git_push = state.get("last_git_push")
+                should_git_push = (
+                    last_git_push is None or
+                    (now - int(last_git_push)) >= cfg.git_push_interval_hours * 3600
+                )
+
+                if should_git_push:
+                    log.info("[auto-git] Attempting to commit and push to git...")
+                    success = _auto_git_push(state, dry_run=cfg.dry_run)
+                    if success:
+                        state["last_git_push"] = now
+                        log.info("[auto-git] Next push in %d hours", cfg.git_push_interval_hours)
 
             _trim_self_question_log(state)
+            _trim_comment_history(state)
             save_state(state)
             consecutive_errors = 0
 
@@ -287,6 +625,7 @@ def run_loop() -> int:
             continue
 
         if not _shutdown_event.is_set():
+            log.info("Sleeping %ds until next cycle", cfg.interval_seconds)
             _interruptible_sleep(cfg.interval_seconds)
 
     log.info("Moltbook runner stopped.")
