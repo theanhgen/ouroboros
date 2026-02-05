@@ -7,6 +7,8 @@ from typing import Optional
 
 from openai import OpenAI
 
+from . import prompts
+
 log = logging.getLogger(__name__)
 
 
@@ -54,11 +56,7 @@ def generate_comment(
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "You are a thoughtful commenter on a social platform. "
-                        "Write a short, insightful comment that adds value to "
-                        "the discussion. Be genuine and concise."
-                    ),
+                    "content": prompts.load_comment_system_prompt(),
                 },
                 {
                     "role": "user",
@@ -100,4 +98,86 @@ def answer_question(
         return resp.choices[0].message.content
     except Exception:
         log.exception("answer_question failed")
+        return None
+
+
+def generate_post(
+    client: OpenAI,
+    recent_answer: str,
+    question_area: str,
+    model: str = "gpt-4o-mini",
+) -> Optional[dict]:
+    """Generate an autonomous post based on self-reflection insights.
+
+    Returns dict with 'title' and 'content' keys, or None on failure.
+    """
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            max_tokens=500,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": prompts.load_post_generation_prompt(),
+                },
+                {
+                    "role": "user",
+                    "content": prompts.load_post_context_prompt(recent_answer, question_area),
+                },
+            ],
+        )
+        content = resp.choices[0].message.content
+        return json.loads(content)
+    except Exception:
+        log.exception("generate_post failed")
+        return None
+
+
+def analyze_comments_for_upgrades(
+    client: OpenAI,
+    post_title: str,
+    post_content: str,
+    comments: list,
+    model: str = "gpt-4o-mini",
+) -> Optional[dict]:
+    """Analyze comments on agent's post to extract actionable improvements.
+
+    Returns dict with:
+    - 'has_suggestions': bool
+    - 'suggestions': list of dicts with 'type', 'description', 'config_changes'
+    Returns None on failure.
+    """
+    try:
+        comments_text = "\n\n".join([
+            f"Comment by {c.get('author', {}).get('name', 'unknown')}: {c.get('content', '')}"
+            for c in comments
+        ])
+
+        resp = client.chat.completions.create(
+            model=model,
+            max_tokens=600,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": prompts.load_comment_analysis_prompt(),
+                },
+                {
+                    "role": "user",
+                    "content": f"""Post Title: {post_title}
+
+Post Content: {post_content}
+
+Comments received:
+{comments_text}
+
+Analyze these comments for actionable improvements to the agent's configuration or behavior.""",
+                },
+            ],
+        )
+        content = resp.choices[0].message.content
+        return json.loads(content)
+    except Exception:
+        log.exception("analyze_comments_for_upgrades failed")
         return None
