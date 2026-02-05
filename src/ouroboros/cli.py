@@ -1,4 +1,5 @@
 import argparse
+import logging
 from .config import SafetyConfig
 from .policies import require_pr_only
 from .moltbook import run_loop, get_status, get_feed, load_credentials
@@ -29,8 +30,12 @@ def cmd_apply(_args: argparse.Namespace) -> int:
 
 
 def cmd_moltbook_run(_args: argparse.Namespace) -> int:
-    run_loop()
-    return 0
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    return run_loop()
 
 
 def cmd_moltbook_status(_args: argparse.Namespace) -> int:
