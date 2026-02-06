@@ -495,20 +495,12 @@ def run_loop() -> int:
                     else:
                         comment_result = create_comment(creds.api_key, post.get("id"), comment_text)
                         log.info("Commented on post %s", post.get("id"))
-                        post_url = _post_url(post.get("id"))
                         comment_url = _comment_url(post.get("id"), comment_result.get("id"))
-                        link_lines = []
-                        if post_url:
-                            link_lines.append(f"Post: {post_url}")
-                        if comment_url:
-                            link_lines.append(f"Comment: {comment_url}")
-                        link_block = "\n".join(link_lines)
                         _notify(
                             cfg,
                             state,
-                            "Commented on post "
-                            f"{post.get('id')}: {_shorten(post.get('title', '') or '', 120)}"
-                            + (f"\n{link_block}" if link_block else ""),
+                            f"Commented: {_shorten(post.get('title', '') or '', 100)}"
+                            + (f"\n{comment_url}" if comment_url else ""),
                         )
 
                     state.setdefault("comment_history", []).append(
@@ -556,9 +548,7 @@ def run_loop() -> int:
                     _notify(
                         cfg,
                         state,
-                        "Self-question "
-                        f"[{question.area}]: {_shorten(question.question, 200)}\n"
-                        f"Answer: {_shorten(answer, 600)}",
+                        f"Q [{question.area}]: {_shorten(question.question, 120)}",
                     )
 
             # -- Auto-posting based on self-reflection --
@@ -596,10 +586,8 @@ def run_loop() -> int:
                                 _notify(
                                     cfg,
                                     state,
-                                    "Post created: "
-                                    f"{_shorten(post_data['title'], 200)} "
-                                    f"(id: {result.get('id')})"
-                                    + (f"\nPost: {post_url}" if post_url else ""),
+                                    f"Posted: {_shorten(post_data['title'], 120)}"
+                                    + (f"\n{post_url}" if post_url else ""),
                                 )
                             except Exception:
                                 log.exception("Failed to create autonomous post")
@@ -685,10 +673,8 @@ def run_loop() -> int:
                                                 _notify(
                                                     cfg,
                                                     state,
-                                                    "Applied config change from comment by "
-                                                    f"{suggestion.get('commenter', 'unknown')}: "
-                                                    f"{_shorten(suggestion.get('description', ''), 200)} "
-                                                    f"Changes: {config_changes}",
+                                                    f"Config updated ({suggestion.get('commenter', 'unknown')}): "
+                                                    f"{_shorten(suggestion.get('description', ''), 150)}",
                                                 )
 
                                                 # Track what was changed
@@ -766,9 +752,8 @@ def run_loop() -> int:
                                 if imp_result.pr_url:
                                     _notify(
                                         cfg, state,
-                                        f"Self-improvement PR created: {imp_result.pr_url}\n"
-                                        f"Type: {imp_result.task.task_type}\n"
-                                        f"Description: {imp_result.task.description}",
+                                        f"PR: {imp_result.task.description[:100]}\n"
+                                        f"{imp_result.pr_url}",
                                     )
                             else:
                                 log.info("[self-improve] No improvements identified")
@@ -828,11 +813,6 @@ def run_loop() -> int:
                     if success:
                         state["last_git_push"] = now
                         log.info("[auto-git] Next push in %d hours", cfg.git_push_interval_hours)
-                        _notify(
-                            cfg,
-                            state,
-                            f"Auto-git push succeeded. Next push in {cfg.git_push_interval_hours}h.",
-                        )
                     else:
                         _notify(cfg, state, "Auto-git push failed.", is_error=True)
 
