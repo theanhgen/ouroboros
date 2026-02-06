@@ -48,7 +48,11 @@ def generate_comment(
     post_content: str,
     model: str = "gpt-4o-mini",
 ) -> Optional[str]:
-    """Generate a short comment for a Moltbook post. Returns None on failure."""
+    """Generate a short comment for a Moltbook post.
+
+    Returns None if the LLM decides the post isn't worth commenting on
+    (non-technical, fluff) or on failure.
+    """
     try:
         resp = client.chat.completions.create(
             model=model,
@@ -64,7 +68,11 @@ def generate_comment(
                 },
             ],
         )
-        return resp.choices[0].message.content
+        text = resp.choices[0].message.content
+        if text and text.strip().upper() == "SKIP":
+            log.info("Skipping non-technical post: %s", post_title[:80])
+            return None
+        return text
     except Exception:
         log.exception("generate_comment failed")
         return None
