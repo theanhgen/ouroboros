@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 log = logging.getLogger(__name__)
 
 API_BASE = "https://www.moltbook.com/api/v1"
+WEB_BASE = "https://www.moltbook.com"
 
 _shutdown_event = threading.Event()
 
@@ -101,6 +102,18 @@ def create_comment(api_key: str, post_id: str, content: str, parent_id: Optional
     if parent_id:
         body["parent_id"] = parent_id
     return _request("POST", f"/posts/{post_id}/comments", api_key, body)
+
+
+def _post_url(post_id: Optional[str]) -> Optional[str]:
+    if not post_id:
+        return None
+    return f"{WEB_BASE}/post/{post_id}"
+
+
+def _comment_url(post_id: Optional[str], comment_id: Optional[str]) -> Optional[str]:
+    if not post_id or not comment_id:
+        return None
+    return f"{WEB_BASE}/post/{post_id}#comment-{comment_id}"
 
 
 def get_post_comments(api_key: str, post_id: str) -> Dict[str, Any]:
@@ -459,13 +472,22 @@ def run_loop() -> int:
                     if cfg.dry_run:
                         log.info("[dry-run] Would comment on %s: %s", post.get("id"), comment_text)
                     else:
-                        create_comment(creds.api_key, post.get("id"), comment_text)
+                        comment_result = create_comment(creds.api_key, post.get("id"), comment_text)
                         log.info("Commented on post %s", post.get("id"))
+                        post_url = _post_url(post.get("id"))
+                        comment_url = _comment_url(post.get("id"), comment_result.get("id"))
+                        link_lines = []
+                        if post_url:
+                            link_lines.append(f"Post: {post_url}")
+                        if comment_url:
+                            link_lines.append(f"Comment: {comment_url}")
+                        link_block = "\n".join(link_lines)
                         _notify(
                             cfg,
                             state,
-                            f"Commented on post {post.get('id')}: "
-                            f"{_shorten(post.get('title', '') or '', 120)}",
+                            "Commented on post "
+                            f"{post.get('id')}: {_shorten(post.get('title', '') or '', 120)}"
+                            + (f"\n{link_block}" if link_block else ""),
                         )
 
                     state.setdefault("comment_history", []).append(
@@ -548,12 +570,14 @@ def run_loop() -> int:
                                     post_data["title"],
                                     result.get("id"),
                                 )
+                                post_url = _post_url(result.get("id"))
                                 _notify(
                                     cfg,
                                     state,
                                     "Post created: "
                                     f"{_shorten(post_data['title'], 200)} "
-                                    f"(id: {result.get('id')})",
+                                    f"(id: {result.get('id')})"
+                                    + (f"\nPost: {post_url}" if post_url else ""),
                                 )
                             except Exception:
                                 log.exception("Failed to create autonomous post")
@@ -686,12 +710,14 @@ def run_loop() -> int:
             # -- Auto git push (once per day) --
             if cfg.enable_auto_git_push:
                 last_git_push = state.get("last_git_push")
+                last_git_push_attempt = state.get("last_git_push_attempt")
                 should_git_push = (
-                    last_git_push is None or
-                    (now - int(last_git_push)) >= cfg.git_push_interval_hours * 3600
+                    last_git_push_attempt is None or
+                    (now - int(last_git_push_attempt)) >= cfg.git_push_interval_hours * 3600
                 )
 
                 if should_git_push:
+                    state["last_git_push_attempt"] = now
                     log.info("[auto-git] Attempting to commit and push to git...")
                     success = _auto_git_push(state, dry_run=cfg.dry_run)
                     if success:
