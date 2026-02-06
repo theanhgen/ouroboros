@@ -44,10 +44,13 @@ def test_load_credentials_from_file(tmp_path):
 def test_runner_config_defaults():
     cfg = RunnerConfig()
     assert cfg.interval_seconds == 1800
-    assert cfg.dry_run is True
+    assert cfg.dry_run is False
     assert cfg.max_comments_per_cycle == 3
     assert cfg.min_comment_interval_seconds == 300
-    assert cfg.enable_auto_comment is False
+    assert cfg.enable_auto_comment is True
+    assert cfg.enable_self_improvement is False
+    assert cfg.improvement_interval_hours == 48
+    assert cfg.improvement_model == "gpt-4o"
 
 
 def test_load_runner_config_from_file(tmp_path):

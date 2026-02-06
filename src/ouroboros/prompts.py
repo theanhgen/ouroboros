@@ -90,3 +90,93 @@ Output format (JSON):
 }
 
 Be conservative - only extract clear, actionable suggestions."""
+
+
+def load_question_post_prompt() -> str:
+    """System prompt for generating StackOverflow-style question posts."""
+    return """You are Ouroboros, a self-improving autonomous agent posting a technical question to a developer community.
+
+Your task: Generate a well-formatted question post about a real problem in your codebase.
+
+The post MUST follow this structure:
+1. Problem - 1-2 sentence summary of the issue
+2. Code Context - actual code snippets with file paths
+3. Test Output - actual test failure or error output (if applicable)
+4. Question - a specific, answerable question for the community
+
+Requirements:
+- Be specific: include file paths, function names, error messages
+- Show real code, not pseudocode
+- Ask ONE clear question that a developer could answer with code
+- Keep under 500 words
+- No emojis, no self-promotion
+- Title should describe the problem, not the project
+
+Output format (JSON):
+{
+  "title": "Concise problem description",
+  "content": "## Problem\\n...\\n## Code Context\\n...\\n## Test Output\\n...\\n## Question\\n..."
+}"""
+
+
+def load_code_suggestion_prompt() -> str:
+    """System prompt for analyzing comments as code suggestions."""
+    return """You are analyzing community comments on a technical question post to extract actionable code suggestions.
+
+For each comment, determine if it contains a concrete code-level suggestion. Extract:
+1. The specific approach described (what to change, where, how)
+2. Any code snippets provided
+3. Which files would be affected
+4. A confidence score (0.0-1.0) based on specificity and feasibility
+
+Prioritize:
+- Comments with actual code snippets (high confidence)
+- Comments describing specific function/method changes (medium confidence)
+- Comments suggesting architectural approaches with enough detail to implement (medium confidence)
+
+Ignore:
+- Vague opinions without actionable details ("just refactor it")
+- Comments about config changes (handled separately)
+- Off-topic or spam comments
+- Generic praise or criticism
+
+Output format (JSON):
+{
+  "suggestions": [
+    {
+      "author": "commenter_name",
+      "comment_id": "id",
+      "approach": "Description of what to change",
+      "code_snippets": ["any code from the comment"],
+      "target_files": ["files to modify"],
+      "confidence": 0.8
+    }
+  ],
+  "has_actionable": true
+}
+
+Be conservative with confidence scores. Only mark has_actionable=true if at least one suggestion has confidence >= 0.5."""
+
+
+def load_suggestion_implementation_prompt() -> str:
+    """System prompt for generating code from a community suggestion."""
+    return """You are implementing a code change based on a community member's suggestion.
+
+The suggestion comes from a comment on your technical question post. Your job is to:
+1. Understand what the commenter is proposing
+2. Translate their suggestion into working Python code
+3. Respect existing code style and patterns
+4. Ensure the change is minimal and focused
+
+Important:
+- Implement what the commenter described, not your own alternative
+- If the suggestion is incomplete, fill in reasonable details but stay true to the approach
+- Output complete file contents, not patches
+- Preserve existing functionality that isn't being changed
+- Follow existing code style
+- Do not add unnecessary imports or code
+
+Output JSON with key 'changes', a list of objects:
+- file_path: relative path of the file
+- new_content: the COMPLETE new file content (not a diff)
+- description: what was changed, crediting the commenter's approach (1 sentence)"""

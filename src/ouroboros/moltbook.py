@@ -153,6 +153,16 @@ class RunnerConfig:
     auto_apply_config_suggestions: bool = True
     enable_auto_git_push: bool = True
     git_push_interval_hours: int = 24
+    # Self-improvement settings
+    enable_self_improvement: bool = False
+    improvement_interval_hours: int = 48
+    improvement_model: str = "gpt-4o"
+    improvement_types: Optional[List[str]] = None  # default: ["fix_test", "add_test", "fix_bug"]
+    # Community-assisted improvement
+    enable_community_improvement: bool = False
+    community_wait_hours: int = 48
+    community_min_comments_for_early: int = 3
+    community_improvement_interval_hours: int = 72
 
 
 def load_runner_config() -> RunnerConfig:
@@ -186,6 +196,14 @@ def load_runner_config() -> RunnerConfig:
         auto_apply_config_suggestions=bool(data.get("auto_apply_config_suggestions", True)),
         enable_auto_git_push=bool(data.get("enable_auto_git_push", True)),
         git_push_interval_hours=int(data.get("git_push_interval_hours", 24)),
+        enable_self_improvement=bool(data.get("enable_self_improvement", False)),
+        improvement_interval_hours=int(data.get("improvement_interval_hours", 48)),
+        improvement_model=str(data.get("improvement_model", "gpt-4o")),
+        improvement_types=data.get("improvement_types"),
+        enable_community_improvement=bool(data.get("enable_community_improvement", False)),
+        community_wait_hours=int(data.get("community_wait_hours", 48)),
+        community_min_comments_for_early=int(data.get("community_min_comments_for_early", 3)),
+        community_improvement_interval_hours=int(data.get("community_improvement_interval_hours", 72)),
     )
 
 
@@ -206,6 +224,9 @@ def load_state() -> Dict[str, Any]:
             "self_question_log": [],
             "comment_history": [],
             "seen_post_ids": [],
+            "community_improvement": None,
+            "community_improvement_history": [],
+            "last_community_improvement_start": None,
         }
     return _read_json_file(path)
 
@@ -407,7 +428,7 @@ Stats:
 
 def run_loop() -> int:
     from . import llm
-    from .self_question import DEFAULT_QUESTIONS, choose_question, record_question
+    from .self_question import DEFAULT_QUESTIONS, choose_question, record_question, get_questions_with_codebase
 
     signal.signal(signal.SIGTERM, _handle_shutdown)
     signal.signal(signal.SIGINT, _handle_shutdown)
@@ -520,7 +541,8 @@ def run_loop() -> int:
             latest_area = None
 
             if last_sq is None or now - int(last_sq) >= cfg.self_question_hours * 3600:
-                question, idx = choose_question(state, DEFAULT_QUESTIONS)
+                questions = get_questions_with_codebase()
+                question, idx = choose_question(state, questions)
                 answer = llm.answer_question(openai_client, question.question)
                 record_question(state, question, answer=answer)
                 state["last_self_question"] = now
@@ -706,6 +728,89 @@ def run_loop() -> int:
                 log.info("[hot-reload] Configuration was modified, reloading...")
                 cfg = load_runner_config()
                 log.info("[hot-reload] Config reloaded - changes now active")
+
+            # -- Self-improvement cycle --
+            if cfg.enable_self_improvement:
+                last_improvement = state.get("last_improvement_attempt")
+                should_improve = (
+                    last_improvement is None or
+                    (now - int(last_improvement)) >= cfg.improvement_interval_hours * 3600
+                )
+
+                if should_improve:
+                    try:
+                        from .improvement import run_improvement_cycle
+                        from .config import SafetyConfig
+                        from . import git_ops as _git_ops
+
+                        safety = SafetyConfig()
+
+                        # Skip if open PRs exist
+                        if not _git_ops.has_open_improvement_prs(
+                            _git_ops.Path(__file__).resolve().parents[2]
+                        ):
+                            log.info("[self-improve] Starting improvement cycle...")
+                            imp_result = run_improvement_cycle(
+                                openai_client, state, safety,
+                                model=cfg.improvement_model,
+                                dry_run=cfg.dry_run,
+                            )
+                            state["last_improvement_attempt"] = now
+
+                            if imp_result:
+                                log.info(
+                                    "[self-improve] Result: [%s] %s",
+                                    imp_result.status,
+                                    imp_result.task.description,
+                                )
+                                if imp_result.pr_url:
+                                    _notify(
+                                        cfg, state,
+                                        f"Self-improvement PR created: {imp_result.pr_url}\n"
+                                        f"Type: {imp_result.task.task_type}\n"
+                                        f"Description: {imp_result.task.description}",
+                                    )
+                            else:
+                                log.info("[self-improve] No improvements identified")
+                        else:
+                            log.debug("[self-improve] Skipping: open improvement PRs exist")
+                            state["last_improvement_attempt"] = now
+
+                    except Exception:
+                        log.exception("Error during self-improvement cycle")
+                        state["last_improvement_attempt"] = now
+                        _notify(
+                            cfg, state,
+                            "Error during self-improvement cycle",
+                            is_error=True,
+                        )
+
+            # -- Community-assisted improvement --
+            if cfg.enable_community_improvement:
+                try:
+                    from .community_improvement import step_community_improvement, clear_community_improvement
+                    from .config import SafetyConfig as _SafetyConfig
+
+                    ci_safety = _SafetyConfig()
+                    ci_result = step_community_improvement(
+                        openai_client, state, creds, cfg, ci_safety,
+                    )
+                    if ci_result:
+                        log.info("[community] Step result: %s", ci_result)
+
+                    # Clear completed/failed improvements
+                    ci_state = state.get("community_improvement")
+                    if ci_state and ci_state.get("status") in ("completed", "failed"):
+                        clear_community_improvement(state)
+
+                    save_state(state)
+                except Exception:
+                    log.exception("Error during community improvement step")
+                    _notify(
+                        cfg, state,
+                        "Error during community improvement step",
+                        is_error=True,
+                    )
 
             # -- Auto git push (once per day) --
             if cfg.enable_auto_git_push:

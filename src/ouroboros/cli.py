@@ -96,6 +96,178 @@ def cmd_config_modify(args: argparse.Namespace) -> int:
     return 0
 
 
+# -- Improve subcommands --
+
+def cmd_improve_run(args: argparse.Namespace) -> int:
+    """Run one improvement cycle."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    from . import llm
+    from .improvement import run_improvement_cycle
+    from .config import SafetyConfig
+
+    openai_key = llm.load_openai_key()
+    client = llm.make_client(openai_key)
+    config = SafetyConfig()
+    state = {}
+
+    result = run_improvement_cycle(
+        client, state, config,
+        model=getattr(args, "model", "gpt-4o"),
+        dry_run=getattr(args, "dry_run", False),
+    )
+
+    if result is None:
+        print("No improvements identified or rate-limited.")
+        return 0
+
+    print(f"Improvement result: [{result.status}] {result.task.description}")
+    if result.pr_url:
+        print(f"PR: {result.pr_url}")
+    return 0 if result.status in ("success", "skipped") else 1
+
+
+def cmd_improve_status(_args: argparse.Namespace) -> int:
+    """Show pending PRs and recent improvement history."""
+    from .evaluation import load_history, check_pr_outcomes
+    from .codebase import get_repo_root
+    from . import git_ops
+
+    repo = get_repo_root()
+    history = check_pr_outcomes(repo)
+
+    has_open = git_ops.has_open_improvement_prs(repo)
+    print(f"Open improvement PRs: {'yes' if has_open else 'no'}")
+
+    pending = [r for r in history if r.outcome == "pending"]
+    if pending:
+        print(f"\nPending PRs ({len(pending)}):")
+        for r in pending:
+            print(f"  - [{r.task_type}] {r.description}")
+            if r.pr_url:
+                print(f"    PR: {r.pr_url}")
+
+    recent = history[-5:]
+    if recent:
+        print(f"\nRecent improvements ({len(recent)}):")
+        for r in recent:
+            print(f"  - [{r.outcome}] {r.task_type}: {r.description}")
+
+    return 0
+
+
+def cmd_improve_history(_args: argparse.Namespace) -> int:
+    """Show full improvement history."""
+    from .evaluation import load_history
+
+    history = load_history()
+    if not history:
+        print("No improvement history.")
+        return 0
+
+    for r in history:
+        delta = ""
+        if r.test_delta:
+            before = r.test_delta.get("before", {})
+            after = r.test_delta.get("after", {})
+            delta = (
+                f" (tests: {before.get('passed', 0)}p/{before.get('failed', 0)}f"
+                f" -> {after.get('passed', 0)}p/{after.get('failed', 0)}f)"
+            )
+        print(f"[{r.outcome}] {r.task_type}: {r.description}{delta}")
+        if r.pr_url:
+            print(f"  PR: {r.pr_url}")
+
+    return 0
+
+
+def cmd_improve_community(args: argparse.Namespace) -> int:
+    """Run one community improvement step (or full dry-run cycle)."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    from . import llm
+    from .community_improvement import step_community_improvement, clear_community_improvement
+    from .config import SafetyConfig
+    from .moltbook import load_credentials, load_runner_config, load_state, save_state, RunnerConfig
+
+    openai_key = llm.load_openai_key()
+    client = llm.make_client(openai_key)
+    safety = SafetyConfig()
+
+    cfg = load_runner_config()
+    # Force community improvement on and apply CLI flags
+    cfg = RunnerConfig(
+        **{
+            **{f.name: getattr(cfg, f.name) for f in cfg.__dataclass_fields__.values()},
+            "enable_community_improvement": True,
+            "dry_run": getattr(args, "dry_run", False),
+            "improvement_model": getattr(args, "model", "gpt-4o"),
+        }
+    )
+
+    creds = load_credentials()
+    state = load_state()
+
+    # Clear interval gate for manual trigger
+    state["last_community_improvement_start"] = None
+
+    result = step_community_improvement(client, state, creds, cfg, safety)
+    if result:
+        print(f"Community improvement step: {result}")
+    else:
+        print("No action taken.")
+
+    ci = state.get("community_improvement")
+    if ci:
+        print(f"Status: {ci.get('status')}")
+        print(f"Task: [{ci.get('task_type')}] {ci.get('description')}")
+        if ci.get("status") in ("completed", "failed"):
+            clear_community_improvement(state)
+
+    if not getattr(args, "dry_run", False):
+        save_state(state)
+
+    return 0
+
+
+def cmd_improve_identify(args: argparse.Namespace) -> int:
+    """Dry-run: identify improvements without acting."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    from . import llm
+    from .improvement import run_improvement_cycle
+    from .config import SafetyConfig
+
+    openai_key = llm.load_openai_key()
+    client = llm.make_client(openai_key)
+    config = SafetyConfig()
+    state = {}
+
+    result = run_improvement_cycle(
+        client, state, config,
+        model=getattr(args, "model", "gpt-4o"),
+        dry_run=True,
+    )
+
+    if result is None:
+        print("No improvements identified.")
+    else:
+        print(f"Identified: [{result.task.task_type}] {result.task.description}")
+        print(f"Target files: {result.task.target_files}")
+        print(f"Evidence: {result.task.evidence}")
+
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ouroboros")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -132,6 +304,30 @@ def build_parser() -> argparse.ArgumentParser:
     p_modify = cfg_sub.add_parser("modify", help="Modify configuration (autonomous mode)")
     p_modify.add_argument("updates", nargs="+", help="key=value pairs to update")
     p_modify.set_defaults(func=cmd_config_modify)
+
+    # -- improve subcommand --
+    p_improve = sub.add_parser("improve", help="Self-improvement tools")
+    imp_sub = p_improve.add_subparsers(dest="imp_command", required=True)
+
+    p_imp_run = imp_sub.add_parser("run", help="Run one improvement cycle")
+    p_imp_run.add_argument("--model", default="gpt-4o", help="LLM model to use")
+    p_imp_run.add_argument("--dry-run", action="store_true", help="Identify only, don't act")
+    p_imp_run.set_defaults(func=cmd_improve_run)
+
+    p_imp_status = imp_sub.add_parser("status", help="Show pending PRs and recent history")
+    p_imp_status.set_defaults(func=cmd_improve_status)
+
+    p_imp_history = imp_sub.add_parser("history", help="Show past improvements")
+    p_imp_history.set_defaults(func=cmd_improve_history)
+
+    p_imp_identify = imp_sub.add_parser("identify", help="Dry-run: identify but don't act")
+    p_imp_identify.add_argument("--model", default="gpt-4o", help="LLM model to use")
+    p_imp_identify.set_defaults(func=cmd_improve_identify)
+
+    p_imp_community = imp_sub.add_parser("community", help="Run community-assisted improvement step")
+    p_imp_community.add_argument("--model", default="gpt-4o", help="LLM model to use")
+    p_imp_community.add_argument("--dry-run", action="store_true", help="Identify and generate post, don't publish")
+    p_imp_community.set_defaults(func=cmd_improve_community)
 
     return parser
 
