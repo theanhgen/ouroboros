@@ -441,8 +441,9 @@ def run_loop() -> int:
     # Fail fast if OpenAI key is missing
     openai_key = llm.load_openai_key()
     openai_client = llm.make_client(openai_key)
+    import os
     log.info("Moltbook runner starting (dry_run=%s)", cfg.dry_run)
-    _notify(cfg, state, f"Moltbook runner started (dry_run={cfg.dry_run})")
+    _notify(cfg, state, f"Moltbook runner started (dry_run={cfg.dry_run}, PID={os.getpid()})")
 
     consecutive_errors = 0
 
@@ -843,6 +844,6 @@ def run_loop() -> int:
             _interruptible_sleep(cfg.interval_seconds)
 
     log.info("Moltbook runner stopped.")
-    _notify(cfg, state, "Moltbook runner stopped.")
+    _notify(cfg, state, f"Moltbook runner stopped. (PID={os.getpid()})")
     save_state(state)
     return 0

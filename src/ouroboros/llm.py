@@ -262,7 +262,7 @@ def generate_code(
     try:
         resp = client.chat.completions.create(
             model=model,
-            max_tokens=2000,
+            max_tokens=4096,
             response_format={"type": "json_object"},
             messages=[
                 {
@@ -435,7 +435,7 @@ def generate_code_from_suggestion(
     try:
         resp = client.chat.completions.create(
             model=model,
-            max_tokens=2000,
+            max_tokens=4096,
             response_format={"type": "json_object"},
             messages=[
                 {
