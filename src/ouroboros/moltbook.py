@@ -495,12 +495,14 @@ def run_loop() -> int:
                     else:
                         comment_result = create_comment(creds.api_key, post.get("id"), comment_text)
                         log.info("Commented on post %s", post.get("id"))
+                        post_url = _post_url(post.get("id"))
                         comment_url = _comment_url(post.get("id"), comment_result.get("id"))
                         _notify(
                             cfg,
                             state,
                             f"Commented: {_shorten(post.get('title', '') or '', 100)}"
-                            + (f"\n{comment_url}" if comment_url else ""),
+                            + (f"\nPost: {post_url}" if post_url else "")
+                            + (f"\nComment: {comment_url}" if comment_url else ""),
                         )
 
                     state.setdefault("comment_history", []).append(
