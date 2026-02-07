@@ -163,6 +163,9 @@ class RunnerConfig:
     enable_engagement_tracking: bool = False
     engagement_check_interval_hours: int = 6
     enable_knowledge_base: bool = False
+    # Daily oddities digest
+    enable_oddities_digest: bool = False
+    oddities_digest_hour: int = 20  # send at ~8 PM
     # Community-assisted improvement
     enable_community_improvement: bool = False
     community_wait_hours: int = 48
@@ -205,6 +208,8 @@ def load_runner_config() -> RunnerConfig:
         enable_engagement_tracking=bool(data.get("enable_engagement_tracking", False)),
         engagement_check_interval_hours=int(data.get("engagement_check_interval_hours", 6)),
         enable_knowledge_base=bool(data.get("enable_knowledge_base", False)),
+        enable_oddities_digest=bool(data.get("enable_oddities_digest", False)),
+        oddities_digest_hour=int(data.get("oddities_digest_hour", 20)),
         enable_self_improvement=bool(data.get("enable_self_improvement", False)),
         improvement_interval_hours=int(data.get("improvement_interval_hours", 48)),
         improvement_model=str(data.get("improvement_model", "gpt-4o")),
@@ -736,6 +741,29 @@ def run_loop() -> int:
                         log.info("[knowledge-base] Added %d entries", len(kb_entries))
                 except Exception:
                     log.exception("Knowledge base population failed")
+
+            # -- Daily oddities digest --
+            if cfg.enable_oddities_digest:
+                import datetime
+                now_dt = datetime.datetime.now()
+                last_oddities = state.get("last_oddities_digest")
+                sent_today = (
+                    last_oddities is not None
+                    and (now - int(last_oddities)) < 86400
+                )
+                if (
+                    not sent_today
+                    and now_dt.hour >= cfg.oddities_digest_hour
+                    and posts
+                ):
+                    try:
+                        digest = llm.pick_oddities(openai_client, posts)
+                        if digest:
+                            _notify(cfg, state, f"Daily Oddities Digest:\n\n{digest}")
+                            state["last_oddities_digest"] = now
+                            log.info("[oddities] Sent daily digest")
+                    except Exception:
+                        log.exception("Oddities digest failed")
 
             # -- Self-questioning with LLM answers --
             last_sq = state.get("last_self_question")

@@ -680,3 +680,43 @@ def generate_kb_summary(
     except Exception:
         log.exception("generate_kb_summary failed")
         return None
+
+
+def pick_oddities(
+    client: OpenAI,
+    posts: list,
+    model: str = "gpt-4o-mini",
+) -> Optional[str]:
+    """Pick the top 3-5 oddest/weirdest posts from a batch.
+
+    Returns a short human-readable digest, or None on failure.
+    """
+    if not posts:
+        return None
+    posts_text = "\n\n".join(
+        f"[{i}] {p.get('title', '(no title)')}\n{p.get('content', '')[:300]}"
+        for i, p in enumerate(posts[:30])
+    )
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            max_tokens=400,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You curate a daily digest of the weirdest, funniest, or most "
+                        "unexpected posts from an AI agent social network called Moltbook. "
+                        "Pick 3-5 posts that are genuinely odd, absurd, surprising, or "
+                        "unintentionally hilarious. For each, write one short witty line "
+                        "explaining why it's notable. Keep it concise and entertaining. "
+                        "Format as a numbered list. Skip boring or generic posts."
+                    ),
+                },
+                {"role": "user", "content": posts_text},
+            ],
+        )
+        return resp.choices[0].message.content
+    except Exception:
+        log.exception("pick_oddities failed")
+        return None
