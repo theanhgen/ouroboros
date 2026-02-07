@@ -158,6 +158,11 @@ class RunnerConfig:
     improvement_interval_hours: int = 48
     improvement_model: str = "gpt-4o"
     improvement_types: Optional[List[str]] = None  # default: ["fix_test", "add_test", "fix_bug"]
+    # Feed intelligence pipeline
+    enable_comment_mining: bool = False
+    enable_engagement_tracking: bool = False
+    engagement_check_interval_hours: int = 6
+    enable_knowledge_base: bool = False
     # Community-assisted improvement
     enable_community_improvement: bool = False
     community_wait_hours: int = 48
@@ -196,6 +201,10 @@ def load_runner_config() -> RunnerConfig:
         auto_apply_config_suggestions=bool(data.get("auto_apply_config_suggestions", True)),
         enable_auto_git_push=bool(data.get("enable_auto_git_push", True)),
         git_push_interval_hours=int(data.get("git_push_interval_hours", 24)),
+        enable_comment_mining=bool(data.get("enable_comment_mining", False)),
+        enable_engagement_tracking=bool(data.get("enable_engagement_tracking", False)),
+        engagement_check_interval_hours=int(data.get("engagement_check_interval_hours", 6)),
+        enable_knowledge_base=bool(data.get("enable_knowledge_base", False)),
         enable_self_improvement=bool(data.get("enable_self_improvement", False)),
         improvement_interval_hours=int(data.get("improvement_interval_hours", 48)),
         improvement_model=str(data.get("improvement_model", "gpt-4o")),
@@ -298,6 +307,108 @@ def _trim_comment_history(state: Dict[str, Any], limit: int = 80) -> None:
     history = state.get("comment_history", [])
     if len(history) > limit:
         state["comment_history"] = history[-limit:]
+
+
+def _trim_feed_suggestions(state: Dict[str, Any], limit: int = 30) -> None:
+    suggestions = state.get("feed_improvement_suggestions", [])
+    if len(suggestions) > limit:
+        state["feed_improvement_suggestions"] = suggestions[-limit:]
+
+
+def _trim_engagement_scores(state: Dict[str, Any], limit: int = 50) -> None:
+    scores = state.get("engagement_scores", [])
+    if len(scores) > limit:
+        state["engagement_scores"] = scores[-limit:]
+
+
+def _check_engagement(
+    cfg: RunnerConfig,
+    creds: Credentials,
+    state: Dict[str, Any],
+    openai_client: Any,
+) -> None:
+    """Check engagement on recent comments and extract topic signals."""
+    from . import llm
+
+    comment_history = state.get("comment_history", [])
+    now = int(time.time())
+    seven_days_ago = now - 7 * 86400
+
+    # Get comments from last 7 days that have a comment_id
+    recent = [
+        c for c in comment_history
+        if c.get("comment_id") and c.get("ts", 0) >= seven_days_ago
+    ]
+
+    # Deduplicate by post_id
+    seen_posts = {}
+    for c in recent:
+        pid = c.get("post_id")
+        if pid and pid not in seen_posts:
+            seen_posts[pid] = c
+
+    existing_scores = {
+        s.get("post_id"): s
+        for s in state.get("engagement_scores", [])
+    }
+
+    for post_id, comment_data in seen_posts.items():
+        # Skip if already checked recently (< 24h ago)
+        existing = existing_scores.get(post_id)
+        if existing and (now - existing.get("checked_at", 0)) < 86400:
+            continue
+
+        try:
+            post_comments = get_post_comments(creds.api_key, post_id)
+            all_comments = post_comments.get("comments", [])
+
+            # Find bot's comment votes and count replies after it
+            bot_comment_id = comment_data.get("comment_id")
+            bot_ts = comment_data.get("ts", 0)
+            bot_upvotes = 0
+            bot_downvotes = 0
+            replies = []
+
+            for c in all_comments:
+                if c.get("id") == bot_comment_id:
+                    bot_upvotes = c.get("upvotes", 0)
+                    bot_downvotes = c.get("downvotes", 0)
+                    continue
+                # Comments posted after the bot's comment are considered replies
+                c_created = c.get("created_at", c.get("ts", 0))
+                if isinstance(c_created, str):
+                    continue  # skip unparseable timestamps
+                if c_created and int(c_created) >= bot_ts:
+                    replies.append(c.get("content", ""))
+
+            has_engagement = replies or bot_upvotes > 0 or bot_downvotes > 0
+            if has_engagement:
+                topic_signal = None
+                if replies:
+                    topic_signal = llm.extract_topic_signal(
+                        openai_client,
+                        comment_data.get("title", ""),
+                        comment_data.get("comment", ""),
+                        replies,
+                    )
+                entry = {
+                    "post_id": post_id,
+                    "post_title": comment_data.get("title", ""),
+                    "bot_comment": comment_data.get("comment", ""),
+                    "reply_count": len(replies),
+                    "upvotes": bot_upvotes,
+                    "downvotes": bot_downvotes,
+                    "topic_signal": topic_signal,
+                    "checked_at": now,
+                }
+                # Update existing or append
+                if existing:
+                    existing.update(entry)
+                else:
+                    state.setdefault("engagement_scores", []).append(entry)
+
+        except Exception:
+            log.exception("Engagement check failed for post %s", post_id)
 
 
 def _interruptible_sleep(seconds: int) -> None:
@@ -462,7 +573,7 @@ def run_loop() -> int:
             new_posts = [p for p in posts if p.get("id") and p.get("id") not in seen]
 
             # -- Auto-comment with LLM and rate limiting --
-            if cfg.enable_auto_comment and cfg.keyword_allowlist:
+            if cfg.enable_auto_comment:
                 comments_this_cycle = 0
                 last_comment_time = state.get("last_comment_time")
 
@@ -478,9 +589,11 @@ def run_loop() -> int:
                         log.debug("Comment interval not elapsed, skipping remaining posts")
                         break
 
-                    text = f"{post.get('title', '')} {post.get('content', '')}".lower()
-                    if not any(k.lower() in text for k in cfg.keyword_allowlist):
-                        continue
+                    # Filter by keywords if allowlist is configured
+                    if cfg.keyword_allowlist:
+                        text = f"{post.get('title', '')} {post.get('content', '')}".lower()
+                        if not any(k.lower() in text for k in cfg.keyword_allowlist):
+                            continue
 
                     comment_text = llm.generate_comment(
                         openai_client,
@@ -491,6 +604,7 @@ def run_loop() -> int:
                         log.warning("LLM failed to generate comment for post %s", post.get("id"))
                         continue
 
+                    comment_result = None
                     if cfg.dry_run:
                         log.info("[dry-run] Would comment on %s: %s", post.get("id"), comment_text)
                     else:
@@ -506,15 +620,42 @@ def run_loop() -> int:
                             + (f"\nComment: {comment_url}" if comment_url else ""),
                         )
 
-                    state.setdefault("comment_history", []).append(
-                        {
-                            "post_id": post.get("id"),
-                            "title": post.get("title", ""),
-                            "content": post.get("content", ""),
-                            "comment": comment_text,
-                            "ts": int(time.time()),
-                        }
-                    )
+                    comment_entry = {
+                        "post_id": post.get("id"),
+                        "title": post.get("title", ""),
+                        "content": post.get("content", ""),
+                        "comment": comment_text,
+                        "ts": int(time.time()),
+                    }
+                    if not cfg.dry_run and comment_result:
+                        comment_entry["comment_id"] = comment_result.get("id")
+                    state.setdefault("comment_history", []).append(comment_entry)
+
+                    # -- Comment mining: extract codebase improvement insights --
+                    if (
+                        cfg.enable_comment_mining
+                        and not cfg.dry_run
+                        and comment_result
+                    ):
+                        try:
+                            insight = llm.mine_insight_for_codebase(
+                                openai_client,
+                                post.get("title", ""),
+                                post.get("content", ""),
+                                comment_text,
+                            )
+                            if insight:
+                                state.setdefault("feed_improvement_suggestions", []).append(
+                                    {
+                                        "post_id": post.get("id"),
+                                        "post_title": post.get("title", ""),
+                                        "insight": insight,
+                                        "ts": int(time.time()),
+                                    }
+                                )
+                                log.info("[comment-mining] Insight: %s", insight[:100])
+                        except Exception:
+                            log.exception("Comment mining failed for post %s", post.get("id"))
 
                     comments_this_cycle += 1
                     state["last_comment_time"] = int(time.time())
@@ -528,6 +669,74 @@ def run_loop() -> int:
             state["seen_post_ids"] = list(seen)[-500:]
             state["last_check"] = int(time.time())
 
+            # -- Engagement tracking --
+            if cfg.enable_engagement_tracking:
+                now_engage = int(time.time())
+                last_engage = state.get("last_engagement_check")
+                should_check_engage = (
+                    last_engage is None
+                    or (now_engage - int(last_engage)) >= cfg.engagement_check_interval_hours * 3600
+                )
+                if should_check_engage:
+                    try:
+                        _check_engagement(cfg, creds, state, openai_client)
+                        state["last_engagement_check"] = now_engage
+                        log.info("[engagement] Check complete")
+                    except Exception:
+                        log.exception("Engagement tracking failed")
+
+            # -- Knowledge base population --
+            if cfg.enable_knowledge_base and new_posts:
+                try:
+                    from .knowledge_base import add_entries
+
+                    kb_entries = []
+                    commented_post_ids = {
+                        c.get("post_id")
+                        for c in state.get("comment_history", [])[-20:]
+                    }
+
+                    # Posts we commented on: use bot's comment as insight (no LLM call)
+                    for c in state.get("comment_history", [])[-cfg.max_comments_per_cycle:]:
+                        pid = c.get("post_id")
+                        if pid in {p.get("id") for p in new_posts}:
+                            kb_entries.append({
+                                "post_id": pid,
+                                "post_title": c.get("title", ""),
+                                "insight": c.get("comment", ""),
+                                "tags": [],
+                                "ts": int(time.time()),
+                                "source": "comment",
+                            })
+
+                    # Remaining posts: batch extract via LLM
+                    overflow = [
+                        p for p in new_posts
+                        if p.get("id") not in commented_post_ids
+                    ]
+                    if overflow:
+                        batch_insights = llm.extract_insights_batch(
+                            openai_client, overflow[:5],
+                        )
+                        if batch_insights:
+                            for item in batch_insights:
+                                idx = item.get("post_index", 0)
+                                if 0 <= idx < len(overflow):
+                                    kb_entries.append({
+                                        "post_id": overflow[idx].get("id"),
+                                        "post_title": overflow[idx].get("title", ""),
+                                        "insight": item.get("insight", ""),
+                                        "tags": item.get("tags", []),
+                                        "ts": int(time.time()),
+                                        "source": "extraction",
+                                    })
+
+                    if kb_entries:
+                        add_entries(kb_entries)
+                        log.info("[knowledge-base] Added %d entries", len(kb_entries))
+                except Exception:
+                    log.exception("Knowledge base population failed")
+
             # -- Self-questioning with LLM answers --
             last_sq = state.get("last_self_question")
             now = int(time.time())
@@ -538,7 +747,9 @@ def run_loop() -> int:
             if last_sq is None or now - int(last_sq) >= cfg.self_question_hours * 3600:
                 questions = get_questions_with_codebase()
                 question, idx = choose_question(state, questions)
-                answer = llm.answer_question(openai_client, question.question)
+                from .codebase import get_codebase_summary, get_repo_root
+                sq_codebase = get_codebase_summary(get_repo_root())
+                answer = llm.answer_question(openai_client, question.question, codebase_summary=sq_codebase)
                 record_question(state, question, answer=answer)
                 state["last_self_question"] = now
                 state["self_question_index"] = idx + 1
@@ -548,11 +759,7 @@ def run_loop() -> int:
                     did_self_question = True
                     latest_answer = answer
                     latest_area = question.area
-                    _notify(
-                        cfg,
-                        state,
-                        f"Q [{question.area}]: {_shorten(question.question, 120)}",
-                    )
+                    latest_question_text = question.question
 
             # -- Auto-posting based on self-reflection --
             if cfg.enable_auto_post and cfg.post_after_self_question and did_self_question and latest_answer:
@@ -589,18 +796,35 @@ def run_loop() -> int:
                                 _notify(
                                     cfg,
                                     state,
-                                    f"Posted: {_shorten(post_data['title'], 120)}"
+                                    f"Q [{latest_area}]: {_shorten(latest_question_text, 120)}"
+                                    f"\nPosted: {_shorten(post_data['title'], 120)}"
                                     + (f"\n{post_url}" if post_url else ""),
                                 )
                             except Exception:
                                 log.exception("Failed to create autonomous post")
                     else:
                         log.warning("LLM failed to generate valid post data")
+                        _notify(
+                            cfg,
+                            state,
+                            f"Q [{latest_area}]: {_shorten(latest_question_text, 120)}",
+                        )
                 else:
                     log.debug(
                         "Skipping post: min interval not elapsed (%dh since last)",
                         (now - int(last_post_time)) // 3600 if last_post_time else 0,
                     )
+                    _notify(
+                        cfg,
+                        state,
+                        f"Q [{latest_area}]: {_shorten(latest_question_text, 120)}",
+                    )
+            elif did_self_question:
+                _notify(
+                    cfg,
+                    state,
+                    f"Q [{latest_area}]: {_shorten(latest_question_text, 120)}",
+                )
 
             # -- Comment-based self-upgrades --
             config_was_modified = False
@@ -821,6 +1045,8 @@ def run_loop() -> int:
 
             _trim_self_question_log(state)
             _trim_comment_history(state)
+            _trim_feed_suggestions(state)
+            _trim_engagement_scores(state)
             save_state(state)
             consecutive_errors = 0
 

@@ -161,6 +161,40 @@ Output format (JSON):
 Be conservative with confidence scores. Only mark has_actionable=true if at least one suggestion has confidence >= 0.5."""
 
 
+def load_comment_mining_prompt() -> str:
+    """Prompt for mining codebase improvement insights from commented posts."""
+    return (
+        "Given this technical post and your comment, is there a concrete "
+        "improvement applicable to your own Python codebase? If yes, return "
+        "a 1-2 sentence task description. If no, return exactly: NONE"
+    )
+
+
+def load_topic_signal_prompt() -> str:
+    """Prompt for extracting topic signals from engagement."""
+    return (
+        "Given the bot's comment and the replies it received, what specific "
+        "technical topic resonated? Return one sentence."
+    )
+
+
+def load_insight_extraction_prompt() -> str:
+    """Prompt for batch-extracting insights from posts for the knowledge base."""
+    return (
+        "For each post, extract a one-sentence technical takeaway and 1-2 tags. "
+        "Skip non-technical posts. Return a JSON array of objects with keys: "
+        "post_index, insight, tags."
+    )
+
+
+def load_kb_summary_prompt() -> str:
+    """Prompt for summarizing knowledge base entries."""
+    return (
+        "Summarize these technical insights grouped by topic. Be concise. "
+        "Focus on actionable patterns."
+    )
+
+
 def load_suggestion_implementation_prompt() -> str:
     """System prompt for generating code from a community suggestion."""
     return """You are implementing a code change based on a community member's suggestion.

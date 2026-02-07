@@ -138,6 +138,7 @@ def identify_improvements(
     test_results: TestResult,
     history: List[EvaluationRecord],
     model: str = "gpt-4o",
+    additional_context: str = "",
 ) -> Optional[ImprovementTask]:
     """Ask the LLM to identify one improvement to make."""
     test_summary = test_results.summary()
@@ -149,7 +150,10 @@ def identify_improvements(
                 test_summary += f"  {fail.traceback[:200]}\n"
 
     history_summary = summarize_history(history)
-    result = llm.analyze_codebase(client, codebase_summary, test_summary, history_summary, model=model)
+    result = llm.analyze_codebase(
+        client, codebase_summary, test_summary, history_summary,
+        model=model, additional_context=additional_context,
+    )
 
     if not result or result.get("task_type") == "none":
         return None
@@ -296,6 +300,48 @@ def validate_improvement(
     return result
 
 
+def _assemble_feed_context(client: Any, state: Dict[str, Any]) -> str:
+    """Build additional context string from feed intelligence state keys."""
+    parts = []
+
+    # Comment mining suggestions
+    suggestions = state.get("feed_improvement_suggestions", [])
+    if suggestions:
+        lines = ["### Feed Improvement Suggestions"]
+        for s in suggestions[-10:]:  # last 10
+            lines.append(f"- [{s.get('post_title', '')}] {s.get('insight', '')}")
+        parts.append("\n".join(lines))
+
+    # Engagement scores / topic signals
+    scores = state.get("engagement_scores", [])
+    if scores:
+        lines = ["### Community Engagement Signals"]
+        for s in sorted(
+            scores,
+            key=lambda x: x.get("reply_count", 0) + x.get("upvotes", 0),
+            reverse=True,
+        )[:10]:
+            votes = f"+{s.get('upvotes', 0)}/-{s.get('downvotes', 0)}"
+            lines.append(
+                f"- {s.get('post_title', '')} ({s.get('reply_count', 0)} replies, {votes}): "
+                f"{s.get('topic_signal', '')}"
+            )
+        parts.append("\n".join(lines))
+
+    # Knowledge base summary
+    try:
+        from .knowledge_base import load_kb, get_summary
+        kb = load_kb()
+        if kb.get("entries"):
+            summary = get_summary(client, kb=kb)
+            if summary:
+                parts.append(f"### Knowledge Base Summary\n{summary}")
+    except Exception:
+        log.debug("Knowledge base not available for context assembly")
+
+    return "\n\n".join(parts)
+
+
 def run_improvement_cycle(
     client: Any,
     state: Dict[str, Any],
@@ -327,9 +373,15 @@ def run_improvement_cycle(
     test_results = run_tests(repo_root)
     history = load_history(repo_root)
 
+    # Assemble additional context from feed intelligence
+    additional_context = _assemble_feed_context(client, state)
+
     # Step 2: Identify an improvement
     log.info("[improve] Identifying improvements...")
-    task = identify_improvements(client, codebase_summary, test_results, history, model=model)
+    task = identify_improvements(
+        client, codebase_summary, test_results, history,
+        model=model, additional_context=additional_context,
+    )
     if not task:
         log.info("[improve] No improvements identified")
         return None

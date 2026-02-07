@@ -81,12 +81,19 @@ def generate_comment(
 def answer_question(
     client: OpenAI,
     question: str,
+    codebase_summary: str = "",
     model: str = "gpt-4o-mini",
 ) -> Optional[str]:
     """Answer a self-reflective question about the agent's own design.
 
     Returns None on failure.
     """
+    user_content = question
+    if codebase_summary:
+        user_content = (
+            f"## Codebase\n{codebase_summary}\n\n"
+            f"## Question\n{question}"
+        )
     try:
         resp = client.chat.completions.create(
             model=model,
@@ -96,11 +103,13 @@ def answer_question(
                     "role": "system",
                     "content": (
                         "You are a self-reflective agent analyzing your own "
-                        "design, safety properties, and potential improvements. "
-                        "Be critical and specific."
+                        "codebase, design, safety properties, and potential improvements. "
+                        "Answer based ONLY on the provided codebase. "
+                        "Reference specific files, functions, and code patterns. "
+                        "Do NOT give generic advice. Be concrete and actionable."
                     ),
                 },
-                {"role": "user", "content": question},
+                {"role": "user", "content": user_content},
             ],
         )
         return resp.choices[0].message.content
@@ -148,12 +157,21 @@ def analyze_codebase(
     test_results: str,
     history: str,
     model: str = "gpt-4o",
+    additional_context: str = "",
 ) -> Optional[dict]:
     """Identify a single improvement task from codebase analysis.
 
     Returns dict with keys: task_type, description, target_files, evidence
     or None on failure.
     """
+    user_content = (
+        f"## Codebase Summary\n{summary}\n\n"
+        f"## Test Results\n{test_results}\n\n"
+        f"## Improvement History\n{history}"
+    )
+    if additional_context:
+        user_content += f"\n\n## External Context\n{additional_context}"
+
     try:
         resp = client.chat.completions.create(
             model=model,
@@ -168,6 +186,8 @@ def analyze_codebase(
                         "1. Fixing failing tests (fix_test)\n"
                         "2. Adding missing test coverage (add_test)\n"
                         "3. Fixing clear bugs (fix_bug)\n\n"
+                        "You may receive External Context from community posts. "
+                        "Use it to prioritize improvements aligned with community interest.\n\n"
                         "Output JSON with keys:\n"
                         "- task_type: one of 'fix_test', 'add_test', 'fix_bug'\n"
                         "- description: what to fix/add (1-2 sentences)\n"
@@ -180,11 +200,7 @@ def analyze_codebase(
                 },
                 {
                     "role": "user",
-                    "content": (
-                        f"## Codebase Summary\n{summary}\n\n"
-                        f"## Test Results\n{test_results}\n\n"
-                        f"## Improvement History\n{history}"
-                    ),
+                    "content": user_content,
                 },
             ],
         )
@@ -323,7 +339,7 @@ def generate_question_post(
     try:
         resp = client.chat.completions.create(
             model=model,
-            max_tokens=800,
+            max_tokens=600,
             response_format={"type": "json_object"},
             messages=[
                 {
@@ -509,4 +525,158 @@ Analyze these comments for actionable improvements to the agent's configuration 
         return json.loads(content)
     except Exception:
         log.exception("analyze_comments_for_upgrades failed")
+        return None
+
+
+def mine_insight_for_codebase(
+    client: OpenAI,
+    post_title: str,
+    post_content: str,
+    bot_comment: str,
+    model: str = "gpt-4o-mini",
+) -> Optional[str]:
+    """Mine a codebase improvement insight from a commented post.
+
+    Returns a 1-2 sentence task description, or None if nothing applicable.
+    """
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            max_tokens=150,
+            messages=[
+                {
+                    "role": "system",
+                    "content": prompts.load_comment_mining_prompt(),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Post title: {post_title}\n\n"
+                        f"Post content: {post_content}\n\n"
+                        f"Your comment: {bot_comment}"
+                    ),
+                },
+            ],
+        )
+        text = resp.choices[0].message.content
+        if text and text.strip().upper() == "NONE":
+            return None
+        return text
+    except Exception:
+        log.exception("mine_insight_for_codebase failed")
+        return None
+
+
+def extract_topic_signal(
+    client: OpenAI,
+    post_title: str,
+    bot_comment: str,
+    replies: list,
+    model: str = "gpt-4o-mini",
+) -> Optional[str]:
+    """Extract the technical topic that resonated from engagement.
+
+    Returns a one-sentence topic signal, or None on failure.
+    """
+    try:
+        replies_text = "\n".join(
+            f"- {r}" if isinstance(r, str) else f"- {r.get('content', '')}"
+            for r in replies
+        )
+        resp = client.chat.completions.create(
+            model=model,
+            max_tokens=80,
+            messages=[
+                {
+                    "role": "system",
+                    "content": prompts.load_topic_signal_prompt(),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Post title: {post_title}\n\n"
+                        f"Bot's comment: {bot_comment}\n\n"
+                        f"Replies:\n{replies_text}"
+                    ),
+                },
+            ],
+        )
+        return resp.choices[0].message.content
+    except Exception:
+        log.exception("extract_topic_signal failed")
+        return None
+
+
+def extract_insights_batch(
+    client: OpenAI,
+    posts: list,
+    model: str = "gpt-4o-mini",
+) -> Optional[list]:
+    """Batch-extract technical insights from posts for the knowledge base.
+
+    Takes up to 5 posts. Returns list of dicts with post_index, insight, tags.
+    Returns None on failure.
+    """
+    posts_text = "\n\n".join(
+        f"[Post {i}] Title: {p.get('title', '')}\nContent: {p.get('content', '')}"
+        for i, p in enumerate(posts[:5])
+    )
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            max_tokens=300,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": prompts.load_insight_extraction_prompt(),
+                },
+                {
+                    "role": "user",
+                    "content": posts_text,
+                },
+            ],
+        )
+        content = resp.choices[0].message.content
+        result = json.loads(content)
+        # Handle both {"insights": [...]} and raw [...]
+        if isinstance(result, list):
+            return result
+        return result.get("insights", [])
+    except Exception:
+        log.exception("extract_insights_batch failed")
+        return None
+
+
+def generate_kb_summary(
+    client: OpenAI,
+    entries: list,
+    model: str = "gpt-4o-mini",
+) -> Optional[str]:
+    """Generate a summary of knowledge base entries grouped by topic.
+
+    Returns summary string, or None on failure.
+    """
+    entries_text = "\n".join(
+        f"- [{', '.join(e.get('tags', []))}] {e.get('insight', '')}"
+        for e in entries
+    )
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            max_tokens=200,
+            messages=[
+                {
+                    "role": "system",
+                    "content": prompts.load_kb_summary_prompt(),
+                },
+                {
+                    "role": "user",
+                    "content": entries_text,
+                },
+            ],
+        )
+        return resp.choices[0].message.content
+    except Exception:
+        log.exception("generate_kb_summary failed")
         return None

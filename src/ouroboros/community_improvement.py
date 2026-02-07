@@ -168,6 +168,23 @@ def _step_post(
     """Generate and post a StackOverflow-style question to Moltbook."""
     ci = state["community_improvement"]
 
+    # Check community post interval
+    now = int(time.time())
+    last_community_post = state.get("last_community_post")
+    interval_hours = getattr(cfg, "community_post_interval_hours", 1.0)
+    if last_community_post is not None:
+        elapsed_hours = (now - int(last_community_post)) / 3600
+        if elapsed_hours < interval_hours:
+            remaining = interval_hours - elapsed_hours
+            log.info(
+                "[community] Too soon to post (%.1fh since last, need %.1fh). Waiting %.1fh more.",
+                elapsed_hours,
+                interval_hours,
+                remaining,
+            )
+            # Stay in identified state, will retry next cycle
+            return "waiting_for_interval"
+
     task_data = {
         "task_type": ci["task_type"],
         "description": ci["description"],
@@ -195,6 +212,7 @@ def _step_post(
             post_data["content"][:200],
         )
         ci["status"] = "completed"
+        state["last_community_post"] = now
         return "dry_run_posted"
 
     try:
@@ -211,6 +229,7 @@ def _step_post(
         ci["posted_at"] = now
         ci["wait_until"] = now + wait_hours * 3600
         ci["status"] = "waiting"
+        state["last_community_post"] = now
 
         log.info(
             "[community] Posted question: %s (id: %s, waiting %dh)",
