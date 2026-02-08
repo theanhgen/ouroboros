@@ -63,7 +63,7 @@ def test_read_file_not_found():
 
 
 def test_get_function_signatures(tmp_path):
-    code = textwrap.dedent("""\
+    code = textwrap.dedent("""
         def hello(name: str) -> str:
             return f"hello {name}"
 
