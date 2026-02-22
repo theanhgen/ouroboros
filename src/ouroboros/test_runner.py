@@ -9,7 +9,6 @@ from typing import List, Optional
 
 log = logging.getLogger(__name__)
 
-
 @dataclass
 class TestFailure:
     test_name: str
@@ -17,7 +16,6 @@ class TestFailure:
     line: Optional[int]
     message: str
     traceback: str
-
 
 @dataclass
 class TestResult:
@@ -46,6 +44,10 @@ class TestResult:
 def _parse_pytest_output(output: str) -> dict:
     """Parse pytest --tb=short -q output into counts and failure details."""
     result = {"passed": 0, "failed": 0, "errors": 0, "failures": []}
+
+    # Handle case for 'no tests ran'
+    if 'no tests ran' in output:
+        return result
 
     # Match summary line like "3 passed, 1 failed, 1 error in 0.52s"
     summary_match = re.search(
@@ -83,7 +85,7 @@ def _parse_pytest_output(output: str) -> dict:
         tb = ""
         tb_pattern = (
             r"_" + "{2,}" + r"\s+" + re.escape(test_name) + r"\s+_" + "{2,}"
-            + r"(.*?)(?=_" + "{2,}" + r"\s+\w|=" + "{2,}" + r"|$)"
+            + r"(.*?)(?=_{2,}\s+\w|={2,}|$)"
         )
         tb_match = re.search(tb_pattern, output, re.DOTALL)
         if tb_match:
@@ -109,7 +111,7 @@ def run_tests(repo_root: Path, timeout: int = 120) -> TestResult:
     """
     try:
         proc = subprocess.run(
-            ["python", "-m", "pytest", "--tb=short", "-q"],
+            ["pytest", "--tb=short", "-q"],
             cwd=repo_root,
             capture_output=True,
             text=True,
