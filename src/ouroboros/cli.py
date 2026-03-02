@@ -236,6 +236,39 @@ def cmd_improve_community(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_improve_github(args: argparse.Namespace) -> int:
+    """Check for open GitHub issues and attempt to fix them."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    from . import llm
+    from .github_improvement import run_github_improvement_cycle
+    from .codebase import get_repo_root
+
+    openai_key = llm.load_openai_key()
+    client = llm.make_client(openai_key)
+    repo_root = get_repo_root()
+
+    results = run_github_improvement_cycle(
+        client, repo_root,
+        model=getattr(args, "model", "gpt-4o"),
+        dry_run=getattr(args, "dry_run", False),
+    )
+
+    if not results:
+        print("No actionable GitHub issues found.")
+        return 0
+
+    for res in results:
+        print(f"Issue #{res.issue_id}: [{res.status}] {res.description or res.error}")
+        if res.pr_url:
+            print(f"  PR: {res.pr_url}")
+
+    return 0
+
+
 def cmd_improve_identify(args: argparse.Namespace) -> int:
     """Dry-run: identify improvements without acting."""
     logging.basicConfig(
