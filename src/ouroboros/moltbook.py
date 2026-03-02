@@ -447,7 +447,8 @@ def _auto_git_push(state: Dict[str, Any], dry_run: bool = False) -> bool:
         ).stdout.strip()
 
         # Collect stats for commit message
-        upgrade_count = len(state.get("self_upgrades", []))
+        history = sorted(state.get("community_improvement_history", []) + state.get("self_upgrades", []), key=lambda x: x.get('ts', 0))
+        upgrade_count = len(history)
         question_count = len(state.get("self_question_log", []))
         post_count = 1 if state.get("last_post") else 0
 
@@ -458,7 +459,7 @@ Stats:
 - Self-upgrades applied: {upgrade_count}
 - Self-questions answered: {question_count}
 - Last post: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(state.get('last_post', 0))) if state.get('last_post') else 'never'}
-- Last upgrade: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(state['self_upgrades'][-1]['ts'])) if state.get('self_upgrades') else 'none'}
+- Last upgrade: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(history[-1].get('ts', 0))) if history else 'none'}
 
 🤖 Generated autonomously by Ouroboros
 """
@@ -488,6 +489,34 @@ Stats:
             files_to_add.append(state_file)
         else:
             log.debug("State file not in repo, skipping: %s", state_file)
+
+        # Generate SUMMARY.md
+        summary_file = os.path.join(repo_root, "SUMMARY.md")
+        try:
+            with open(summary_file, "w") as f:
+                f.write("# Ouroboros Activity Summary\n\n")
+                f.write("This file is autonomously generated to provide an up-to-date summary of agent activity.\n\n")
+                f.write("## Latest Stats\n")
+                f.write(f"- **Self-upgrades applied:** {upgrade_count}\n")
+                f.write(f"- **Self-questions answered:** {question_count}\n")
+                last_post_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(state.get('last_post', 0))) if state.get('last_post') else 'never'
+                f.write(f"- **Last post:** {last_post_str}\n\n")
+                if history:
+                    f.write("## Recent Upgrades\n")
+                    for upg in reversed(history[-10:]):
+                        ts = time.strftime('%Y-%m-%d', time.localtime(upg.get('ts', 0)))
+                        desc = upg.get('description', upg.get('task_type', 'No description'))
+                        f.write(f"- **{ts}**: {desc}\n")
+                    f.write("\n")
+                questions = state.get("self_question_log", [])
+                if questions:
+                    f.write("## Recent Questions\n")
+                    for q in reversed(questions[-5:]):
+                        ts = time.strftime('%Y-%m-%d', time.localtime(q.get('ts', 0)))
+                        f.write(f"- **{ts}**: {q.get('question', 'Unknown')}\n")
+            files_to_add.append(summary_file)
+        except Exception as e:
+            log.warning("Failed to generate SUMMARY.md: %s", e)
 
         if not files_to_add:
             log.debug("No config/state files to commit")

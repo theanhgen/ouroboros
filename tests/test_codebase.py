@@ -69,7 +69,7 @@ def test_get_function_signatures(tmp_path):
         class MyClass:
             def method(self, x, y):
                 return x + y
-    ''')
+    ''').lstrip()
     test_file = tmp_path / 'test_module.py'
     test_file.write_text(code)
 
@@ -83,6 +83,7 @@ def test_get_function_signatures(tmp_path):
 
     method_sig = next(s for s in sigs if s['name'] == 'method')
     assert method_sig['args'] == ['self', 'x', 'y']
+    assert method_sig['line'] == 5
 
 
 def test_get_function_signatures_syntax_error(tmp_path):
