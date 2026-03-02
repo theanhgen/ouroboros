@@ -329,6 +329,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_imp_community.add_argument("--dry-run", action="store_true", help="Identify and generate post, don't publish")
     p_imp_community.set_defaults(func=cmd_improve_community)
 
+    p_imp_github = imp_sub.add_parser("github", help="Check for and fix GitHub issues")
+    p_imp_github.add_argument("--model", default="gpt-4o", help="LLM model to use")
+    p_imp_github.add_argument("--dry-run", action="store_true", help="Identify and plan only, don't act")
+    p_imp_github.set_defaults(func=cmd_improve_github)
+
     return parser
 
 

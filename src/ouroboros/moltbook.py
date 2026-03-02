@@ -171,6 +171,9 @@ class RunnerConfig:
     community_wait_hours: int = 48
     community_min_comments_for_early: int = 3
     community_improvement_interval_hours: int = 72
+    # GitHub issue resolution
+    enable_github_improvement: bool = False
+    github_improvement_interval_hours: int = 12
 
 
 def load_runner_config() -> RunnerConfig:
@@ -218,6 +221,8 @@ def load_runner_config() -> RunnerConfig:
         community_wait_hours=int(data.get("community_wait_hours", 48)),
         community_min_comments_for_early=int(data.get("community_min_comments_for_early", 3)),
         community_improvement_interval_hours=int(data.get("community_improvement_interval_hours", 72)),
+        enable_github_improvement=bool(data.get("enable_github_improvement", False)),
+        github_improvement_interval_hours=int(data.get("github_improvement_interval_hours", 12)),
     )
 
 
@@ -1053,6 +1058,41 @@ def run_loop() -> int:
                             "Error during self-improvement cycle",
                             is_error=True,
                         )
+
+            # -- GitHub issue resolution cycle --
+            if cfg.enable_github_improvement:
+                last_github = state.get("last_github_improvement_attempt")
+                should_gh_improve = (
+                    last_github is None or
+                    (now - int(last_github)) >= cfg.github_improvement_interval_hours * 3600
+                )
+
+                if should_gh_improve:
+                    try:
+                        from .github_improvement import run_github_improvement_cycle
+                        from .codebase import get_repo_root
+
+                        repo_root = get_repo_root()
+                        log.info("[github-improve] Checking for open issues...")
+                        gh_results = run_github_improvement_cycle(
+                            openai_client, repo_root,
+                            model=cfg.improvement_model,
+                            dry_run=cfg.dry_run,
+                        )
+                        state["last_github_improvement_attempt"] = now
+
+                        for res in gh_results:
+                            if res.status == "success" and res.pr_url:
+                                log.info("[github-improve] Fixed issue #%d: %s", res.issue_id, res.description)
+                                _notify(
+                                    cfg, state,
+                                    f"Fixed Issue #{res.issue_id}: {res.description[:100]}\n"
+                                    f"{res.pr_url}",
+                                )
+                            elif res.status == "failed":
+                                log.warning("[github-improve] Failed to fix issue #%d: %s", res.issue_id, res.error)
+                    except Exception:
+                        log.exception("[github-improve] Failed during GitHub improvement cycle")
 
             # -- Community-assisted improvement --
             if cfg.enable_community_improvement:
