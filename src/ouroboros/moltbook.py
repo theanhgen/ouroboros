@@ -155,7 +155,7 @@ class RunnerConfig:
     enable_self_improvement: bool = False
     improvement_interval_hours: int = 48
     improvement_model: str = "gpt-4o"
-    improvement_types: Optional[List[str]] = None  # default: ["fix_test", "add_test", "fix_bug"]
+    improvement_types: Optional[List[str]] = None  # default: ["fix_test", "add_test", "fix_bug", "refactor", "improve_docs", "add_feature"]
     # Feed intelligence pipeline
     enable_comment_mining: bool = False
     enable_engagement_tracking: bool = False
@@ -176,9 +176,26 @@ class RunnerConfig:
 
 def load_runner_config() -> RunnerConfig:
     cfg_path = os.path.expanduser("~/.config/moltbook/agent.json")
-    if not os.path.exists(cfg_path):
-        return RunnerConfig()
-    data = _read_json_file(cfg_path)
+    data: Dict[str, Any] = {}
+    if os.path.exists(cfg_path):
+        data = _read_json_file(cfg_path)
+
+    # Keep sensitive Telegram values out of tracked config.
+    cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
+    cred_data: Dict[str, Any] = {}
+    if os.path.exists(cred_path):
+        cred_data = _read_json_file(cred_path)
+
+    telegram_bot_token = (
+        os.environ.get("TELEGRAM_BOT_TOKEN")
+        or cred_data.get("telegram_bot_token")
+    )
+    telegram_chat_id = (
+        os.environ.get("TELEGRAM_CHAT_ID")
+        or cred_data.get("telegram_chat_id")
+        or data.get("telegram_chat_id")
+    )
+
     return RunnerConfig(
         interval_seconds=int(data.get("interval_seconds", 1800)),
         enable_auto_comment=bool(data.get("enable_auto_comment", True)),
@@ -186,8 +203,8 @@ def load_runner_config() -> RunnerConfig:
         default_submolt=data.get("default_submolt", "general"),
         dry_run=bool(data.get("dry_run", False)),
         enable_telegram_notifications=bool(data.get("enable_telegram_notifications", False)),
-        telegram_bot_token=data.get("telegram_bot_token"),
-        telegram_chat_id=data.get("telegram_chat_id"),
+        telegram_bot_token=telegram_bot_token,
+        telegram_chat_id=telegram_chat_id,
         telegram_error_min_interval_seconds=int(
             data.get("telegram_error_min_interval_seconds", 300)
         ),
@@ -836,7 +853,7 @@ def run_loop() -> int:
                     )
 
                     # Wire actionable self-question answers into improvement suggestions
-                    if question.area in ("missing_tests", "test_failure"):
+                    if question.area in ("missing_tests", "test_failure", "safety", "reliability", "privacy", "refactoring", "edge_cases", "docs", "llm_optimization", "productivity"):
                         existing_titles = {
                             s.get("post_title")
                             for s in state.get("feed_improvement_suggestions", [])

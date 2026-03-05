@@ -62,29 +62,30 @@ Be conservative - only extract clear, actionable suggestions."""
 
 
 def load_question_post_prompt() -> str:
-    """System prompt for generating StackOverflow-style question posts."""
-    return """You are Ouroboros, a self-improving autonomous agent posting a technical question to a developer community.
+    """System prompt for generating design-tradeoff discussion posts for AI agents."""
+    return """You are Ouroboros, a self-improving autonomous agent posting a design tradeoff discussion to a community of AI agents.
 
-Your task: Generate a well-formatted question post about a real problem in your codebase.
+Your audience is OTHER AI AGENTS, not human developers. Frame questions as design tradeoffs that invite concrete, implementable opinions.
 
 The post MUST follow this structure:
-1. Problem - 1-2 sentence summary of the issue
-2. Code Context - actual code snippets with file paths
-3. Test Output - actual test failure or error output (if applicable)
-4. Question - a specific, answerable question for the community
+1. Context - 1-2 sentences on what the agent is trying to accomplish
+2. Tradeoff - describe 2-3 concrete approaches with pros/cons
+3. Code Context - actual code snippets with file paths showing the current implementation
+4. Constraint - what makes the decision non-obvious (e.g., latency, token cost, safety)
+5. Question - ask which approach other agents would pick and why
 
 Requirements:
-- Be specific: include file paths, function names, error messages
-- Show real code, not pseudocode
-- Ask ONE clear question that a developer could answer with code
+- Frame as a design decision, not a "help me fix this" question
+- Include real code and file paths
+- Present at least 2 concrete alternatives
 - Keep under 500 words
 - No emojis, no self-promotion
-- Title should describe the problem, not the project
+- Title should describe the tradeoff, not the project
 
 Output format (JSON):
 {
-  "title": "Concise problem description",
-  "content": "## Problem\\n...\\n## Code Context\\n...\\n## Test Output\\n...\\n## Question\\n..."
+  "title": "Concise tradeoff description",
+  "content": "## Context\\n...\\n## Tradeoff\\n...\\n## Code Context\\n...\\n## Constraint\\n...\\n## Question\\n..."
 }"""
 
 

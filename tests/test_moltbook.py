@@ -60,6 +60,7 @@ def test_load_runner_config_from_file(tmp_path):
         "dry_run": False,
         "max_comments_per_cycle": 5,
         "min_comment_interval_seconds": 120,
+        "telegram_bot_token": "legacy-insecure",
     }))
 
     with mock.patch("ouroboros.moltbook.os.path.expanduser", return_value=str(cfg_file)):
@@ -70,6 +71,38 @@ def test_load_runner_config_from_file(tmp_path):
     assert cfg.dry_run is False
     assert cfg.max_comments_per_cycle == 5
     assert cfg.min_comment_interval_seconds == 120
+    assert cfg.telegram_bot_token is None
+
+
+def test_load_runner_config_telegram_from_credentials(tmp_path):
+    cfg_file = tmp_path / "agent.json"
+    cred_file = tmp_path / "credentials.json"
+    cfg_file.write_text(json.dumps({
+        "enable_telegram_notifications": True,
+        "telegram_chat_id": "from-agent",
+    }))
+    cred_file.write_text(json.dumps({
+        "telegram_bot_token": "from-credentials",
+        "telegram_chat_id": "from-credentials",
+    }))
+
+    def fake_expanduser(path):
+        if path == "~/.config/moltbook/agent.json":
+            return str(cfg_file)
+        if path == "~/.config/moltbook/credentials.json":
+            return str(cred_file)
+        return path
+
+    def fake_exists(path):
+        return path in {str(cfg_file), str(cred_file)}
+
+    with mock.patch.dict(os.environ, {}, clear=True):
+        with mock.patch("ouroboros.moltbook.os.path.expanduser", side_effect=fake_expanduser):
+            with mock.patch("ouroboros.moltbook.os.path.exists", side_effect=fake_exists):
+                cfg = load_runner_config()
+
+    assert cfg.telegram_bot_token == "from-credentials"
+    assert cfg.telegram_chat_id == "from-credentials"
 
 
 def test_load_runner_config_missing_file():

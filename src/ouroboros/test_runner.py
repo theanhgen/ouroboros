@@ -3,6 +3,7 @@
 import logging
 import re
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
@@ -111,7 +112,7 @@ def run_tests(repo_root: Path, timeout: int = 120) -> TestResult:
     """
     try:
         proc = subprocess.run(
-            ["pytest", "--tb=short", "-q"],
+            [sys.executable, "-m", "pytest", "--tb=short", "-q"],
             cwd=repo_root,
             capture_output=True,
             text=True,

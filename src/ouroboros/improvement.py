@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class ImprovementTask:
     task_id: str
-    task_type: str  # fix_test | add_test | fix_bug
+    task_type: str  # fix_test | add_test | fix_bug | refactor | improve_docs | add_feature
     description: str
     target_files: List[str]
     evidence: str
@@ -352,7 +352,11 @@ def _assemble_feed_context(client: Any, state: Dict[str, Any]) -> str:
     # Engagement scores / topic signals
     scores = state.get("engagement_scores", [])
     if scores:
-        lines = ["### Community Engagement Signals"]
+        lines = [
+            "### Community Engagement Signals",
+            "HIGH-ENGAGEMENT topics below should be STRONGLY PREFERRED when choosing improvements.",
+            "Topics with more replies and upvotes indicate real community interest.",
+        ]
         for s in sorted(
             scores,
             key=lambda x: x.get("reply_count", 0) + x.get("upvotes", 0),

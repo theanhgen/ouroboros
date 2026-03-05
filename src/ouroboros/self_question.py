@@ -14,11 +14,27 @@ class SelfQuestion:
 
 
 DEFAULT_QUESTIONS: List[SelfQuestion] = [
+    # Original safety/testing questions
     SelfQuestion("Which parts of the Moltbook runner are untested?", "tests"),
     SelfQuestion("What safety policy is missing for autonomous comments?", "safety"),
     SelfQuestion("What data do we store that could be sensitive?", "privacy"),
     SelfQuestion("Which errors are not handled in Moltbook API requests?", "reliability"),
     SelfQuestion("What config defaults could cause unintended posting?", "safety"),
+    # Refactoring and code quality
+    SelfQuestion("Which functions are longer than 50 lines and should be decomposed?", "refactoring"),
+    SelfQuestion("Where is there duplicated logic that could be extracted into a shared helper?", "refactoring"),
+    # Documentation
+    SelfQuestion("Which public functions lack docstrings or have misleading ones?", "docs"),
+    SelfQuestion("What implicit assumptions in the codebase should be documented as comments?", "docs"),
+    # Edge cases and robustness
+    SelfQuestion("What happens if the Moltbook API returns unexpected data shapes (empty list, null fields)?", "edge_cases"),
+    SelfQuestion("Which subprocess calls could hang indefinitely without a timeout?", "edge_cases"),
+    # LLM optimization
+    SelfQuestion("Which LLM prompts could be shortened to reduce token cost without losing quality?", "llm_optimization"),
+    SelfQuestion("Where are we making redundant LLM calls that could be cached or batched?", "llm_optimization"),
+    # Productivity
+    SelfQuestion("What repetitive patterns in the improvement cycle could be automated better?", "productivity"),
+    SelfQuestion("Which configuration options are never used and add unnecessary complexity?", "productivity"),
 ]
 
 

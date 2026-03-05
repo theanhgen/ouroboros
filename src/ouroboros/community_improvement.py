@@ -30,6 +30,8 @@ log = logging.getLogger(__name__)
 
 MAX_CODE_CONTEXT_CHARS = 3000
 MAX_COMMUNITY_HISTORY = 20
+STALE_TIMEOUT_SECONDS = 24 * 3600  # 24h -- clear stuck states
+MAX_SAME_TASK_TYPE_STREAK = 3
 
 STATUSES = ("identified", "posted", "waiting", "analyzing", "implementing", "completed", "fallback", "failed")
 
@@ -66,7 +68,17 @@ def step_community_improvement(
 
         return _step_identify(client, state, cfg, safety_config)
 
+    # Staleness timeout: if stuck in identified/waiting/posted for >24h, clear and retry
+    now = int(time.time())
     status = ci.get("status")
+    started_at = ci.get("posted_at") or state.get("last_community_improvement_start") or 0
+    if status in ("identified", "posted", "waiting") and (now - int(started_at)) > STALE_TIMEOUT_SECONDS:
+        log.warning(
+            "[community] State '%s' stuck for >24h, clearing stale improvement",
+            status,
+        )
+        clear_community_improvement(state)
+        return "cleared_stale"
     if status == "identified":
         return _step_post(client, state, creds, cfg)
     elif status == "posted":
@@ -113,10 +125,23 @@ def _step_identify(
             if fail.traceback:
                 test_text += f"  {fail.traceback[:200]}\n"
 
+    # Dedup: if last N community attempts were the same task_type, add avoidance context
+    additional_context = ""
+    ci_history = state.get("community_improvement_history", [])
+    if len(ci_history) >= MAX_SAME_TASK_TYPE_STREAK:
+        recent_types = [h.get("task_type") for h in ci_history[-MAX_SAME_TASK_TYPE_STREAK:]]
+        if len(set(recent_types)) == 1 and recent_types[0]:
+            additional_context = (
+                f"IMPORTANT: The last {MAX_SAME_TASK_TYPE_STREAK} community improvement attempts "
+                f"were all '{recent_types[0]}'. Pick a DIFFERENT task type this time."
+            )
+            log.info("[community] Dedup: avoiding repeated task_type '%s'", recent_types[0])
+
     # Ask LLM to identify a problem suitable for community input
     task_data = llm.analyze_codebase(
         client, codebase_summary, test_text, history_summary,
         model=getattr(cfg, "improvement_model", "gpt-4o"),
+        additional_context=additional_context,
     )
 
     if not task_data or task_data.get("task_type") == "none":
