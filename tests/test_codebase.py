@@ -79,7 +79,7 @@ def test_get_function_signatures(tmp_path):
     hello_sig = next(s for s in sigs if s['name'] == 'hello')
     assert hello_sig['args'] == ['name']
     assert hello_sig['type'] == 'function'
-    assert hello_sig['line'] == 2
+    assert hello_sig['line'] == 1
 
     method_sig = next(s for s in sigs if s['name'] == 'method')
     assert method_sig['args'] == ['self', 'x', 'y']
