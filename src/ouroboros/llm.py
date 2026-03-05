@@ -118,38 +118,6 @@ def answer_question(
         return None
 
 
-def generate_post(
-    client: OpenAI,
-    recent_answer: str,
-    question_area: str,
-    model: str = "gpt-4o-mini",
-) -> Optional[dict]:
-    """Generate an autonomous post based on self-reflection insights.
-
-    Returns dict with 'title' and 'content' keys, or None on failure.
-    """
-    try:
-        resp = client.chat.completions.create(
-            model=model,
-            max_tokens=500,
-            response_format={"type": "json_object"},
-            messages=[
-                {
-                    "role": "system",
-                    "content": prompts.load_post_generation_prompt(),
-                },
-                {
-                    "role": "user",
-                    "content": prompts.load_post_context_prompt(recent_answer, question_area),
-                },
-            ],
-        )
-        content = resp.choices[0].message.content
-        return json.loads(content)
-    except Exception:
-        log.exception("generate_post failed")
-        return None
-
 
 def analyze_codebase(
     client: OpenAI,

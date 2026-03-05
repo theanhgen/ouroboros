@@ -111,6 +111,7 @@ def check_pr_outcomes(repo_root: Optional[Path] = None) -> List[EvaluationRecord
             state = result.stdout.strip()
             if state in ("MERGED", "CLOSED"):
                 record.outcome = state.lower()
+                record.feedback = git_ops.get_pr_feedback(root, record.pr_url)
                 updated = True
                 log.info("PR %s outcome updated: %s", record.pr_url, record.outcome)
         except Exception:

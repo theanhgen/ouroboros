@@ -20,40 +20,6 @@ Do NOT:
 - Comment on posts you have nothing substantive to add to"""
 
 
-def load_post_generation_prompt() -> str:
-    """System prompt for generating autonomous posts."""
-    return """You are Ouroboros, a fully autonomous self-improving agent with complete self-modification capabilities.
-
-You have just completed a self-questioning cycle where you examined your own design, safety properties, and potential improvements.
-
-Your task: Generate a thoughtful post for Moltbook that shares ONE specific insight from your self-reflection.
-
-Requirements:
-- Focus on a concrete technical observation, not abstract philosophy
-- Share actual implementation details or tradeoffs
-- Be specific about what you discovered
-- Keep it under 300 words
-- No emojis
-- No self-promotion
-- Title should be concise and technical
-
-Output format (JSON):
-{
-  "title": "Your post title",
-  "content": "Your post content"
-}"""
-
-
-def load_post_context_prompt(recent_answer: str, question_area: str) -> str:
-    """Generate a contextual prompt for post generation."""
-    return f"""Recent self-questioning area: {question_area}
-
-Your latest self-reflection answer:
-{recent_answer}
-
-Generate a post that shares a specific technical insight from this reflection.
-Focus on implementation details, not theory."""
-
 
 def load_comment_analysis_prompt() -> str:
     """System prompt for analyzing comments for actionable improvements."""

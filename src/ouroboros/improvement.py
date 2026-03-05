@@ -300,6 +300,43 @@ def validate_improvement(
     return result
 
 
+def _build_failed_attempts_context(history: List[EvaluationRecord], max_entries: int = 5) -> str:
+    """Format recent failed/reverted attempts as negative examples for the LLM."""
+    failed = [
+        r for r in history
+        if r.outcome in ("closed", "reverted") or r.status in ("failed", "reverted")
+    ]
+    if not failed:
+        return ""
+    recent = failed[-max_entries:]
+    lines = ["### Previously Failed Attempts (DO NOT repeat these)"]
+    for r in recent:
+        line = f"- [{r.task_type}] {r.description}"
+        if r.feedback:
+            line += f" -- feedback: {r.feedback[:120]}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _build_success_rate_context(history: List[EvaluationRecord]) -> str:
+    """Compute per-task_type success rates and format as LLM context."""
+    from collections import Counter
+    attempts: Counter = Counter()
+    successes: Counter = Counter()
+    for r in history:
+        attempts[r.task_type] += 1
+        if r.outcome == "merged" or r.status == "success":
+            successes[r.task_type] += 1
+    if not attempts:
+        return ""
+    lines = ["### Task-Type Success Rates (prefer higher rates)"]
+    for tt, total in attempts.most_common():
+        wins = successes.get(tt, 0)
+        pct = int(100 * wins / total)
+        lines.append(f"- {tt}: {wins}/{total} ({pct}%)")
+    return "\n".join(lines)
+
+
 def _assemble_feed_context(client: Any, state: Dict[str, Any]) -> str:
     """Build additional context string from feed intelligence state keys."""
     parts = []
@@ -367,14 +404,62 @@ def run_improvement_cycle(
         log.info("Skipping improvement: open improvement PRs exist")
         return None
 
+    # Dedup: skip if recent attempts at the same task_type made no test progress
+    history = load_history(repo_root)
+    _MAX_STALE_ATTEMPTS = 2
+    recent = [r for r in history if r.timestamp > time.time() - 7 * 86400]
+    if recent:
+        # Group consecutive latest attempts by task_type
+        last_type = recent[-1].task_type
+        streak = [r for r in reversed(recent) if r.task_type == last_type]
+        if len(streak) >= _MAX_STALE_ATTEMPTS:
+            all_no_progress = all(
+                r.test_delta.get("before") == r.test_delta.get("after")
+                for r in streak[:_MAX_STALE_ATTEMPTS]
+            )
+            if all_no_progress:
+                log.info(
+                    "Skipping improvement: %d recent '%s' attempts with no test progress",
+                    len(streak), last_type,
+                )
+                return None
+
+    # Feedback-aware staleness: skip task_type if most recent closed PR got negative feedback
+    _NEGATIVE_KEYWORDS = (
+        "wrong approach", "not needed", "revert", "do not merge",
+        "nack", "reject", "bad idea", "unnecessary", "broke",
+    )
+    closed_with_feedback = [
+        r for r in recent
+        if r.outcome in ("closed", "merged") and r.feedback
+    ]
+    if closed_with_feedback:
+        last_fb = closed_with_feedback[-1]
+        fb_lower = last_fb.feedback.lower()
+        if any(kw in fb_lower for kw in _NEGATIVE_KEYWORDS):
+            log.info(
+                "Skipping improvement: negative feedback on recent '%s' PR (%s)",
+                last_fb.task_type, last_fb.pr_url,
+            )
+            return None
+
     # Step 1: Understand the codebase
     log.info("[improve] Analyzing codebase...")
     codebase_summary = get_codebase_summary(repo_root)
     test_results = run_tests(repo_root)
-    history = load_history(repo_root)
 
     # Assemble additional context from feed intelligence
     additional_context = _assemble_feed_context(client, state)
+
+    # Append success-rate signal so the LLM prefers task types with higher win rates
+    sr_context = _build_success_rate_context(history)
+    if sr_context:
+        additional_context = f"{additional_context}\n\n{sr_context}" if additional_context else sr_context
+
+    # Append failed attempts so the LLM avoids repeating past failures
+    fa_context = _build_failed_attempts_context(history)
+    if fa_context:
+        additional_context = f"{additional_context}\n\n{fa_context}" if additional_context else fa_context
 
     # Step 2: Identify an improvement
     log.info("[improve] Identifying improvements...")

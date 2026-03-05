@@ -78,6 +78,27 @@ def commit_changes(repo: Path, message: str, files: List[str]) -> str:
     return result.stdout.strip()
 
 
+def pull_latest(repo: Path) -> bool:
+    """Pull latest changes from origin for the current branch.
+
+    Returns True if source files (src/) were updated.
+    """
+    try:
+        head_before = _git(repo, "rev-parse", "HEAD").stdout.strip()
+        _git(repo, "pull", "--ff-only", "origin", current_branch(repo), timeout=60)
+        head_after = _git(repo, "rev-parse", "HEAD").stdout.strip()
+
+        if head_before == head_after:
+            return False
+
+        log.info("Pulled latest changes from origin (%s -> %s)", head_before[:8], head_after[:8])
+        diff = _git(repo, "diff", "--name-only", head_before, head_after).stdout
+        return any(line.startswith("src/") for line in diff.splitlines())
+    except subprocess.CalledProcessError:
+        log.warning("git pull --ff-only failed (local diverged?), skipping")
+        return False
+
+
 def push_branch(repo: Path, branch: str) -> None:
     """Push a branch to origin."""
     _git(repo, "push", "-u", "origin", branch, timeout=60)
@@ -151,3 +172,27 @@ def get_pr_status(repo: Path, branch: str) -> Optional[str]:
         return result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
+
+
+def get_pr_feedback(repo: Path, pr_url: str, max_chars: int = 2000) -> str:
+    """Extract review and comment bodies from a PR. Returns concatenated text, truncated."""
+    try:
+        result = subprocess.run(
+            [
+                "gh", "pr", "view", pr_url,
+                "--json", "reviews,comments",
+                "-q", '[.reviews[].body, .comments[].body] | map(select(. != null and . != "")) | join("\n---\n")',
+            ],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        text = result.stdout.strip()
+        if len(text) > max_chars:
+            text = text[:max_chars]
+        return text
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        log.debug("Could not fetch PR feedback for %s", pr_url)
+        return ""

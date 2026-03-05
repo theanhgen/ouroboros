@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import signal
+import sys
 import threading
 import time
 import urllib.request
@@ -81,7 +82,7 @@ def get_status(api_key: str) -> Dict[str, Any]:
 
 
 def get_feed(api_key: str, sort: str = "new", limit: int = 10) -> Dict[str, Any]:
-    return _request("GET", f"/feed?sort={sort}&limit={limit}", api_key)
+    return _request("GET", f"/posts?sort={sort}&limit={limit}", api_key)
 
 
 def get_posts(api_key: str, sort: str = "new", limit: int = 10) -> Dict[str, Any]:
@@ -131,7 +132,6 @@ def get_my_posts(api_key: str, agent_name: str, limit: int = 10) -> List[Dict[st
 @dataclass
 class RunnerConfig:
     interval_seconds: int = 1800
-    enable_auto_post: bool = True
     enable_auto_comment: bool = True
     keyword_allowlist: Optional[List[str]] = None
     default_submolt: str = "general"
@@ -146,8 +146,6 @@ class RunnerConfig:
     max_comments_per_cycle: int = 3
     min_comment_interval_seconds: int = 300
     enable_self_modification: bool = True
-    post_after_self_question: bool = True
-    min_post_interval_hours: int = 12
     enable_comment_based_upgrades: bool = True
     comment_check_interval_hours: int = 4
     auto_apply_config_suggestions: bool = True
@@ -183,7 +181,6 @@ def load_runner_config() -> RunnerConfig:
     data = _read_json_file(cfg_path)
     return RunnerConfig(
         interval_seconds=int(data.get("interval_seconds", 1800)),
-        enable_auto_post=bool(data.get("enable_auto_post", True)),
         enable_auto_comment=bool(data.get("enable_auto_comment", True)),
         keyword_allowlist=data.get("keyword_allowlist"),
         default_submolt=data.get("default_submolt", "general"),
@@ -200,8 +197,6 @@ def load_runner_config() -> RunnerConfig:
         max_comments_per_cycle=int(data.get("max_comments_per_cycle", 3)),
         min_comment_interval_seconds=int(data.get("min_comment_interval_seconds", 300)),
         enable_self_modification=bool(data.get("enable_self_modification", True)),
-        post_after_self_question=bool(data.get("post_after_self_question", True)),
-        min_post_interval_hours=int(data.get("min_post_interval_hours", 12)),
         enable_comment_based_upgrades=bool(data.get("enable_comment_based_upgrades", True)),
         comment_check_interval_hours=int(data.get("comment_check_interval_hours", 4)),
         auto_apply_config_suggestions=bool(data.get("auto_apply_config_suggestions", True)),
@@ -554,6 +549,14 @@ Stats:
             timeout=10,
         )
 
+        # Pull before push to incorporate merged PRs
+        subprocess.run(
+            ["git", "pull", "--ff-only"],
+            cwd=repo_root,
+            check=False,
+            timeout=30,
+        )
+
         # Push
         subprocess.run(
             ["git", "push"],
@@ -599,6 +602,18 @@ def run_loop() -> int:
 
     while not _shutdown_event.is_set():
         try:
+            now = int(time.time())
+
+            # -- Pull latest and restart if source changed --
+            from . import git_ops as _git_ops
+            repo_root = _git_ops.Path(__file__).resolve().parents[2]
+            source_changed = _git_ops.pull_latest(repo_root)
+            if source_changed:
+                log.info("Source files changed after pull, restarting...")
+                save_state(state)
+                _notify(cfg, state, "Source files updated, restarting process.")
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+
             status = get_status(creds.api_key)
             if status.get("status") != "claimed":
                 log.info("Not claimed yet. Sleeping %ds.", cfg.interval_seconds)
@@ -801,10 +816,6 @@ def run_loop() -> int:
 
             # -- Self-questioning with LLM answers --
             last_sq = state.get("last_self_question")
-            now = int(time.time())
-            did_self_question = False
-            latest_answer = None
-            latest_area = None
 
             if last_sq is None or now - int(last_sq) >= cfg.self_question_hours * 3600:
                 questions = get_questions_with_codebase()
@@ -818,75 +829,26 @@ def run_loop() -> int:
                 log.info("[self-question] %s: %s", question.area, question.question)
                 if answer:
                     log.info("[self-answer] %s", answer)
-                    did_self_question = True
-                    latest_answer = answer
-                    latest_area = question.area
-                    latest_question_text = question.question
-
-            # -- Auto-posting based on self-reflection --
-            if cfg.enable_auto_post and cfg.post_after_self_question and did_self_question and latest_answer:
-                last_post_time = state.get("last_post")
-                can_post = (
-                    last_post_time is None or
-                    (now - int(last_post_time)) >= cfg.min_post_interval_hours * 3600
-                )
-
-                if can_post:
-                    post_data = llm.generate_post(openai_client, latest_answer, latest_area)
-                    if post_data and "title" in post_data and "content" in post_data:
-                        if cfg.dry_run:
-                            log.info(
-                                "[dry-run] Would create post:\nTitle: %s\nContent: %s",
-                                post_data["title"],
-                                post_data["content"][:200],
-                            )
-                        else:
-                            try:
-                                result = create_post(
-                                    creds.api_key,
-                                    cfg.default_submolt,
-                                    post_data["title"],
-                                    content=post_data["content"],
-                                )
-                                state["last_post"] = now
-                                log.info(
-                                    "[auto-post] Created post: %s (id: %s)",
-                                    post_data["title"],
-                                    result.get("id"),
-                                )
-                                post_url = _post_url(result.get("id"))
-                                _notify(
-                                    cfg,
-                                    state,
-                                    f"Q [{latest_area}]: {_shorten(latest_question_text, 120)}"
-                                    f"\nPosted: {_shorten(post_data['title'], 120)}"
-                                    + (f"\n{post_url}" if post_url else ""),
-                                )
-                            except Exception:
-                                log.exception("Failed to create autonomous post")
-                    else:
-                        log.warning("LLM failed to generate valid post data")
-                        _notify(
-                            cfg,
-                            state,
-                            f"Q [{latest_area}]: {_shorten(latest_question_text, 120)}",
-                        )
-                else:
-                    log.debug(
-                        "Skipping post: min interval not elapsed (%dh since last)",
-                        (now - int(last_post_time)) // 3600 if last_post_time else 0,
-                    )
                     _notify(
                         cfg,
                         state,
-                        f"Q [{latest_area}]: {_shorten(latest_question_text, 120)}",
+                        f"Q [{question.area}]: {_shorten(question.question, 120)}",
                     )
-            elif did_self_question:
-                _notify(
-                    cfg,
-                    state,
-                    f"Q [{latest_area}]: {_shorten(latest_question_text, 120)}",
-                )
+
+                    # Wire actionable self-question answers into improvement suggestions
+                    if question.area in ("missing_tests", "test_failure"):
+                        existing_titles = {
+                            s.get("post_title")
+                            for s in state.get("feed_improvement_suggestions", [])
+                        }
+                        if question.question not in existing_titles:
+                            state.setdefault("feed_improvement_suggestions", []).append({
+                                "post_id": f"sq-{now}",
+                                "post_title": question.question,
+                                "insight": answer,
+                                "ts": now,
+                            })
+                            log.info("[self-question] Forwarded '%s' answer to improvement suggestions", question.area)
 
             # -- Comment-based self-upgrades --
             config_was_modified = False
@@ -1015,15 +977,16 @@ def run_loop() -> int:
                 if should_improve:
                     try:
                         from .improvement import run_improvement_cycle
+                        from .evaluation import check_pr_outcomes
                         from .config import SafetyConfig
-                        from . import git_ops as _git_ops
 
                         safety = SafetyConfig()
 
+                        # Update history with merged/closed PR outcomes
+                        check_pr_outcomes(repo_root)
+
                         # Skip if open PRs exist
-                        if not _git_ops.has_open_improvement_prs(
-                            _git_ops.Path(__file__).resolve().parents[2]
-                        ):
+                        if not _git_ops.has_open_improvement_prs(repo_root):
                             log.info("[self-improve] Starting improvement cycle...")
                             imp_result = run_improvement_cycle(
                                 openai_client, state, safety,
