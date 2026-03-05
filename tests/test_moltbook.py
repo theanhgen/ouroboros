@@ -55,6 +55,7 @@ def test_runner_config_defaults():
 
 def test_load_runner_config_from_file(tmp_path):
     cfg_file = tmp_path / "agent.json"
+    cred_file = tmp_path / "credentials.json"
     cfg_file.write_text(json.dumps({
         "interval_seconds": 60,
         "dry_run": False,
@@ -63,8 +64,18 @@ def test_load_runner_config_from_file(tmp_path):
         "telegram_bot_token": "legacy-insecure",
     }))
 
-    with mock.patch("ouroboros.moltbook.os.path.expanduser", return_value=str(cfg_file)):
-        with mock.patch("ouroboros.moltbook.os.path.exists", return_value=True):
+    def fake_expanduser(path):
+        if path == "~/.config/moltbook/agent.json":
+            return str(cfg_file)
+        if path == "~/.config/moltbook/credentials.json":
+            return str(cred_file)
+        return path
+
+    def fake_exists(path):
+        return path == str(cfg_file)
+
+    with mock.patch("ouroboros.moltbook.os.path.expanduser", side_effect=fake_expanduser):
+        with mock.patch("ouroboros.moltbook.os.path.exists", side_effect=fake_exists):
             cfg = load_runner_config()
 
     assert cfg.interval_seconds == 60

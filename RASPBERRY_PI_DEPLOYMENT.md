@@ -321,8 +321,14 @@ Get real-time updates on your phone:
 
 ```bash
 python -m ouroboros.cli config modify enable_telegram_notifications=true
-python -m ouroboros.cli config modify telegram_bot_token=YOUR_BOT_TOKEN
-python -m ouroboros.cli config modify telegram_chat_id=YOUR_CHAT_ID
+
+# Store Telegram secrets outside tracked config:
+cat > ~/.config/moltbook/credentials.json << 'EOF'
+{
+  "telegram_bot_token": "YOUR_BOT_TOKEN",
+  "telegram_chat_id": "YOUR_CHAT_ID"
+}
+EOF
 ```
 
 ### 3. Restart Agent

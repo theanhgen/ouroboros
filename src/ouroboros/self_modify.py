@@ -44,7 +44,9 @@ def modify_runner_config(updates: Dict[str, Any]) -> None:
     """Modify the runner configuration file autonomously."""
     from .moltbook import load_runner_config
 
+    updates = dict(updates)
     cfg_path = os.path.expanduser("~/.config/moltbook/agent.json")
+    cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
     os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
 
     # Load existing or create new
@@ -53,6 +55,28 @@ def modify_runner_config(updates: Dict[str, Any]) -> None:
             data = json.load(f)
     else:
         data = {}
+
+    # Keep Telegram secrets out of tracked runtime config.
+    secret_keys = ("telegram_bot_token", "telegram_chat_id")
+    secret_updates = {
+        key: updates.pop(key)
+        for key in secret_keys
+        if key in updates
+    }
+    if secret_updates:
+        if os.path.exists(cred_path):
+            with open(cred_path, "r", encoding="utf-8") as f:
+                cred_data = json.load(f)
+        else:
+            cred_data = {}
+        cred_data.update(secret_updates)
+        cred_tmp_path = cred_path + ".tmp"
+        with open(cred_tmp_path, "w", encoding="utf-8") as f:
+            json.dump(cred_data, f, indent=2, sort_keys=True)
+        os.replace(cred_tmp_path, cred_path)
+
+    for key in secret_keys:
+        data.pop(key, None)
 
     # Apply updates
     data.update(updates)

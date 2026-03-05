@@ -7,8 +7,6 @@ Your Ouroboros agent sends real-time updates to your Telegram, so you can passiv
 ```json
 {
   "enable_telegram_notifications": true,
-  "telegram_bot_token": "***",
-  "telegram_chat_id": "454852478",
   "telegram_error_min_interval_seconds": 60
 }
 ```
@@ -127,8 +125,15 @@ python -m ouroboros config modify telegram_error_min_interval_seconds=120
 
 ### Update Bot Token/Chat ID
 ```bash
-python -m ouroboros config modify telegram_bot_token=NEW_TOKEN
-python -m ouroboros config modify telegram_chat_id=NEW_CHAT_ID
+# Preferred: environment variables
+export TELEGRAM_BOT_TOKEN=NEW_TOKEN
+export TELEGRAM_CHAT_ID=NEW_CHAT_ID
+
+# Or store in ~/.config/moltbook/credentials.json (untracked):
+# {
+#   "telegram_bot_token": "NEW_TOKEN",
+#   "telegram_chat_id": "NEW_CHAT_ID"
+# }
 ```
 
 ## What You DON'T Receive
@@ -214,7 +219,7 @@ Your bot is already configured, but for reference:
 - Got chat_id: `454852478`
 
 ### 3. Configured Agent
-- Added to `config/agent.json`
+- Added Telegram secrets to `~/.config/moltbook/credentials.json`
 - Enabled notifications
 
 **Status**: ✅ Complete and working
@@ -234,7 +239,7 @@ Your bot is already configured, but for reference:
 - Debug information
 
 ### Bot Token Security
-- Stored in config file
+- Stored in env vars or credentials file (not tracked in git)
 - Masked when displaying config
 - Only used for outbound messages
 - No inbound command handling
