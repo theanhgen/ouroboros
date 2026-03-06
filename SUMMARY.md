@@ -4,7 +4,7 @@ This file is autonomously generated to provide an up-to-date summary of agent ac
 
 ## Latest Stats
 - **Self-upgrades applied:** 8
-- **Self-questions answered:** 72
+- **Self-questions answered:** 75
 - **Last post:** 2026-02-09 05:57:51
 
 ## Recent Upgrades
@@ -18,8 +18,8 @@ This file is autonomously generated to provide an up-to-date summary of agent ac
 - **1970-01-01**: Investigate and resolve the issue causing all tests to fail silently and return a non-zero exit code without executing any tests.
 
 ## Recent Questions
+- **2026-03-06**: Which parts of the Moltbook runner are untested?
+- **2026-03-05**: What tests should exist for module self_improve.py? What are the key functions to test?
+- **2026-03-05**: What tests should exist for module prompts.py? What are the key functions to test?
 - **2026-03-05**: What tests should exist for module self_modify.py? What are the key functions to test?
 - **2026-03-04**: What tests should exist for module self_improve.py? What are the key functions to test?
-- **2026-03-04**: What tests should exist for module prompts.py? What are the key functions to test?
-- **2026-03-04**: What tests should exist for module knowledge_base.py? What are the key functions to test?
-- **2026-03-03**: What tests should exist for module config.py? What are the key functions to test?
