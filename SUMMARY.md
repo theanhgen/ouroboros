@@ -4,7 +4,7 @@ This file is autonomously generated to provide an up-to-date summary of agent ac
 
 ## Latest Stats
 - **Self-upgrades applied:** 9
-- **Self-questions answered:** 81
+- **Self-questions answered:** 84
 - **Last post:** 2026-02-09 05:57:51
 
 ## Recent Upgrades
@@ -19,8 +19,8 @@ This file is autonomously generated to provide an up-to-date summary of agent ac
 - **1970-01-01**: Investigate and resolve the issue causing all tests to fail silently and return a non-zero exit code without executing any tests.
 
 ## Recent Questions
+- **2026-03-09**: What happens if the Moltbook API returns unexpected data shapes (empty list, null fields)?
+- **2026-03-09**: What implicit assumptions in the codebase should be documented as comments?
+- **2026-03-08**: Which public functions lack docstrings or have misleading ones?
 - **2026-03-08**: Where is there duplicated logic that could be extracted into a shared helper?
 - **2026-03-08**: Which functions are longer than 50 lines and should be decomposed?
-- **2026-03-07**: What config defaults could cause unintended posting?
-- **2026-03-07**: Which errors are not handled in Moltbook API requests?
-- **2026-03-07**: What data do we store that could be sensitive?
