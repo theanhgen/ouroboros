@@ -5,7 +5,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from . import git_ops, llm
 from .codebase import get_codebase_summary, get_repo_root, read_file_raw
@@ -20,6 +20,10 @@ from .evaluation import (
 from .test_runner import TestResult, run_tests
 
 log = logging.getLogger(__name__)
+
+# Type alias for the notification callback.
+# on_event(event_type: str, message: str, data: dict)
+EventCallback = Optional[Callable[[str, str, Dict[str, Any]], None]]
 
 
 @dataclass
@@ -56,6 +60,7 @@ class ImprovementResult:
     test_before: Optional[TestResult] = None
     test_after: Optional[TestResult] = None
     pr_url: Optional[str] = None
+    details: str = ""
     status: str = "pending"  # pending | success | failed | reverted | skipped
 
 
@@ -240,15 +245,132 @@ def revert_changes(changes: List[CodeChange], repo_root: Path) -> None:
             full_path.unlink()
 
 
+def _format_failure_details(test_result: TestResult) -> str:
+    """Format test failure details for LLM root cause analysis."""
+    if not test_result.failure_details:
+        return f"Tests: {test_result.summary()}"
+    lines = [f"Tests: {test_result.summary()}", "", "Failure details:"]
+    for fail in test_result.failure_details:
+        lines.append(f"- {fail.file}::{fail.test_name}: {fail.message}")
+        if fail.traceback:
+            lines.append(f"  Traceback: {fail.traceback[:500]}")
+    return "\n".join(lines)
+
+
+def _retry_with_root_cause(
+    client: Any,
+    task: ImprovementTask,
+    original_changes: List[CodeChange],
+    test_before: TestResult,
+    test_after: TestResult,
+    config: SafetyConfig,
+    repo_root: Path,
+    model: str = "gpt-4o",
+    on_event: EventCallback = None,
+) -> Optional[ImprovementResult]:
+    """After a test regression, analyze the root cause and retry once."""
+    if on_event:
+        on_event("retry_start", "Analyzing failure root cause for retry...", {
+            "task_type": task.task_type,
+        })
+
+    failure_info = _format_failure_details(test_after)
+    original_code = {c.file_path: c.original_content for c in original_changes}
+    attempted_code = {c.file_path: c.new_content for c in original_changes}
+
+    retry_prompt = (
+        f"The previous code change caused test regressions.\n\n"
+        f"## Task\n{task.description}\n\n"
+        f"## Test results BEFORE change\n{test_before.summary()}\n\n"
+        f"## Test results AFTER change (REGRESSION)\n{failure_info}\n\n"
+        f"## What was attempted\n"
+    )
+    for fp, content in attempted_code.items():
+        retry_prompt += f"\n### {fp} (attempted version)\n```\n{content[:2000]}\n```\n"
+
+    retry_prompt += (
+        "\n\nAnalyze why the tests failed and generate a CORRECTED version "
+        "that fixes the original task WITHOUT causing test regressions."
+    )
+
+    constraints = (
+        f"- Maximum {config.max_changed_files_per_pr} files\n"
+        f"- Maximum {config.max_lines_changed_per_pr} lines changed\n"
+        f"- Only modify files under: {', '.join(config.allowed_modification_paths)}\n"
+        f"- NEVER modify: {', '.join(config.forbidden_modification_paths)}\n"
+        f"- Task type: {task.task_type}"
+    )
+
+    raw_changes = llm.generate_code(client, retry_prompt, original_code, constraints, model=model)
+    if not raw_changes:
+        log.info("[retry] LLM could not generate corrected code")
+        return None
+
+    retry_changes = []
+    for raw in raw_changes:
+        file_path = raw.get("file_path", "")
+        new_content = raw.get("new_content", "")
+        description = raw.get("description", "")
+        original = original_code.get(file_path, "")
+        retry_changes.append(CodeChange(
+            file_path=file_path,
+            original_content=original,
+            new_content=new_content,
+            description=description,
+        ))
+
+    violations = _validate_changes(retry_changes, config)
+    if violations:
+        log.info("[retry] Corrected code has safety violations: %s", violations)
+        return None
+
+    try:
+        apply_changes(retry_changes, repo_root)
+    except PermissionError:
+        return None
+
+    retry_test = run_tests(repo_root)
+    log.info("[retry] Tests after corrected code: %s", retry_test.summary())
+
+    if retry_test.failed > test_before.failed or retry_test.errors > test_before.errors:
+        log.warning("[retry] Corrected code still regresses, reverting")
+        revert_changes(retry_changes, repo_root)
+        return None
+
+    if on_event:
+        on_event("retry_success", "Retry succeeded -- corrected code passes tests", {
+            "tests_passed": retry_test.passed,
+        })
+
+    result = ImprovementResult(
+        task=task,
+        changes=retry_changes,
+        test_before=test_before,
+        test_after=retry_test,
+        status="success",
+        details="Succeeded on retry after root cause analysis",
+    )
+    return result
+
+
 def validate_improvement(
     task: ImprovementTask,
     changes: List[CodeChange],
     repo_root: Path,
+    *,
+    client: Any = None,
+    config: SafetyConfig | None = None,
+    model: str = "gpt-4o",
+    on_event: EventCallback = None,
 ) -> ImprovementResult:
     """Apply changes, run tests, revert if tests regress.
 
+    If tests regress and client is provided with config.max_retry_on_failure > 0,
+    performs root cause analysis and retries once.
+
     Returns an ImprovementResult with test_before, test_after, and status.
     """
+    config = config or SafetyConfig()
     result = ImprovementResult(task=task, changes=changes)
 
     # Run tests before changes
@@ -256,10 +378,10 @@ def validate_improvement(
     log.info("Tests before: %s", result.test_before.summary())
 
     # Validate safety constraints
-    config = SafetyConfig()
     violations = _validate_changes(changes, config)
     if violations:
         log.warning("Safety violations: %s", violations)
+        result.details = "; ".join(violations)
         result.status = "failed"
         return result
 
@@ -268,6 +390,7 @@ def validate_improvement(
         apply_changes(changes, repo_root)
     except PermissionError as e:
         log.error("Permission denied: %s", e)
+        result.details = str(e)
         result.status = "failed"
         return result
 
@@ -276,23 +399,42 @@ def validate_improvement(
     log.info("Tests after: %s", result.test_after.summary())
 
     # Check for regression
-    if result.test_after.failed > result.test_before.failed:
-        log.warning(
-            "Test regression detected (%d -> %d failures), reverting",
-            result.test_before.failed,
-            result.test_after.failed,
-        )
-        revert_changes(changes, repo_root)
-        result.status = "reverted"
-        return result
+    has_regression = (
+        result.test_after.failed > result.test_before.failed
+        or result.test_after.errors > result.test_before.errors
+    )
 
-    if result.test_after.errors > result.test_before.errors:
+    if has_regression:
+        regression_type = "failures" if result.test_after.failed > result.test_before.failed else "errors"
         log.warning(
-            "New test errors detected (%d -> %d), reverting",
-            result.test_before.errors,
-            result.test_after.errors,
+            "Test regression detected (%s), reverting",
+            regression_type,
         )
         revert_changes(changes, repo_root)
+
+        # Attempt retry with root cause analysis
+        if client and config.max_retry_on_failure > 0:
+            log.info("[retry] Attempting root cause analysis and retry...")
+            retry_result = _retry_with_root_cause(
+                client, task, changes,
+                result.test_before, result.test_after,
+                config, repo_root, model=model,
+                on_event=on_event,
+            )
+            if retry_result:
+                return retry_result
+            log.info("[retry] Retry failed, keeping revert")
+
+        if result.test_after.failed > result.test_before.failed:
+            result.details = (
+                f"Test regression detected: {result.test_before.failed} failures before, "
+                f"{result.test_after.failed} after"
+            )
+        else:
+            result.details = (
+                f"New test errors detected: {result.test_before.errors} errors before, "
+                f"{result.test_after.errors} after"
+            )
         result.status = "reverted"
         return result
 
@@ -304,7 +446,7 @@ def _build_failed_attempts_context(history: List[EvaluationRecord], max_entries:
     """Format recent failed/reverted attempts as negative examples for the LLM."""
     failed = [
         r for r in history
-        if r.outcome in ("closed", "reverted") or r.status in ("failed", "reverted")
+        if r.outcome in ("closed", "failed", "reverted")
     ]
     if not failed:
         return ""
@@ -325,7 +467,7 @@ def _build_success_rate_context(history: List[EvaluationRecord]) -> str:
     successes: Counter = Counter()
     for r in history:
         attempts[r.task_type] += 1
-        if r.outcome == "merged" or r.status == "success":
+        if r.outcome in ("merged", "success"):
             successes[r.task_type] += 1
     if not attempts:
         return ""
@@ -389,23 +531,39 @@ def run_improvement_cycle(
     config: SafetyConfig | None = None,
     model: str = "gpt-4o",
     dry_run: bool = False,
+    on_event: EventCallback = None,
 ) -> Optional[ImprovementResult]:
     """Run a full improvement cycle: identify -> plan -> generate -> validate -> PR.
+
+    Args:
+        on_event: Optional callback fired at each stage.
+            Signature: on_event(event_type, message, data_dict)
+            Event types: cycle_start, task_identified, baseline_broken,
+            planning, generating, validating, pr_created, auto_merged,
+            reverted, failed, cycle_end.
 
     Returns ImprovementResult or None if no improvement was identified/attempted.
     """
     config = config or SafetyConfig()
     repo_root = get_repo_root()
 
+    def _fire(event_type: str, message: str, data: Dict[str, Any] | None = None) -> None:
+        if on_event:
+            on_event(event_type, message, data or {})
+
+    _fire("cycle_start", "Starting improvement cycle")
+
     # Rate limiting
     today_count = improvements_today(repo_root)
     if today_count >= config.max_improvements_per_day:
         log.info("Rate limit reached: %d improvements today (max %d)", today_count, config.max_improvements_per_day)
+        _fire("cycle_end", f"Rate limit reached: {today_count}/{config.max_improvements_per_day} today")
         return None
 
     # Check for open PRs
     if git_ops.has_open_improvement_prs(repo_root):
         log.info("Skipping improvement: open improvement PRs exist")
+        _fire("cycle_end", "Skipped: open improvement PRs exist")
         return None
 
     # Dedup: skip if recent attempts at the same task_type made no test progress
@@ -426,6 +584,7 @@ def run_improvement_cycle(
                     "Skipping improvement: %d recent '%s' attempts with no test progress",
                     len(streak), last_type,
                 )
+                _fire("cycle_end", f"Skipped: {len(streak)} stale '{last_type}' attempts")
                 return None
 
     # Feedback-aware staleness: skip task_type if most recent closed PR got negative feedback
@@ -445,6 +604,7 @@ def run_improvement_cycle(
                 "Skipping improvement: negative feedback on recent '%s' PR (%s)",
                 last_fb.task_type, last_fb.pr_url,
             )
+            _fire("cycle_end", f"Skipped: negative feedback on recent '{last_fb.task_type}' PR")
             return None
 
     # Step 1: Understand the codebase
@@ -452,8 +612,38 @@ def run_improvement_cycle(
     codebase_summary = get_codebase_summary(repo_root)
     test_results = run_tests(repo_root)
 
+    # Broken baseline detection: if tests are failing before any changes,
+    # force the LLM to prioritize fix_test with the failure details
+    baseline_broken = test_results.failed > 0 or test_results.errors > 0
+    baseline_context = ""
+    if baseline_broken:
+        log.warning(
+            "[improve] Broken baseline detected: %d failed, %d errors",
+            test_results.failed, test_results.errors,
+        )
+        _fire("baseline_broken", f"Baseline broken: {test_results.failed} failed, {test_results.errors} errors", {
+            "failed": test_results.failed,
+            "errors": test_results.errors,
+        })
+        baseline_context = (
+            "\n\n### CRITICAL: Broken Baseline\n"
+            "Tests are ALREADY FAILING before any changes. "
+            "You MUST prioritize task_type='fix_test' to fix the existing failures.\n"
+            f"Current test state: {test_results.summary()}\n"
+        )
+        if test_results.failure_details:
+            baseline_context += "\nFailing tests:\n"
+            for fail in test_results.failure_details:
+                baseline_context += f"- {fail.file}::{fail.test_name}: {fail.message}\n"
+                if fail.traceback:
+                    baseline_context += f"  {fail.traceback[:300]}\n"
+
     # Assemble additional context from feed intelligence
     additional_context = _assemble_feed_context(client, state)
+
+    # Inject broken baseline context (highest priority)
+    if baseline_context:
+        additional_context = f"{baseline_context}\n\n{additional_context}" if additional_context else baseline_context
 
     # Append success-rate signal so the LLM prefers task types with higher win rates
     sr_context = _build_success_rate_context(history)
@@ -465,6 +655,16 @@ def run_improvement_cycle(
     if fa_context:
         additional_context = f"{additional_context}\n\n{fa_context}" if additional_context else fa_context
 
+    # Append backlog items if available
+    try:
+        from .backlog import load_backlog, format_backlog_for_llm
+        backlog = load_backlog(repo_root)
+        bl_context = format_backlog_for_llm(backlog)
+        if bl_context:
+            additional_context = f"{additional_context}\n\n{bl_context}" if additional_context else bl_context
+    except Exception:
+        log.debug("Backlog not available")
+
     # Step 2: Identify an improvement
     log.info("[improve] Identifying improvements...")
     task = identify_improvements(
@@ -473,9 +673,15 @@ def run_improvement_cycle(
     )
     if not task:
         log.info("[improve] No improvements identified")
+        _fire("cycle_end", "No improvements identified")
         return None
 
     log.info("[improve] Identified: [%s] %s", task.task_type, task.description)
+    _fire("task_identified", f"Task: [{task.task_type}] {task.description}", {
+        "task_type": task.task_type,
+        "description": task.description,
+        "target_files": task.target_files,
+    })
 
     if dry_run:
         result = ImprovementResult(task=task, status="skipped")
@@ -493,21 +699,53 @@ def run_improvement_cycle(
 
     # Step 4: Plan the improvement
     log.info("[improve] Planning changes...")
+    _fire("planning", f"Planning: {task.description[:100]}")
     plan = plan_improvement(client, task, relevant_code, model=model)
     if not plan:
         log.warning("[improve] Failed to generate plan")
-        return None
+        improvement_result = ImprovementResult(
+            task=task,
+            test_before=test_results,
+            status="failed",
+            details="Failed to generate a concrete implementation plan",
+        )
+        _fire("failed", f"Failed to plan: {task.description[:100]}")
+        record_improvement(improvement_result, repo_root)
+        return improvement_result
 
     # Step 5: Generate code changes
     log.info("[improve] Generating code changes...")
+    _fire("generating", f"Generating code for: {task.description[:100]}")
     changes = generate_changes(client, task, plan, relevant_code, config, model=model)
     if not changes:
         log.warning("[improve] Failed to generate code changes")
-        return None
+        improvement_result = ImprovementResult(
+            task=task,
+            test_before=test_results,
+            status="failed",
+            details="Failed to generate code changes from the approved plan",
+        )
+        _fire("failed", f"Failed to generate code: {task.description[:100]}")
+        record_improvement(improvement_result, repo_root)
+        return improvement_result
 
-    # Step 6: Validate (apply, test, revert if needed)
+    # Step 6: Validate (apply, test, revert if needed, retry on regression)
     log.info("[improve] Validating changes...")
-    improvement_result = validate_improvement(task, changes, repo_root)
+    _fire("validating", f"Validating: {task.description[:100]}")
+    improvement_result = validate_improvement(
+        task, changes, repo_root,
+        client=client, config=config, model=model,
+        on_event=on_event,
+    )
+
+    if improvement_result.status == "reverted":
+        _fire("reverted", (
+            f"Reverted: {task.description[:80]}\n"
+            f"{improvement_result.details}"
+        ), {
+            "before_passed": improvement_result.test_before.passed if improvement_result.test_before else 0,
+            "after_passed": improvement_result.test_after.passed if improvement_result.test_after else 0,
+        })
 
     if improvement_result.status != "success":
         log.warning("[improve] Improvement failed: %s", improvement_result.status)
@@ -521,12 +759,12 @@ def run_improvement_cycle(
 
     try:
         git_ops.create_branch(repo_root, branch_name)
-        changed_files = [c.file_path for c in changes]
+        changed_files = [c.file_path for c in improvement_result.changes]
         commit_msg = f"ouroboros: {task.task_type} - {task.description}"
         git_ops.commit_changes(repo_root, commit_msg, changed_files)
         git_ops.push_branch(repo_root, branch_name)
 
-        pr_body = _build_pr_body(task, changes, improvement_result)
+        pr_body = _build_pr_body(task, improvement_result.changes, improvement_result)
         pr_url = git_ops.create_pr(
             repo_root,
             title=f"[ouroboros] {task.task_type}: {task.description[:60]}",
@@ -535,15 +773,45 @@ def run_improvement_cycle(
         )
         improvement_result.pr_url = pr_url
         log.info("[improve] PR created: %s", pr_url)
+        _fire("pr_created", f"PR created: {task.description[:80]}\n{pr_url}", {
+            "pr_url": pr_url,
+            "task_type": task.task_type,
+            "tests_passed": improvement_result.test_after.passed if improvement_result.test_after else 0,
+        })
+
+        # Step 8: Auto-merge if enabled
+        if config.enable_auto_merge and pr_url:
+            log.info("[improve] Attempting auto-merge...")
+            merged = git_ops.auto_merge_pr(repo_root, pr_url)
+            if merged:
+                _fire("auto_merged", f"Auto-merged: {task.description[:80]}\n{pr_url}", {
+                    "pr_url": pr_url,
+                })
+            else:
+                log.info("[improve] Auto-merge not completed (may be pending checks)")
 
     except Exception:
         log.exception("[improve] Failed to create PR")
+        improvement_result.details = "Validated changes could not be published as a pull request"
         improvement_result.status = "failed"
+        _fire("failed", f"Failed to create PR: {task.description[:80]}")
     finally:
         # Return to original branch
         git_ops.checkout_branch(repo_root, original_branch)
 
     record_improvement(improvement_result, repo_root)
+
+    # Record metrics snapshot
+    try:
+        from .metrics import record_snapshot
+        record_snapshot(repo_root, improvement_result)
+    except Exception:
+        log.debug("Metrics recording failed")
+
+    _fire("cycle_end", f"Cycle complete: [{improvement_result.status}] {task.description[:80]}", {
+        "status": improvement_result.status,
+        "pr_url": improvement_result.pr_url,
+    })
     return improvement_result
 
 
@@ -579,7 +847,6 @@ def _build_pr_body(
         "",
         "---",
         "Generated autonomously by Ouroboros self-improvement engine.",
-        "Human review and approval required before merge.",
     ])
 
     return "\n".join(lines)

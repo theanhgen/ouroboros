@@ -132,7 +132,7 @@ def get_my_posts(api_key: str, agent_name: str, limit: int = 10) -> List[Dict[st
 @dataclass
 class RunnerConfig:
     interval_seconds: int = 1800
-    enable_auto_comment: bool = True
+    enable_auto_comment: bool = False  # Disabled: low-value LLM spam
     keyword_allowlist: Optional[List[str]] = None
     default_submolt: str = "general"
     dry_run: bool = False
@@ -140,7 +140,8 @@ class RunnerConfig:
     telegram_bot_token: Optional[str] = None
     telegram_chat_id: Optional[str] = None
     telegram_error_min_interval_seconds: int = 300
-    self_improve_interval_hours: int = 24
+    # Deprecated alias for improvement_interval_hours.
+    self_improve_interval_hours: int = 48
     self_improve_model: str = "gpt-4o-mini"
     self_question_hours: int = 8
     max_comments_per_cycle: int = 3
@@ -149,13 +150,17 @@ class RunnerConfig:
     enable_comment_based_upgrades: bool = True
     comment_check_interval_hours: int = 4
     auto_apply_config_suggestions: bool = True
-    enable_auto_git_push: bool = True
+    enable_auto_git_push: bool = False
     git_push_interval_hours: int = 24
     # Self-improvement settings
     enable_self_improvement: bool = False
+    enable_self_improvement_in_loop: bool = True
     improvement_interval_hours: int = 48
+    self_improvement_retry_minutes: int = 60
     improvement_model: str = "gpt-4o"
     improvement_types: Optional[List[str]] = None  # default: ["fix_test", "add_test", "fix_bug", "refactor", "improve_docs", "add_feature"]
+    enable_auto_issue_creation: bool = True
+    enable_auto_merge: bool = False  # Auto-merge PRs when checks pass
     # Feed intelligence pipeline
     enable_comment_mining: bool = False
     enable_engagement_tracking: bool = False
@@ -195,10 +200,17 @@ def load_runner_config() -> RunnerConfig:
         or cred_data.get("telegram_chat_id")
         or data.get("telegram_chat_id")
     )
+    legacy_interval = int(data.get("self_improve_interval_hours", 48))
+    improvement_interval = int(
+        data.get(
+            "improvement_interval_hours",
+            legacy_interval if "self_improve_interval_hours" in data else 48,
+        )
+    )
 
     return RunnerConfig(
         interval_seconds=int(data.get("interval_seconds", 1800)),
-        enable_auto_comment=bool(data.get("enable_auto_comment", True)),
+        enable_auto_comment=bool(data.get("enable_auto_comment", False)),
         keyword_allowlist=data.get("keyword_allowlist"),
         default_submolt=data.get("default_submolt", "general"),
         dry_run=bool(data.get("dry_run", False)),
@@ -208,7 +220,7 @@ def load_runner_config() -> RunnerConfig:
         telegram_error_min_interval_seconds=int(
             data.get("telegram_error_min_interval_seconds", 300)
         ),
-        self_improve_interval_hours=int(data.get("self_improve_interval_hours", 24)),
+        self_improve_interval_hours=improvement_interval,
         self_improve_model=str(data.get("self_improve_model", "gpt-4o-mini")),
         self_question_hours=int(data.get("self_question_hours", 8)),
         max_comments_per_cycle=int(data.get("max_comments_per_cycle", 3)),
@@ -217,7 +229,7 @@ def load_runner_config() -> RunnerConfig:
         enable_comment_based_upgrades=bool(data.get("enable_comment_based_upgrades", True)),
         comment_check_interval_hours=int(data.get("comment_check_interval_hours", 4)),
         auto_apply_config_suggestions=bool(data.get("auto_apply_config_suggestions", True)),
-        enable_auto_git_push=bool(data.get("enable_auto_git_push", True)),
+        enable_auto_git_push=bool(data.get("enable_auto_git_push", False)),
         git_push_interval_hours=int(data.get("git_push_interval_hours", 24)),
         enable_comment_mining=bool(data.get("enable_comment_mining", False)),
         enable_engagement_tracking=bool(data.get("enable_engagement_tracking", False)),
@@ -226,9 +238,13 @@ def load_runner_config() -> RunnerConfig:
         enable_oddities_digest=bool(data.get("enable_oddities_digest", False)),
         oddities_digest_hour=int(data.get("oddities_digest_hour", 20)),
         enable_self_improvement=bool(data.get("enable_self_improvement", False)),
-        improvement_interval_hours=int(data.get("improvement_interval_hours", 48)),
+        enable_self_improvement_in_loop=bool(data.get("enable_self_improvement_in_loop", True)),
+        improvement_interval_hours=improvement_interval,
+        self_improvement_retry_minutes=int(data.get("self_improvement_retry_minutes", 60)),
         improvement_model=str(data.get("improvement_model", "gpt-4o")),
         improvement_types=data.get("improvement_types"),
+        enable_auto_issue_creation=bool(data.get("enable_auto_issue_creation", True)),
+        enable_auto_merge=bool(data.get("enable_auto_merge", False)),
         enable_community_improvement=bool(data.get("enable_community_improvement", False)),
         community_wait_hours=int(data.get("community_wait_hours", 48)),
         community_min_comments_for_early=int(data.get("community_min_comments_for_early", 3)),
@@ -984,7 +1000,7 @@ def run_loop() -> int:
                 log.info("[hot-reload] Config reloaded - changes now active")
 
             # -- Self-improvement cycle --
-            if cfg.enable_self_improvement:
+            if cfg.enable_self_improvement and cfg.enable_self_improvement_in_loop:
                 last_improvement = state.get("last_improvement_attempt")
                 should_improve = (
                     last_improvement is None or
@@ -997,7 +1013,20 @@ def run_loop() -> int:
                         from .evaluation import check_pr_outcomes
                         from .config import SafetyConfig
 
-                        safety = SafetyConfig()
+                        safety = SafetyConfig(
+                            enable_auto_merge=cfg.enable_auto_merge,
+                        )
+
+                        # Telegram notification callback for improvement events
+                        def _on_improve_event(event_type: str, message: str, data: dict) -> None:
+                            # Notify on significant events
+                            if event_type in (
+                                "task_identified", "pr_created", "auto_merged",
+                                "reverted", "baseline_broken", "retry_success",
+                            ):
+                                _notify(cfg, state, message)
+                            elif event_type == "failed":
+                                _notify(cfg, state, message, is_error=True)
 
                         # Update history with merged/closed PR outcomes
                         check_pr_outcomes(repo_root)
@@ -1009,6 +1038,7 @@ def run_loop() -> int:
                                 openai_client, state, safety,
                                 model=cfg.improvement_model,
                                 dry_run=cfg.dry_run,
+                                on_event=_on_improve_event,
                             )
                             state["last_improvement_attempt"] = now
 
@@ -1018,12 +1048,7 @@ def run_loop() -> int:
                                     imp_result.status,
                                     imp_result.task.description,
                                 )
-                                if imp_result.pr_url:
-                                    _notify(
-                                        cfg, state,
-                                        f"PR: {imp_result.task.description[:100]}\n"
-                                        f"{imp_result.pr_url}",
-                                    )
+                                # PR notification is now handled by on_event callback
                             else:
                                 log.info("[self-improve] No improvements identified")
                         else:
@@ -1058,6 +1083,7 @@ def run_loop() -> int:
                             openai_client, repo_root,
                             model=cfg.improvement_model,
                             dry_run=cfg.dry_run,
+                            enable_auto_merge=cfg.enable_auto_merge,
                         )
                         state["last_github_improvement_attempt"] = now
 

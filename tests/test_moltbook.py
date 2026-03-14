@@ -51,10 +51,11 @@ def test_runner_config_defaults():
     assert cfg.enable_auto_issue_creation is True
     assert cfg.max_comments_per_cycle == 3
     assert cfg.min_comment_interval_seconds == 300
-    assert cfg.enable_auto_comment is True
+    assert cfg.enable_auto_comment is False
     assert cfg.enable_self_improvement is False
     assert cfg.improvement_interval_hours == 48
     assert cfg.improvement_model == "gpt-4o"
+    assert cfg.enable_auto_merge is False
 
 
 def test_load_runner_config_from_file(tmp_path):

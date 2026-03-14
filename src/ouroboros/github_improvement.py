@@ -65,10 +65,11 @@ def analyze_issue(client: Any, issue: GitHubIssue, repo_root: Path, model: str =
     # Build context: issue info + codebase signatures
     all_files = list_source_files(repo_root)
     file_info = []
-    for f in all_files[:10]: # Limit context
+    for f in all_files[:10]:  # Limit context
         sigs = get_function_signatures(f)
-        file_info.append(f"File: {f.relative_to(repo_root)}
-Signatures: {sigs}")
+        file_info.append(f"File: {f.relative_to(repo_root)}\nSignatures: {sigs}")
+
+    codebase_context = "\n".join(file_info)
 
     user_prompt = f"""
 Issue #{issue.id}: {issue.title}
@@ -79,8 +80,7 @@ Description:
 {issue.body}
 
 Codebase context (relevant files):
-{"
-".join(file_info)}
+{codebase_context}
 """
 
     response = llm.chat_completion(
@@ -170,9 +170,10 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
             return IssueResolutionResult(issue.id, "failed", error=f"Tests failed: {test_res.failed}f, {test_res.errors}e")
 
         # Commit and PR
-        commit_msg = f"ouroboros: fix issue #{issue.id} - {issue.title}
-
-{fix_data.get('explanation')}"
+        commit_msg = (
+            f"ouroboros: fix issue #{issue.id} - {issue.title}\n\n"
+            f"{fix_data.get('explanation')}"
+        )
         git_ops.commit_changes(repo_root, commit_msg, affected_files)
         git_ops.push_branch(repo_root, branch_name)
 
@@ -211,7 +212,8 @@ def run_github_improvement_cycle(
     client: Any,
     repo_root: Path,
     model: str = "gpt-4o",
-    dry_run: bool = False
+    dry_run: bool = False,
+    enable_auto_merge: bool = False,
 ) -> List[IssueResolutionResult]:
     """One full cycle: find issues -> fix them -> PR."""
     issues = get_open_issues(repo_root)
@@ -237,6 +239,8 @@ def run_github_improvement_cycle(
 
         result = apply_github_fix(client, issue, analysis, repo_root, model, dry_run)
         if result:
+            if result.status == "success" and result.pr_url and enable_auto_merge:
+                git_ops.auto_merge_pr(repo_root, result.pr_url)
             results.append(result)
 
     return results

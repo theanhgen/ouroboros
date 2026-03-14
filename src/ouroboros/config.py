@@ -9,6 +9,8 @@ class SafetyConfig:
     allow_write_default_branch: bool = False
     require_human_approval: bool = True
     allow_self_modification: bool = True
+    enable_auto_merge: bool = False  # Auto-merge PRs when checks pass
+    max_retry_on_failure: int = 1  # Retry with root cause analysis on test regression
 
     # Self-improvement limits
     max_improvements_per_day: int = 3

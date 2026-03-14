@@ -1,5 +1,6 @@
 """Git and PR operations for the self-improvement workflow."""
 
+import json
 import logging
 import os
 import subprocess
@@ -133,6 +134,41 @@ def create_pr(
     return result.stdout.strip()
 
 
+def create_issue(repo: Path, title: str, body: str) -> str:
+    """Create a GitHub issue using the gh CLI. Returns the issue URL."""
+    result = subprocess.run(
+        ["gh", "issue", "create", "--title", title, "--body", body],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=60,
+    )
+    return result.stdout.strip()
+
+
+def find_open_issue_by_marker(repo: Path, marker: str) -> Optional[str]:
+    """Return the URL of an open issue containing a hidden marker, if any."""
+    try:
+        result = subprocess.run(
+            ["gh", "issue", "list", "--state", "open", "--limit", "100", "--json", "body,url"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        issues = json.loads(result.stdout)
+    except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError):
+        log.warning("Could not list open issues (gh CLI unavailable?)")
+        return None
+
+    for issue in issues:
+        if marker in issue.get("body", ""):
+            return issue.get("url")
+    return None
+
+
 def has_open_improvement_prs(repo: Path) -> bool:
     """Check if there are any open PRs with the ouroboros/improve- prefix."""
     try:
@@ -170,6 +206,68 @@ def get_pr_status(repo: Path, branch: str) -> Optional[str]:
             timeout=30,
         )
         return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def auto_merge_pr(repo: Path, pr_url: str, strategy: str = "squash") -> bool:
+    """Enable auto-merge on a PR. Returns True on success.
+
+    Uses --auto so the PR merges once all checks pass.
+    Falls back to immediate merge if auto-merge is not available on the repo.
+    """
+    try:
+        subprocess.run(
+            ["gh", "pr", "merge", pr_url, f"--{strategy}", "--auto"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        log.info("Auto-merge enabled for PR: %s", pr_url)
+        return True
+    except subprocess.CalledProcessError as e:
+        # --auto may not be available (requires branch protection), try immediate merge
+        if "auto-merge" in e.stderr.lower() or "not allowed" in e.stderr.lower():
+            log.info("Auto-merge not available, attempting immediate merge for %s", pr_url)
+            try:
+                subprocess.run(
+                    ["gh", "pr", "merge", pr_url, f"--{strategy}"],
+                    cwd=repo,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=60,
+                )
+                log.info("Immediately merged PR: %s", pr_url)
+                return True
+            except subprocess.CalledProcessError:
+                log.warning("Immediate merge also failed for %s", pr_url)
+                return False
+        log.warning("Failed to enable auto-merge for %s: %s", pr_url, e.stderr.strip())
+        return False
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        log.warning("Could not auto-merge PR %s (gh CLI unavailable or timeout)", pr_url)
+        return False
+
+
+def get_pr_checks_status(repo: Path, pr_url: str) -> Optional[str]:
+    """Get the combined CI checks status for a PR.
+
+    Returns 'pass', 'fail', 'pending', or None.
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "checks", pr_url, "--json", "state", "-q",
+             '[.[] | .state] | if all(. == "SUCCESS") then "pass" elif any(. == "FAILURE") then "fail" else "pending" end'],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        return result.stdout.strip() or None
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
 
