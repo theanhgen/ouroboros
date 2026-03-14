@@ -115,18 +115,6 @@ def _write_prompt(new_prompt: str) -> None:
         json.dump(data, f, indent=2, sort_keys=True)
 
 
-def _append_log(repo: Path, rationale: str, new_prompt: str) -> None:
-    log_path = repo / "docs" / "self_improve_log.md"
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    ts = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
-    with open(log_path, "a", encoding="utf-8") as f:
-        f.write(f"- {ts}\n")
-        f.write("  - change: updated comment system prompt\n")
-        if rationale:
-            f.write(f"  - rationale: {rationale}\n")
-        f.write(f"  - new_prompt: {new_prompt}\n")
-
-
 def _git_commit_and_pr(repo: Path, message: str) -> Optional[str]:
     """Create a PR with the prompt changes instead of pushing to main."""
     from . import git_ops
@@ -138,7 +126,7 @@ def _git_commit_and_pr(repo: Path, message: str) -> Optional[str]:
         git_ops.create_branch(repo, branch_name)
         git_ops.commit_changes(
             repo, message,
-            ["src/ouroboros/prompts.json", "docs/self_improve_log.md"],
+            ["src/ouroboros/prompts.json"],
         )
         git_ops.push_branch(repo, branch_name)
         pr_url = git_ops.create_pr(
@@ -195,7 +183,6 @@ def run_self_improve(client: Any, state: Dict[str, Any], model: str = "gpt-4o-mi
         return None
 
     _write_prompt(new_prompt)
-    _append_log(repo, rationale, new_prompt)
 
     msg = f"self-improve: update comment prompt ({time.strftime('%Y-%m-%d')})"
     pr_url = _git_commit_and_pr(repo, msg)
