@@ -449,10 +449,36 @@ def _check_engagement(
             log.exception("Engagement check failed for post %s", post_id)
 
 
-def _interruptible_sleep(seconds: int) -> None:
-    """Sleep that returns early when shutdown is requested."""
+_GIT_POLL_INTERVAL = 60  # Check for upstream changes every 60s during sleep
+
+
+def _interruptible_sleep(seconds: int, *, check_git: bool = False) -> None:
+    """Sleep that returns early when shutdown is requested.
+
+    If check_git is True, polls for upstream changes every 60s and exits
+    the process for systemd restart if source files changed.
+    """
     log.debug("Sleeping %ds (next cycle)", seconds)
-    _shutdown_event.wait(timeout=seconds)
+    if not check_git:
+        _shutdown_event.wait(timeout=seconds)
+        return
+
+    remaining = seconds
+    while remaining > 0 and not _shutdown_event.is_set():
+        chunk = min(remaining, _GIT_POLL_INTERVAL)
+        _shutdown_event.wait(timeout=chunk)
+        remaining -= chunk
+        if _shutdown_event.is_set():
+            break
+        # Check for upstream source changes
+        try:
+            from . import git_ops as _git_ops
+            repo_root = _git_ops.Path(__file__).resolve().parents[2]
+            if _git_ops.pull_latest(repo_root):
+                log.info("Source files changed during sleep, exiting for systemd restart...")
+                os._exit(0)
+        except Exception:
+            log.debug("Git poll during sleep failed, will retry next chunk")
 
 
 def _auto_git_push(state: Dict[str, Any], dry_run: bool = False) -> bool:
@@ -642,10 +668,12 @@ def run_loop() -> int:
             repo_root = _git_ops.Path(__file__).resolve().parents[2]
             source_changed = _git_ops.pull_latest(repo_root)
             if source_changed:
-                log.info("Source files changed after pull, restarting...")
+                log.info("Source files changed after pull, exiting for systemd restart...")
                 save_state(state)
-                _notify(cfg, state, "Source files updated, restarting process.")
-                os.execv(sys.executable, [sys.executable] + sys.argv)
+                _notify(cfg, state, "Source files updated, restarting via systemd.")
+                # Exit cleanly -- systemd Restart=always will relaunch with correct ExecStart args.
+                # Using os._exit to avoid running atexit handlers that might interfere.
+                os._exit(0)
 
             status = get_status(creds.api_key)
             if status.get("status") != "claimed":
@@ -1170,7 +1198,7 @@ def run_loop() -> int:
 
         if not _shutdown_event.is_set():
             log.info("Sleeping %ds until next cycle", cfg.interval_seconds)
-            _interruptible_sleep(cfg.interval_seconds)
+            _interruptible_sleep(cfg.interval_seconds, check_git=True)
 
     log.info("Moltbook runner stopped.")
     _notify(cfg, state, f"Moltbook runner stopped. (PID={os.getpid()})")
