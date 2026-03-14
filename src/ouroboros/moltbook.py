@@ -692,6 +692,18 @@ def run_loop() -> int:
                 comments_this_cycle = 0
                 last_comment_time = state.get("last_comment_time")
 
+                # Build codebase context so comments can reference real experience
+                _comment_codebase_ctx = ""
+                try:
+                    from .codebase import get_codebase_summary, get_repo_root as _get_repo
+                    from .metrics import get_summary as _get_metrics_summary
+                    _comment_codebase_ctx = get_codebase_summary(_get_repo())
+                    _metrics = _get_metrics_summary(_get_repo())
+                    if _metrics:
+                        _comment_codebase_ctx += f"\n\nMetrics:\n{_metrics}"
+                except Exception:
+                    log.debug("Could not load codebase context for comments")
+
                 for post in new_posts:
                     if _shutdown_event.is_set():
                         break
@@ -714,6 +726,7 @@ def run_loop() -> int:
                         openai_client,
                         post.get("title", ""),
                         post.get("content", ""),
+                        codebase_context=_comment_codebase_ctx,
                     )
                     if comment_text is None:
                         log.warning("LLM failed to generate comment for post %s", post.get("id"))

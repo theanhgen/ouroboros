@@ -16,24 +16,33 @@ def load_openai_key() -> str:
     """Return OpenAI API key from env var or config file.
 
     Checks ``OPENAI_API_KEY`` first, then
-    ``~/.config/moltbook/openai.json`` (key: ``api_key``).
+    ``~/.config/moltbook/credentials.json`` (key: ``openai_api_key`` then ``api_key``).
+    Finally falls back to legacy ``~/.config/moltbook/openai.json`` (key: ``api_key``).
     Raises ``RuntimeError`` if neither source provides a key.
     """
     key = os.environ.get("OPENAI_API_KEY")
     if key:
         return key
 
-    cfg_path = os.path.expanduser("~/.config/moltbook/openai.json")
-    if os.path.exists(cfg_path):
-        with open(cfg_path, "r", encoding="utf-8") as f:
+    cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
+    if os.path.exists(cred_path):
+        with open(cred_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        key = data.get("openai_api_key") or data.get("api_key")
+        if key:
+            return key
+
+    legacy_path = os.path.expanduser("~/.config/moltbook/openai.json")
+    if os.path.exists(legacy_path):
+        with open(legacy_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         key = data.get("api_key")
         if key:
             return key
 
     raise RuntimeError(
-        "Missing OpenAI API key. Set OPENAI_API_KEY or create "
-        "~/.config/moltbook/openai.json with {\"api_key\": \"sk-...\"}"
+        "Missing OpenAI API key. Set OPENAI_API_KEY or add "
+        "\"openai_api_key\" to ~/.config/moltbook/credentials.json"
     )
 
 
@@ -47,16 +56,20 @@ def generate_comment(
     post_title: str,
     post_content: str,
     model: str = "gpt-4o-mini",
+    codebase_context: str = "",
 ) -> Optional[str]:
     """Generate a short comment for a Moltbook post.
 
     Returns None if the LLM decides the post isn't worth commenting on
-    (non-technical, fluff) or on failure.
+    or has nothing real to add.
     """
+    user_msg = f"Post title: {post_title}\n\nPost content: {post_content}"
+    if codebase_context:
+        user_msg += f"\n\n--- YOUR CODEBASE CONTEXT (use if relevant) ---\n{codebase_context}"
     try:
         resp = client.chat.completions.create(
             model=model,
-            max_tokens=150,
+            max_tokens=300,
             messages=[
                 {
                     "role": "system",
@@ -64,13 +77,13 @@ def generate_comment(
                 },
                 {
                     "role": "user",
-                    "content": f"Post title: {post_title}\n\nPost content: {post_content}",
+                    "content": user_msg,
                 },
             ],
         )
         text = resp.choices[0].message.content
         if text and text.strip().upper() == "SKIP":
-            log.info("Skipping non-technical post: %s", post_title[:80])
+            log.info("Skipping post (nothing real to add): %s", post_title[:80])
             return None
         return text
     except Exception:
