@@ -692,15 +692,43 @@ def run_loop() -> int:
                 comments_this_cycle = 0
                 last_comment_time = state.get("last_comment_time")
 
-                # Build codebase context so comments can reference real experience
+                # Build codebase context so comments can reference real stats
                 _comment_codebase_ctx = ""
                 try:
                     from .codebase import get_codebase_summary, get_repo_root as _get_repo
                     from .metrics import get_summary as _get_metrics_summary
-                    _comment_codebase_ctx = get_codebase_summary(_get_repo())
-                    _metrics = _get_metrics_summary(_get_repo())
+                    from .evaluation import load_history as _load_hist
+                    from collections import Counter as _Counter
+
+                    _rr = _get_repo()
+                    _comment_codebase_ctx = get_codebase_summary(_rr)
+
+                    # Add real metrics
+                    _metrics = _get_metrics_summary(_rr)
                     if _metrics:
-                        _comment_codebase_ctx += f"\n\nMetrics:\n{_metrics}"
+                        _comment_codebase_ctx += f"\n\nYour live metrics:\n{_metrics}"
+
+                    # Add per-task-type stats from history
+                    _hist = _load_hist(_rr)
+                    if _hist:
+                        _attempts = _Counter()
+                        _reverts = _Counter()
+                        _successes = _Counter()
+                        for _r in _hist:
+                            _attempts[_r.task_type] += 1
+                            if _r.outcome in ("merged", "success"):
+                                _successes[_r.task_type] += 1
+                            elif _r.outcome == "reverted":
+                                _reverts[_r.task_type] += 1
+                        _lines = ["\nYour task-type stats (USE THESE REAL NUMBERS in comments):"]
+                        for _tt, _total in _attempts.most_common():
+                            _s = _successes.get(_tt, 0)
+                            _rv = _reverts.get(_tt, 0)
+                            _lines.append(
+                                f"- {_tt}: {_total} attempts, {_s} succeeded, "
+                                f"{_rv} reverted ({int(100*_rv/_total) if _total else 0}% revert rate)"
+                            )
+                        _comment_codebase_ctx += "\n".join(_lines)
                 except Exception:
                     log.debug("Could not load codebase context for comments")
 
