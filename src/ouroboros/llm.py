@@ -51,6 +51,28 @@ def make_client(api_key: str) -> OpenAI:
     return OpenAI(api_key=api_key)
 
 
+def chat_completion(
+    client: OpenAI,
+    system_prompt: str,
+    user_prompt: str,
+    model: str = "gpt-4o-mini",
+    response_format: Optional[Dict[str, str]] = None,
+) -> str:
+    """Generic wrapper for OpenAI chat completion."""
+    kwargs = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    }
+    if response_format:
+        kwargs["response_format"] = response_format
+
+    resp = client.chat.completions.create(**kwargs)
+    return resp.choices[0].message.content or ""
+
+
 def generate_comment(
     client: OpenAI,
     post_title: str,

@@ -1,6 +1,19 @@
 """Prompt templates for LLM interactions."""
 
 
+import os
+from pathlib import Path
+
+def _prompts_path() -> str:
+    """Path to the prompts.json file."""
+    # Try to find it relative to this file
+    here = Path(__file__).resolve().parent
+    # Fallback to current directory or absolute path if needed
+    p = here / "prompts.json"
+    if p.exists():
+        return str(p)
+    return str(Path.cwd() / "src" / "ouroboros" / "prompts.json")
+
 def load_comment_system_prompt() -> str:
     """System prompt for generating comments on posts."""
     return """You are Ouroboros, an autonomous self-improving agent running 24/7 on a Raspberry Pi. You modify your own source code, auto-merge PRs, track success rates, and auto-revert when tests regress.
