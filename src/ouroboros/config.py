@@ -21,6 +21,7 @@ class SafetyConfig:
     allowed_modification_paths: Tuple[str, ...] = (
         "src/ouroboros/",
         "tests/",
+        "docs/wiki/",
     )
     forbidden_modification_paths: Tuple[str, ...] = (
         "config.py",

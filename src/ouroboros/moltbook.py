@@ -177,6 +177,9 @@ class RunnerConfig:
     # GitHub issue resolution
     enable_github_improvement: bool = False
     github_improvement_interval_hours: int = 12
+    # Wiki self-documentation
+    enable_wiki: bool = False
+    wiki_update_interval_hours: int = 24
 
 
 def load_runner_config() -> RunnerConfig:
@@ -251,6 +254,8 @@ def load_runner_config() -> RunnerConfig:
         community_improvement_interval_hours=int(data.get("community_improvement_interval_hours", 72)),
         enable_github_improvement=bool(data.get("enable_github_improvement", False)),
         github_improvement_interval_hours=int(data.get("github_improvement_interval_hours", 12)),
+        enable_wiki=bool(data.get("enable_wiki", False)),
+        wiki_update_interval_hours=int(data.get("wiki_update_interval_hours", 24)),
     )
 
 
@@ -1195,6 +1200,25 @@ def run_loop() -> int:
                         "Error during community improvement step",
                         is_error=True,
                     )
+
+            # -- Wiki update (once per day) --
+            if cfg.enable_wiki:
+                last_wiki = state.get("last_wiki_update")
+                should_wiki = (
+                    last_wiki is None or
+                    (now - int(last_wiki)) >= cfg.wiki_update_interval_hours * 3600
+                )
+                if should_wiki:
+                    try:
+                        from .wiki import update_wiki
+                        from .codebase import get_repo_root as _get_wiki_repo
+                        wiki_root = _get_wiki_repo()
+                        updated_pages = update_wiki(wiki_root)
+                        state["last_wiki_update"] = now
+                        if updated_pages:
+                            log.info("[wiki] Updated %d pages", len(updated_pages))
+                    except Exception:
+                        log.exception("[wiki] Failed to update wiki")
 
             # -- Auto git push (once per day) --
             if cfg.enable_auto_git_push:
