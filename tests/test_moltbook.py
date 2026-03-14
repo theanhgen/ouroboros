@@ -45,6 +45,10 @@ def test_runner_config_defaults():
     cfg = RunnerConfig()
     assert cfg.interval_seconds == 1800
     assert cfg.dry_run is False
+    assert cfg.enable_auto_git_push is False
+    assert cfg.enable_self_improvement_in_loop is True
+    assert cfg.self_improvement_retry_minutes == 60
+    assert cfg.enable_auto_issue_creation is True
     assert cfg.max_comments_per_cycle == 3
     assert cfg.min_comment_interval_seconds == 300
     assert cfg.enable_auto_comment is True
@@ -60,8 +64,7 @@ def test_load_runner_config_from_file(tmp_path):
         "interval_seconds": 60,
         "dry_run": False,
         "max_comments_per_cycle": 5,
-        "min_comment_interval_seconds": 120,
-        "telegram_bot_token": "legacy-insecure",
+        "min_comment_interval_seconds": 120
     }))
 
     def fake_expanduser(path):
@@ -83,6 +86,28 @@ def test_load_runner_config_from_file(tmp_path):
     assert cfg.max_comments_per_cycle == 5
     assert cfg.min_comment_interval_seconds == 120
     assert cfg.telegram_bot_token is None
+
+
+def test_load_runner_config_uses_legacy_self_improve_interval(tmp_path):
+    cfg_file = tmp_path / "agent.json"
+    cfg_file.write_text(json.dumps({
+        "self_improve_interval_hours": 12,
+    }))
+
+    def fake_expanduser(path):
+        if path == "~/.config/moltbook/agent.json":
+            return str(cfg_file)
+        return path
+
+    def fake_exists(path):
+        return path == str(cfg_file)
+
+    with mock.patch("ouroboros.moltbook.os.path.expanduser", side_effect=fake_expanduser):
+        with mock.patch("ouroboros.moltbook.os.path.exists", side_effect=fake_exists):
+            cfg = load_runner_config()
+
+    assert cfg.improvement_interval_hours == 12
+    assert cfg.self_improve_interval_hours == 12
 
 
 def test_load_runner_config_telegram_from_credentials(tmp_path):
