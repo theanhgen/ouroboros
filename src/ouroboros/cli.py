@@ -109,42 +109,40 @@ def cmd_improve_run(args: argparse.Namespace) -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    from . import llm
-    from .improvement import run_improvement_cycle
-    from .config import SafetyConfig
+    from .improvement_runner import run_scheduled_self_improvement
 
-    openai_key = llm.load_openai_key()
-    client = llm.make_client(openai_key)
-    config = SafetyConfig()
-    state = {}
-
-    result = run_improvement_cycle(
-        client, state, config,
-        model=getattr(args, "model", "gpt-4o"),
+    result = run_scheduled_self_improvement(
+        force=getattr(args, "force", False),
         dry_run=getattr(args, "dry_run", False),
+        model=getattr(args, "model", "gpt-4o"),
     )
 
-    if result is None:
-        print("No improvements identified or rate-limited.")
-        return 0
-
-    print(f"Improvement result: [{result.status}] {result.task.description}")
+    print(f"Improvement result: [{result.status}] {result.message}")
     if result.pr_url:
         print(f"PR: {result.pr_url}")
-    return 0 if result.status in ("success", "skipped") else 1
+    if result.issue_url:
+        print(f"Issue: {result.issue_url}")
+    return 0 if result.status in ("success", "idle", "dry_run", "skipped_due", "skipped_disabled", "skipped_open_pr", "skipped_dirty_repo") else 1
 
 
 def cmd_improve_status(_args: argparse.Namespace) -> int:
     """Show pending PRs and recent improvement history."""
-    from .evaluation import load_history, check_pr_outcomes
+    import time
+    from .evaluation import check_pr_outcomes
+    from .improvement_runner import load_scheduler_state
     from .codebase import get_repo_root
     from . import git_ops
 
     repo = get_repo_root()
     history = check_pr_outcomes(repo)
+    scheduler_state = load_scheduler_state()
 
     has_open = git_ops.has_open_improvement_prs(repo)
     print(f"Open improvement PRs: {'yes' if has_open else 'no'}")
+    print(f"Last scheduler status: {scheduler_state.get('last_status') or 'none'}")
+    if scheduler_state.get("next_due_ts"):
+        next_due = int(scheduler_state["next_due_ts"])
+        print(f"Next scheduled run: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(next_due))}")
 
     pending = [r for r in history if r.outcome == "pending"]
     if pending:
@@ -349,6 +347,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_imp_run = imp_sub.add_parser("run", help="Run one improvement cycle")
     p_imp_run.add_argument("--model", default="gpt-4o", help="LLM model to use")
     p_imp_run.add_argument("--dry-run", action="store_true", help="Identify only, don't act")
+    p_imp_run.add_argument("--force", action="store_true", help="Ignore schedule and run immediately")
     p_imp_run.set_defaults(func=cmd_improve_run)
 
     p_imp_status = imp_sub.add_parser("status", help="Show pending PRs and recent history")

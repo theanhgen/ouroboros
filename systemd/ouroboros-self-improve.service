@@ -1,0 +1,20 @@
+[Unit]
+Description=Ouroboros Scheduled Self-Improvement
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=thevetev
+WorkingDirectory=/home/thevetev/ouroboros
+ExecStart=/home/thevetev/ouroboros/.venv/bin/python -m src.ouroboros.cli improve run
+
+EnvironmentFile=/home/thevetev/ouroboros/.env
+Environment=HOME=/home/thevetev
+Environment=USER=thevetev
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment="GIT_SSH_COMMAND=ssh -i /home/thevetev/.ssh/id_ed25519 -o IdentitiesOnly=yes"
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ouroboros-self-improve

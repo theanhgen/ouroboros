@@ -10,13 +10,17 @@ from ouroboros.improvement import (
     CodeChange,
     ImprovementResult,
     IMMUTABLE_FILES,
+    _build_failed_attempts_context,
+    _build_success_rate_context,
     _is_path_allowed,
     _validate_changes,
     _count_changed_lines,
     apply_changes,
     revert_changes,
+    run_improvement_cycle,
     validate_improvement,
 )
+from ouroboros.evaluation import EvaluationRecord
 from ouroboros.test_runner import TestResult
 
 
@@ -153,6 +157,83 @@ def test_revert_new_file(tmp_path):
     ]
     revert_changes(changes, tmp_path)
     assert not target.exists()  # empty original means file was new, so remove it
+
+
+def test_build_failed_attempts_context_uses_outcome_only():
+    history = [
+        EvaluationRecord(
+            task_id="a",
+            task_type="fix_bug",
+            description="Do not repeat this fix",
+            outcome="failed",
+            feedback="Broke the CLI",
+        ),
+        EvaluationRecord(
+            task_id="b",
+            task_type="add_test",
+            description="Successful test addition",
+            outcome="success",
+        ),
+    ]
+
+    context = _build_failed_attempts_context(history)
+
+    assert "Do not repeat this fix" in context
+    assert "Broke the CLI" in context
+    assert "Successful test addition" not in context
+
+
+def test_build_success_rate_context_counts_success_outcomes():
+    history = [
+        EvaluationRecord(task_id="a", task_type="fix_bug", description="one", outcome="success"),
+        EvaluationRecord(task_id="b", task_type="fix_bug", description="two", outcome="merged"),
+        EvaluationRecord(task_id="c", task_type="fix_bug", description="three", outcome="failed"),
+        EvaluationRecord(task_id="d", task_type="add_test", description="four", outcome="closed"),
+    ]
+
+    context = _build_success_rate_context(history)
+
+    assert "fix_bug: 2/3 (66%)" in context
+    assert "add_test: 0/1 (0%)" in context
+
+
+@patch("ouroboros.improvement.record_improvement")
+@patch("ouroboros.improvement.plan_improvement", return_value=None)
+@patch("ouroboros.improvement.identify_improvements")
+@patch("ouroboros.improvement.run_tests")
+@patch("ouroboros.improvement.get_codebase_summary", return_value="summary")
+@patch("ouroboros.improvement.load_history", return_value=[])
+@patch("ouroboros.improvement.git_ops.has_open_improvement_prs", return_value=False)
+@patch("ouroboros.improvement.improvements_today", return_value=0)
+@patch("ouroboros.improvement.get_repo_root")
+def test_run_improvement_cycle_returns_failure_when_plan_generation_fails(
+    mock_repo_root,
+    _mock_today,
+    _mock_has_open_prs,
+    _mock_load_history,
+    _mock_summary,
+    mock_run_tests,
+    mock_identify,
+    _mock_plan,
+    mock_record,
+    tmp_path,
+):
+    mock_repo_root.return_value = tmp_path
+    mock_run_tests.return_value = TestResult(passed=5, failed=0, errors=0, returncode=0)
+    mock_identify.return_value = ImprovementTask(
+        "abc12345",
+        "fix_bug",
+        "Repair the CLI status output",
+        ["src/ouroboros/cli.py"],
+        "The CLI status output omits scheduler state.",
+    )
+
+    result = run_improvement_cycle(client=MagicMock(), state={}, config=SafetyConfig(), model="gpt-4o")
+
+    assert result is not None
+    assert result.status == "failed"
+    assert "implementation plan" in result.details
+    mock_record.assert_called_once()
 
 
 @patch("ouroboros.improvement.run_tests")

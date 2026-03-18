@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from typing import Optional
+from typing import Dict, Optional
 
 from openai import OpenAI
 

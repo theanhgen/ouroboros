@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 
 from ouroboros.evaluation import (
     EvaluationRecord,
+    check_pr_outcomes,
     load_history,
     record_improvement,
     improvements_today,
@@ -123,3 +124,33 @@ def test_summarize_history():
     assert "merged" in summary
     assert "closed" in summary
     assert "Not needed" in summary
+
+
+@patch("ouroboros.evaluation.git_ops.get_pr_feedback", return_value="Looks good")
+@patch("subprocess.run")
+def test_check_pr_outcomes_updates_success_records(mock_run, _mock_feedback, tmp_path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    history_file = config_dir / "improvement_history.json"
+    history_file.write_text(json.dumps([
+        {
+            "task_id": "abc",
+            "task_type": "fix_test",
+            "description": "test fix",
+            "test_delta": {},
+            "pr_url": "https://github.com/test/pr/1",
+            "outcome": "success",
+            "feedback": "",
+            "timestamp": 1000.0,
+        }
+    ]))
+
+    mock_run.return_value = MagicMock(stdout="MERGED\n")
+
+    history = check_pr_outcomes(tmp_path)
+
+    assert history[0].outcome == "merged"
+    assert history[0].feedback == "Looks good"
+
+    persisted = json.loads(history_file.read_text())
+    assert persisted[0]["outcome"] == "merged"

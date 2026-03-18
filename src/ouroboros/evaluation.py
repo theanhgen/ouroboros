@@ -14,6 +14,7 @@ from .codebase import get_repo_root
 log = logging.getLogger(__name__)
 
 HISTORY_FILE = "config/improvement_history.json"
+TERMINAL_OUTCOMES = frozenset({"closed", "failed", "merged", "reverted", "skipped"})
 
 
 @dataclass
@@ -93,7 +94,7 @@ def check_pr_outcomes(repo_root: Optional[Path] = None) -> List[EvaluationRecord
     updated = False
 
     for record in history:
-        if record.outcome != "pending" or not record.pr_url:
+        if not record.pr_url or record.outcome in TERMINAL_OUTCOMES:
             continue
 
         # Extract branch name from PR URL or use task info

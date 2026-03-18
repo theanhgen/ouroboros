@@ -6,6 +6,8 @@ from pathlib import Path
 
 from ouroboros.git_ops import (
     _safe_git_env,
+    create_issue,
+    find_open_issue_by_marker,
     make_branch_name,
     is_clean,
     current_branch,
@@ -56,3 +58,19 @@ def test_is_not_clean(mock_git):
 def test_current_branch(mock_git):
     mock_git.return_value = MagicMock(stdout="main\n")
     assert current_branch(Path("/tmp/repo")) == "main"
+
+
+@patch("subprocess.run")
+def test_create_issue(mock_run):
+    mock_run.return_value = MagicMock(stdout="https://github.com/repo/issues/7\n")
+    url = create_issue(Path("/tmp/repo"), "title", "body")
+    assert url == "https://github.com/repo/issues/7"
+
+
+@patch("subprocess.run")
+def test_find_open_issue_by_marker(mock_run):
+    mock_run.return_value = MagicMock(
+        stdout='[{"body":"hello <!-- ouroboros:auto-issue:abc -->","url":"https://github.com/repo/issues/8"}]'
+    )
+    url = find_open_issue_by_marker(Path("/tmp/repo"), "<!-- ouroboros:auto-issue:abc -->")
+    assert url == "https://github.com/repo/issues/8"
