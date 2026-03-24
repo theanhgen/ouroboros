@@ -12,6 +12,10 @@ class SafetyConfig:
     enable_auto_merge: bool = True  # Auto-merge PRs when checks pass
     max_retry_on_failure: int = 1  # Retry with root cause analysis on test regression
 
+    # Sandbox configuration
+    sandbox_enabled: bool = False
+    sandbox_image: str = "python:3.11-slim"
+
     # Self-improvement limits
     max_improvements_per_day: int = 3
     max_changed_files_per_pr: int = 3

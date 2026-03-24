@@ -1,21 +1,21 @@
 """Tests for test_runner module."""
 
-from ouroboros.test_runner import TestResult, _parse_pytest_output
+from ouroboros.test_runner import RunnerOutcome, _parse_pytest_output
 
 def test_test_result_success():
-    r = TestResult(passed=5, failed=0, errors=0, returncode=0)
+    r = RunnerOutcome(passed=5, failed=0, errors=0, returncode=0)
     assert r.success
     assert r.total == 5
     assert "5 passed" in r.summary()
 
 def test_test_result_failure():
-    r = TestResult(passed=3, failed=2, errors=0, returncode=1)
+    r = RunnerOutcome(passed=3, failed=2, errors=0, returncode=1)
     assert not r.success
     assert r.total == 5
     assert "2 failed" in r.summary()
 
 def test_test_result_errors():
-    r = TestResult(passed=0, failed=0, errors=1, returncode=2)
+    r = RunnerOutcome(passed=0, failed=0, errors=1, returncode=2)
     assert not r.success
 
 def test_parse_pytest_output_all_pass():

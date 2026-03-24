@@ -21,7 +21,7 @@ from ouroboros.improvement import (
     validate_improvement,
 )
 from ouroboros.evaluation import EvaluationRecord
-from ouroboros.test_runner import TestResult
+from ouroboros.test_runner import RunnerOutcome
 
 
 def test_immutable_files():
@@ -198,7 +198,7 @@ def test_build_success_rate_context_counts_success_outcomes():
 
 
 @patch("ouroboros.improvement.record_improvement")
-@patch("ouroboros.improvement.plan_improvement", return_value=None)
+@patch("ouroboros.improvement.plan_improvement", return_value=(None, None))
 @patch("ouroboros.improvement.identify_improvements")
 @patch("ouroboros.improvement.run_tests")
 @patch("ouroboros.improvement.get_codebase_summary", return_value="summary")
@@ -219,7 +219,7 @@ def test_run_improvement_cycle_returns_failure_when_plan_generation_fails(
     tmp_path,
 ):
     mock_repo_root.return_value = tmp_path
-    mock_run_tests.return_value = TestResult(passed=5, failed=0, errors=0, returncode=0)
+    mock_run_tests.return_value = RunnerOutcome(passed=5, failed=0, errors=0, returncode=0)
     mock_identify.return_value = ImprovementTask(
         "abc12345",
         "fix_bug",
@@ -239,8 +239,8 @@ def test_run_improvement_cycle_returns_failure_when_plan_generation_fails(
 @patch("ouroboros.improvement.run_tests")
 def test_validate_improvement_success(mock_run_tests):
     mock_run_tests.side_effect = [
-        TestResult(passed=5, failed=0, errors=0, returncode=0),  # before
-        TestResult(passed=6, failed=0, errors=0, returncode=0),  # after
+        RunnerOutcome(passed=5, failed=0, errors=0, returncode=0),  # before
+        RunnerOutcome(passed=6, failed=0, errors=0, returncode=0),  # after
     ]
 
     task = ImprovementTask("abc", "add_test", "add test", ["tests/test_x.py"], "needs test")
@@ -260,8 +260,8 @@ def test_validate_improvement_success(mock_run_tests):
 @patch("ouroboros.improvement.revert_changes")
 def test_validate_improvement_regression(mock_revert, mock_run_tests):
     mock_run_tests.side_effect = [
-        TestResult(passed=5, failed=0, errors=0, returncode=0),  # before
-        TestResult(passed=3, failed=2, errors=0, returncode=1),  # after - regression!
+        RunnerOutcome(passed=5, failed=0, errors=0, returncode=0),  # before
+        RunnerOutcome(passed=3, failed=2, errors=0, returncode=1),  # after - regression!
     ]
 
     task = ImprovementTask("abc", "fix_bug", "fix it", ["src/ouroboros/x.py"], "broken")

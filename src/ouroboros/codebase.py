@@ -3,10 +3,84 @@
 import ast
 import logging
 import subprocess
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 log = logging.getLogger(__name__)
+
+
+@dataclass
+class FunctionMetadata:
+    name: str
+    args: List[str]
+    docstring: Optional[str] = None
+    line_start: int = 0
+    line_end: int = 0
+
+
+@dataclass
+class ClassMetadata:
+    name: str
+    docstring: Optional[str] = None
+    methods: List[FunctionMetadata] = field(default_factory=list)
+    line_start: int = 0
+    line_end: int = 0
+
+
+@dataclass
+class FileMetadata:
+    path: str
+    classes: List[ClassMetadata] = field(default_factory=list)
+    functions: List[FunctionMetadata] = field(default_factory=list)
+    imports: List[str] = field(default_factory=list)
+
+
+def extract_code_metadata(content: str, path: str = "") -> FileMetadata:
+    """Extract structural metadata from Python code using AST."""
+    try:
+        tree = ast.parse(content)
+    except SyntaxError:
+        return FileMetadata(path=path)
+
+    metadata = FileMetadata(path=path)
+
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if isinstance(node, ast.Import):
+                for n in node.names:
+                    metadata.imports.append(n.name)
+            else:
+                metadata.imports.append(node.module or "")
+
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef):
+            metadata.functions.append(FunctionMetadata(
+                name=node.name,
+                args=[arg.arg for arg in node.args.args],
+                docstring=ast.get_docstring(node),
+                line_start=node.lineno,
+                line_end=getattr(node, "end_lineno", node.lineno)
+            ))
+        elif isinstance(node, ast.ClassDef):
+            cls = ClassMetadata(
+                name=node.name,
+                docstring=ast.get_docstring(node),
+                line_start=node.lineno,
+                line_end=getattr(node, "end_lineno", node.lineno)
+            )
+            for subnode in node.body:
+                if isinstance(subnode, ast.FunctionDef):
+                    cls.methods.append(FunctionMetadata(
+                        name=subnode.name,
+                        args=[arg.arg for arg in subnode.args.args],
+                        docstring=ast.get_docstring(subnode),
+                        line_start=subnode.lineno,
+                        line_end=getattr(subnode, "end_lineno", subnode.lineno)
+                    ))
+            metadata.classes.append(cls)
+
+    return metadata
 
 
 def get_repo_root() -> Path:
@@ -119,15 +193,25 @@ def get_codebase_summary(repo_root: Path | None = None) -> str:
 
     for f in src_files:
         rel = f.relative_to(root)
-        line_count = len(f.read_text(encoding="utf-8").splitlines())
+        content = f.read_text(encoding="utf-8")
+        line_count = len(content.splitlines())
         parts.append(f"### {rel} ({line_count} lines)")
 
-        sigs = get_function_signatures(f)
-        if sigs:
-            for sig in sigs:
-                prefix = f"  {sig['class']}." if sig.get("class") else "  "
-                args_str = ", ".join(sig["args"])
-                parts.append(f"{prefix}{sig['name']}({args_str}) [line {sig['line']}]")
+        meta = extract_code_metadata(content, str(rel))
+        
+        if meta.classes:
+            for cls in meta.classes:
+                parts.append(f"  class {cls.name}")
+                if cls.docstring:
+                    parts.append(f"    \"\"\"{cls.docstring[:100]}...\"\"\"")
+                for method in cls.methods:
+                    args_str = ", ".join(method.args)
+                    parts.append(f"    def {method.name}({args_str})")
+
+        if meta.functions:
+            for func in meta.functions:
+                args_str = ", ".join(func.args)
+                parts.append(f"  def {func.name}({args_str})")
         parts.append("")
 
     parts.append("## Test Files (tests/)\n")

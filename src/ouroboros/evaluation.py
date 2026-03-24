@@ -10,6 +10,7 @@ from typing import List, Optional
 
 from . import git_ops
 from .codebase import get_repo_root
+from .storage import OuroborosStorage, CycleRecord, MetricRecord
 
 log = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ def _history_path(repo_root: Optional[Path] = None) -> Path:
 
 
 def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = None) -> None:
-    """Append an improvement result to the history file."""
+    """Append an improvement result to the history file and SQLite storage."""
     from .improvement import ImprovementResult  # avoid circular import
 
     path = _history_path(repo_root)
@@ -57,20 +58,48 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
             "before": {
                 "passed": result.test_before.passed if result.test_before else 0,
                 "failed": result.test_before.failed if result.test_before else 0,
+                "errors": result.test_before.errors if result.test_before else 0,
             },
             "after": {
                 "passed": result.test_after.passed if result.test_after else 0,
                 "failed": result.test_after.failed if result.test_after else 0,
+                "errors": result.test_after.errors if result.test_after else 0,
             },
         },
         pr_url=result.pr_url or "",
         outcome=result.status,
+        feedback=result.details or "",
         timestamp=time.time(),
     )
     history.append(record)
 
     with open(path, "w", encoding="utf-8") as f:
         json.dump([r.to_dict() for r in history], f, indent=2)
+
+    # Persist to SQLite
+    try:
+        storage = OuroborosStorage()
+        cycle_id = storage.record_cycle(CycleRecord(
+            ts=record.timestamp,
+            task_type=record.task_type,
+            model="gpt-4o",  # Default, should ideally be passed in
+            status=record.outcome,
+            description=record.description,
+        ))
+        
+        # Simple cost estimation (example prices for gpt-4o)
+        prompt_tokens = result.total_usage.get("prompt_tokens", 0)
+        completion_tokens = result.total_usage.get("completion_tokens", 0)
+        cost = (prompt_tokens / 1_000_000 * 2.50) + (completion_tokens / 1_000_000 * 10.00)
+        
+        storage.record_metrics(MetricRecord(
+            cycle_id=cycle_id,
+            tokens_in=prompt_tokens,
+            tokens_out=completion_tokens,
+            cost=cost
+        ))
+    except Exception:
+        log.exception("Failed to persist metrics to SQLite")
 
 
 def load_history(repo_root: Optional[Path] = None) -> List[EvaluationRecord]:

@@ -162,13 +162,17 @@ def cmd_improve_status(_args: argparse.Namespace) -> int:
 
 
 def cmd_improve_history(_args: argparse.Namespace) -> int:
-    """Show full improvement history."""
+    """Show full improvement history with metrics."""
     from .evaluation import load_history
+    from .storage import OuroborosStorage
 
     history = load_history()
     if not history:
         print("No improvement history.")
         return 0
+
+    storage = OuroborosStorage()
+    recent_stats = {c["ts"]: c for c in storage.get_recent_cycles(limit=len(history))}
 
     for r in history:
         delta = ""
@@ -179,7 +183,15 @@ def cmd_improve_history(_args: argparse.Namespace) -> int:
                 f" (tests: {before.get('passed', 0)}p/{before.get('failed', 0)}f"
                 f" -> {after.get('passed', 0)}p/{after.get('failed', 0)}f)"
             )
-        print(f"[{r.outcome}] {r.task_type}: {r.description}{delta}")
+        
+        metrics_str = ""
+        # Match by timestamp (heuristic)
+        matching = [c for c in recent_stats.values() if abs(c["ts"] - r.timestamp) < 2.0]
+        if matching:
+            c = matching[0]
+            metrics_str = f" [Tokens: {c.get('tokens_in', 0)}in/{c.get('tokens_out', 0)}out, Cost: ${c.get('cost', 0.0):.4f}]"
+
+        print(f"[{r.outcome}] {r.task_type}: {r.description}{delta}{metrics_str}")
         if r.pr_url:
             print(f"  PR: {r.pr_url}")
 

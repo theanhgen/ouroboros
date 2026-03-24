@@ -154,7 +154,66 @@ def answer_question(
 
 
 
-def analyze_codebase(
+def get_tools_definition():
+    """Return the OpenAI tools definition for the agent's internal toolbox."""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": "grep_codebase",
+                "description": "Search for a regex pattern in all .py files in the codebase.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "pattern": {"type": "string", "description": "The regex pattern to search for."},
+                    },
+                    "required": ["pattern"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "read_file_metadata",
+                "description": "Read structural metadata (classes, functions, imports) for a specific file.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {"type": "string", "description": "Relative path to the file."},
+                    },
+                    "required": ["file_path"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "read_file_content",
+                "description": "Read the raw content of a specific file.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {"type": "string", "description": "Relative path to the file."},
+                    },
+                    "required": ["file_path"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "run_tests",
+                "description": "Run the full test suite and return results.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+        }
+    ]
+
+
+def identify_improvements(
     client: OpenAI,
     summary: str,
     test_results: str,
@@ -162,62 +221,57 @@ def analyze_codebase(
     model: str = "gpt-4o",
     additional_context: str = "",
 ) -> Optional[dict]:
-    """Identify a single improvement task from codebase analysis.
-
-    Returns dict with keys: task_type, description, target_files, evidence
-    or None on failure.
+    """Identify a single improvement task using tool-calling to explore the codebase.
     """
-    user_content = (
-        f"## Codebase Summary\n{summary}\n\n"
-        f"## Test Results\n{test_results}\n\n"
-        f"## Improvement History\n{history}"
+    system_prompt = (
+        "You are an autonomous code quality agent. Your goal is to identify ONE concrete "
+        "improvement for the Ouroboros codebase.\n\n"
+        "You have access to tools to search and read the codebase. Use them to investigate "
+        "areas of interest before finalizing your task selection.\n\n"
+        "Task types: fix_test, add_test, fix_bug, refactor, improve_docs, add_feature.\n"
+        "HEURISTIC: If all tests pass, prefer refactor/docs/feature over fix_test.\n\n"
+        "Output JSON with keys: task_type, description, target_files, evidence, priority."
     )
-    if additional_context:
-        user_content += f"\n\n## External Context\n{additional_context}"
+    
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {
+            "role": "user",
+            "content": f"## Summary\n{summary}\n\n## Tests\n{test_results}\n\n## History\n{history}\n\n{additional_context}"
+        }
+    ]
 
     try:
+        # First call to allow tool use
         resp = client.chat.completions.create(
             model=model,
-            max_tokens=800,
-            response_format={"type": "json_object"},
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a code quality analyst. You identify ONE concrete, "
-                        "small improvement to make to a Python codebase.\n\n"
-                        "Available task types (pick the most appropriate):\n"
-                        "1. fix_test -- fix a failing test\n"
-                        "2. add_test -- add missing test coverage\n"
-                        "3. fix_bug -- fix a clear bug in production code\n"
-                        "4. refactor -- simplify, deduplicate, or restructure code\n"
-                        "5. improve_docs -- add or improve docstrings and inline comments\n"
-                        "6. add_feature -- add a small, well-scoped feature or enhancement\n\n"
-                        "HEURISTIC: If all tests pass (0 failed) or >90% pass rate, "
-                        "STRONGLY prefer refactor, improve_docs, add_test, or add_feature "
-                        "over fix_test. Do NOT pick fix_test when there are no failing tests.\n\n"
-                        "You may receive External Context from community posts or engagement signals. "
-                        "Prefer improvements aligned with high-engagement topics.\n\n"
-                        "Output JSON with keys:\n"
-                        "- task_type: one of 'fix_test', 'add_test', 'fix_bug', 'refactor', 'improve_docs', 'add_feature'\n"
-                        "- description: what to fix/add (1-2 sentences)\n"
-                        "- target_files: list of file paths to modify\n"
-                        "- evidence: why this improvement is needed\n"
-                        "- priority: 'high', 'medium', or 'low'\n\n"
-                        "If no improvements are needed, return {\"task_type\": \"none\", \"description\": \"No improvements needed\"}.\n"
-                        "IMPORTANT: Never suggest modifying config.py, improvement.py, git_ops.py, evaluation.py, or policies.py."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": user_content,
-                },
-            ],
+            messages=messages,
+            tools=get_tools_definition(),
+            tool_choice="auto",
         )
-        content = resp.choices[0].message.content
-        return json.loads(content)
+        
+        # In a real ReAct loop, we would loop here until the agent decides to finish.
+        # For this implementation, we'll allow ONE turn of tool use for identification
+        # to keep it simple but functional.
+        
+        msg = resp.choices[0].message
+        if msg.tool_calls:
+            # Note: The caller (improvement.py) will need to handle the actual tool execution.
+            # Here we return the tool calls so they can be processed.
+            return {"_tool_calls": msg.tool_calls, "_usage": resp.usage}
+        
+        # If no tool calls, it might have responded with JSON directly
+        content = msg.content
+        data = json.loads(content)
+        if resp.usage:
+            data["_usage"] = {
+                "prompt_tokens": resp.usage.prompt_tokens,
+                "completion_tokens": resp.usage.completion_tokens,
+                "total_tokens": resp.usage.total_tokens,
+            }
+        return data
     except Exception:
-        log.exception("analyze_codebase failed")
+        log.exception("identify_improvements failed")
         return None
 
 
@@ -226,10 +280,10 @@ def plan_code_change(
     task: dict,
     code: str,
     model: str = "gpt-4o",
-) -> Optional[str]:
+) -> tuple[Optional[str], Optional[dict]]:
     """Generate a step-by-step plan for implementing a code change.
 
-    Returns the plan as a string, or None on failure.
+    Returns (plan_string, usage_dict), or (None, None) on failure.
     """
     try:
         resp = client.chat.completions.create(
@@ -257,10 +311,17 @@ def plan_code_change(
                 },
             ],
         )
-        return resp.choices[0].message.content
+        usage = None
+        if resp.usage:
+            usage = {
+                "prompt_tokens": resp.usage.prompt_tokens,
+                "completion_tokens": resp.usage.completion_tokens,
+                "total_tokens": resp.usage.total_tokens,
+            }
+        return resp.choices[0].message.content, usage
     except Exception:
         log.exception("plan_code_change failed")
-        return None
+        return None, None
 
 
 def generate_code(
@@ -269,7 +330,7 @@ def generate_code(
     files: dict,
     constraints: str,
     model: str = "gpt-4o",
-) -> Optional[list]:
+) -> tuple[Optional[list], Optional[dict]]:
     """Generate code changes based on a plan.
 
     Args:
@@ -277,8 +338,7 @@ def generate_code(
         files: Dict mapping file paths to their current contents.
         constraints: Safety constraints to follow.
 
-    Returns list of dicts with keys: file_path, new_content, description.
-    Returns None on failure.
+    Returns (list_of_changes, usage_dict). Returns (None, None) on failure.
     """
     file_contents = "\n\n".join(
         f"### {path}\n```python\n{content}\n```"
@@ -319,10 +379,17 @@ def generate_code(
         )
         content = resp.choices[0].message.content
         result = json.loads(content)
-        return result.get("changes", [])
+        usage = None
+        if resp.usage:
+            usage = {
+                "prompt_tokens": resp.usage.prompt_tokens,
+                "completion_tokens": resp.usage.completion_tokens,
+                "total_tokens": resp.usage.total_tokens,
+            }
+        return result.get("changes", []), usage
     except Exception:
         log.exception("generate_code failed")
-        return None
+        return None, None
 
 
 def generate_question_post(

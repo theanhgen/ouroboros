@@ -13,7 +13,7 @@ from ouroboros.evaluation import (
     summarize_history,
 )
 from ouroboros.improvement import ImprovementTask, ImprovementResult, CodeChange
-from ouroboros.test_runner import TestResult
+from ouroboros.test_runner import RunnerOutcome
 
 
 def test_evaluation_record_roundtrip():
@@ -64,8 +64,8 @@ def test_load_history_with_data(tmp_path):
 
 def test_record_improvement(tmp_path):
     task = ImprovementTask("xyz", "add_test", "add test", ["tests/t.py"], "missing")
-    test_before = TestResult(passed=5, failed=0, errors=0, returncode=0)
-    test_after = TestResult(passed=6, failed=0, errors=0, returncode=0)
+    test_before = RunnerOutcome(passed=5, failed=0, errors=0, returncode=0)
+    test_after = RunnerOutcome(passed=6, failed=0, errors=0, returncode=0)
     result = ImprovementResult(
         task=task,
         changes=[],

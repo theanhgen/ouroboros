@@ -17,7 +17,7 @@ from ouroboros.community_improvement import (
 from ouroboros.config import SafetyConfig
 from ouroboros.improvement import CodeChange, ImprovementResult, ImprovementTask
 from ouroboros.moltbook import Credentials, RunnerConfig
-from ouroboros.test_runner import TestResult
+from ouroboros.test_runner import RunnerOutcome
 
 
 def _make_cfg(**overrides) -> RunnerConfig:
@@ -84,7 +84,7 @@ def test_step_identify_creates_state(
     mock_root.return_value = Path("/fake/repo")
     mock_git.has_open_improvement_prs.return_value = False
     mock_summary.return_value = "codebase summary"
-    mock_tests.return_value = TestResult(passed=5, failed=1, errors=0, returncode=1)
+    mock_tests.return_value = RunnerOutcome(passed=5, failed=1, errors=0, returncode=1)
     mock_history.return_value = []
     mock_llm.analyze_codebase.return_value = {
         "task_type": "fix_test",
@@ -286,8 +286,8 @@ def test_step_implement_creates_pr_with_credit(
     mock_validate.return_value = ImprovementResult(
         task=ImprovementTask("abc", "fix_test", "fix test_foo", ["tests/test_foo.py"], "fails"),
         status="success",
-        test_before=TestResult(passed=5, failed=1, errors=0, returncode=1),
-        test_after=TestResult(passed=6, failed=0, errors=0, returncode=0),
+        test_before=RunnerOutcome(passed=5, failed=1, errors=0, returncode=1),
+        test_after=RunnerOutcome(passed=6, failed=0, errors=0, returncode=0),
     )
     mock_git.current_branch.return_value = "main"
     mock_git.make_branch_name.return_value = "ouroboros/improve-community-fix_test-123"
@@ -340,8 +340,8 @@ def test_step_implement_reverts_on_regression(mock_llm, mock_validate, mock_read
     mock_validate.return_value = ImprovementResult(
         task=ImprovementTask("abc", "fix_test", "fix", ["tests/test_foo.py"], "fails"),
         status="reverted",
-        test_before=TestResult(passed=5, failed=1, errors=0, returncode=1),
-        test_after=TestResult(passed=3, failed=3, errors=0, returncode=1),
+        test_before=RunnerOutcome(passed=5, failed=1, errors=0, returncode=1),
+        test_after=RunnerOutcome(passed=3, failed=3, errors=0, returncode=1),
     )
 
     ci = _make_ci_state(
