@@ -227,8 +227,21 @@ def test_run_improvement_cycle_returns_failure_when_plan_generation_fails(
         ["src/ouroboros/cli.py"],
         "The CLI status output omits scheduler state.",
     )
+    
+    mock_client = MagicMock()
+    # Mock the tool calling response
+    mock_msg = MagicMock()
+    mock_msg.tool_calls = None
+    mock_msg.content = json.dumps({
+        "task_type": "fix_bug",
+        "description": "desc",
+        "target_files": [],
+        "evidence": "ev"
+    })
+    mock_client.chat.completions.create.return_value.choices = [MagicMock(message=mock_msg)]
+    mock_client.chat.completions.create.return_value.usage = None
 
-    result = run_improvement_cycle(client=MagicMock(), state={}, config=SafetyConfig(), model="gpt-4o")
+    result = run_improvement_cycle(client=mock_client, state={}, config=SafetyConfig(), model="gpt-4o")
 
     assert result is not None
     assert result.status == "failed"

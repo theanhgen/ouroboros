@@ -1,11 +1,12 @@
-"""Thin OpenAI wrapper -- pure functions, no class abstractions."""
+"""LLM provider wrapper -- supports OpenAI and Anthropic."""
 
 import json
 import logging
 import os
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from openai import OpenAI
+from anthropic import Anthropic
 
 from . import prompts
 
@@ -13,787 +14,439 @@ log = logging.getLogger(__name__)
 
 
 def load_openai_key() -> str:
-    """Return OpenAI API key from env var or config file.
-
-    Checks ``OPENAI_API_KEY`` first, then
-    ``~/.config/moltbook/credentials.json`` (key: ``openai_api_key`` then ``api_key``).
-    Finally falls back to legacy ``~/.config/moltbook/openai.json`` (key: ``api_key``).
-    Raises ``RuntimeError`` if neither source provides a key.
-    """
+    """Return OpenAI API key from env var or config file."""
     key = os.environ.get("OPENAI_API_KEY")
     if key:
         return key
-
     cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
     if os.path.exists(cred_path):
         with open(cred_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         key = data.get("openai_api_key") or data.get("api_key")
-        if key:
-            return key
-
+        if key: return key
+    
     legacy_path = os.path.expanduser("~/.config/moltbook/openai.json")
     if os.path.exists(legacy_path):
         with open(legacy_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         key = data.get("api_key")
-        if key:
-            return key
-
-    raise RuntimeError(
-        "Missing OpenAI API key. Set OPENAI_API_KEY or add "
-        "\"openai_api_key\" to ~/.config/moltbook/credentials.json"
-    )
+        if key: return key
+        
+    raise RuntimeError("Missing OpenAI API key.")
 
 
-def make_client(api_key: str) -> OpenAI:
-    """Create a reusable OpenAI client instance."""
+def load_anthropic_key() -> str:
+    """Return Anthropic API key from env var or config file."""
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if key:
+        return key
+    cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
+    if os.path.exists(cred_path):
+        with open(cred_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        key = data.get("anthropic_api_key")
+        if key: return key
+    return ""
+
+
+def make_client(api_key: str, provider: str = "openai") -> Any:
+    """Create a reusable client instance."""
+    if provider == "anthropic":
+        return Anthropic(api_key=api_key)
     return OpenAI(api_key=api_key)
 
 
+def _get_provider(model: str) -> str:
+    if model.startswith("claude"):
+        return "anthropic"
+    return "openai"
+
+
 def chat_completion(
-    client: OpenAI,
+    client: Any,
     system_prompt: str,
     user_prompt: str,
     model: str = "gpt-4o-mini",
     response_format: Optional[Dict[str, str]] = None,
-) -> str:
-    """Generic wrapper for OpenAI chat completion."""
-    kwargs = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    }
-    if response_format:
-        kwargs["response_format"] = response_format
-
-    resp = client.chat.completions.create(**kwargs)
-    return resp.choices[0].message.content or ""
-
-
-def generate_comment(
-    client: OpenAI,
-    post_title: str,
-    post_content: str,
-    model: str = "gpt-4o-mini",
-    codebase_context: str = "",
-) -> Optional[str]:
-    """Generate a short comment for a Moltbook post.
-
-    Returns None if the LLM decides the post isn't worth commenting on
-    or has nothing real to add.
+    max_tokens: int = 1000,
+) -> tuple[str, Optional[dict]]:
+    """Generic wrapper for chat completion across providers.
+    Returns (content, usage_dict).
     """
-    user_msg = f"Post title: {post_title}\n\nPost content: {post_content}"
-    if codebase_context:
-        user_msg += f"\n\n--- YOUR CODEBASE CONTEXT (use if relevant) ---\n{codebase_context}"
+    provider = _get_provider(model)
+    
     try:
-        resp = client.chat.completions.create(
-            model=model,
-            max_tokens=300,
-            messages=[
-                {
-                    "role": "system",
-                    "content": prompts.load_comment_system_prompt(),
-                },
-                {
-                    "role": "user",
-                    "content": user_msg,
-                },
-            ],
-        )
-        text = resp.choices[0].message.content
-        if text and text.strip().upper() == "SKIP":
-            log.info("Skipping post (nothing real to add): %s", post_title[:80])
-            return None
-        return text
+        if provider == "openai":
+            kwargs = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "max_tokens": max_tokens,
+            }
+            if response_format:
+                kwargs["response_format"] = response_format
+            resp = client.chat.completions.create(**kwargs)
+            usage = None
+            if resp.usage:
+                usage = {
+                    "prompt_tokens": resp.usage.prompt_tokens,
+                    "completion_tokens": resp.usage.completion_tokens,
+                }
+            return resp.choices[0].message.content or "", usage
+        
+        elif provider == "anthropic":
+            resp = client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            usage = {
+                "prompt_tokens": resp.usage.input_tokens,
+                "completion_tokens": resp.usage.output_tokens,
+            }
+            return resp.content[0].text, usage
+            
     except Exception:
-        log.exception("generate_comment failed")
-        return None
-
-
-def answer_question(
-    client: OpenAI,
-    question: str,
-    codebase_summary: str = "",
-    model: str = "gpt-4o-mini",
-) -> Optional[str]:
-    """Answer a self-reflective question about the agent's own design.
-
-    Returns None on failure.
-    """
-    user_content = question
-    if codebase_summary:
-        user_content = (
-            f"## Codebase\n{codebase_summary}\n\n"
-            f"## Question\n{question}"
-        )
-    try:
-        resp = client.chat.completions.create(
-            model=model,
-            max_tokens=300,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a self-reflective agent analyzing your own "
-                        "codebase, design, safety properties, and potential improvements. "
-                        "Answer based ONLY on the provided codebase. "
-                        "Reference specific files, functions, and code patterns. "
-                        "Do NOT give generic advice. Be concrete and actionable."
-                    ),
-                },
-                {"role": "user", "content": user_content},
-            ],
-        )
-        return resp.choices[0].message.content
-    except Exception:
-        log.exception("answer_question failed")
-        return None
-
-
-
-def get_tools_definition():
-    """Return the OpenAI tools definition for the agent's internal toolbox."""
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": "grep_codebase",
-                "description": "Search for a regex pattern in all .py files in the codebase.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "pattern": {"type": "string", "description": "The regex pattern to search for."},
-                    },
-                    "required": ["pattern"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "read_file_metadata",
-                "description": "Read structural metadata (classes, functions, imports) for a specific file.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "file_path": {"type": "string", "description": "Relative path to the file."},
-                    },
-                    "required": ["file_path"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "read_file_content",
-                "description": "Read the raw content of a specific file.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "file_path": {"type": "string", "description": "Relative path to the file."},
-                    },
-                    "required": ["file_path"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "run_tests",
-                "description": "Run the full test suite and return results.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {},
-                },
-            },
-        }
-    ]
+        log.exception(f"{provider} completion failed")
+        return "", None
+    
+    return "", None
 
 
 def identify_improvements(
-    client: OpenAI,
+    client: Any,
     summary: str,
     test_results: str,
     history: str,
     model: str = "gpt-4o",
     additional_context: str = "",
 ) -> Optional[dict]:
-    """Identify a single improvement task using tool-calling to explore the codebase.
-    """
+    """Identify a single improvement task using tool-calling (if supported)."""
     system_prompt = (
         "You are an autonomous code quality agent. Your goal is to identify ONE concrete "
         "improvement for the Ouroboros codebase.\n\n"
-        "You have access to tools to search and read the codebase. Use them to investigate "
-        "areas of interest before finalizing your task selection.\n\n"
         "Task types: fix_test, add_test, fix_bug, refactor, improve_docs, add_feature.\n"
-        "HEURISTIC: If all tests pass, prefer refactor/docs/feature over fix_test.\n\n"
         "Output JSON with keys: task_type, description, target_files, evidence, priority."
     )
-    
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {
-            "role": "user",
-            "content": f"## Summary\n{summary}\n\n## Tests\n{test_results}\n\n## History\n{history}\n\n{additional_context}"
-        }
-    ]
+    user_prompt = f"## Summary\n{summary}\n\n## Tests\n{test_results}\n\n## History\n{history}\n\n{additional_context}"
 
-    try:
-        # First call to allow tool use
-        resp = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=get_tools_definition(),
-            tool_choice="auto",
-        )
-        
-        # In a real ReAct loop, we would loop here until the agent decides to finish.
-        # For this implementation, we'll allow ONE turn of tool use for identification
-        # to keep it simple but functional.
-        
-        msg = resp.choices[0].message
-        if msg.tool_calls:
-            # Note: The caller (improvement.py) will need to handle the actual tool execution.
-            # Here we return the tool calls so they can be processed.
-            return {"_tool_calls": msg.tool_calls, "_usage": resp.usage}
-        
-        # If no tool calls, it might have responded with JSON directly
-        content = msg.content
-        data = json.loads(content)
-        if resp.usage:
-            data["_usage"] = {
-                "prompt_tokens": resp.usage.prompt_tokens,
-                "completion_tokens": resp.usage.completion_tokens,
-                "total_tokens": resp.usage.total_tokens,
-            }
-        return data
-    except Exception:
-        log.exception("identify_improvements failed")
-        return None
+    if _get_provider(model) == "openai":
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                tools=get_tools_definition(),
+                tool_choice="auto",
+            )
+            msg = resp.choices[0].message
+            if msg.tool_calls:
+                return {"_tool_calls": msg.tool_calls, "_usage": {
+                    "prompt_tokens": resp.usage.prompt_tokens,
+                    "completion_tokens": resp.usage.completion_tokens,
+                }}
+            
+            data = json.loads(msg.content)
+            if resp.usage:
+                data["_usage"] = {
+                    "prompt_tokens": resp.usage.prompt_tokens,
+                    "completion_tokens": resp.usage.completion_tokens,
+                }
+            return data
+        except Exception:
+            log.exception("identify_improvements failed")
+            return None
+    else:
+        content, usage = chat_completion(client, system_prompt, user_prompt + "\nOutput JSON.", model)
+        try:
+            if "{" in content:
+                content = content[content.find("{"):content.rfind("}")+1]
+            data = json.loads(content)
+            if usage: data["_usage"] = usage
+            return data
+        except Exception:
+            return None
 
 
 def plan_code_change(
-    client: OpenAI,
+    client: Any,
     task: dict,
     code: str,
     model: str = "gpt-4o",
 ) -> tuple[Optional[str], Optional[dict]]:
-    """Generate a step-by-step plan for implementing a code change.
-
-    Returns (plan_string, usage_dict), or (None, None) on failure.
-    """
-    try:
-        resp = client.chat.completions.create(
-            model=model,
-            max_tokens=600,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a senior Python developer planning a code change. "
-                        "Create a clear, step-by-step plan for the improvement. "
-                        "Be specific about what to change and where. "
-                        "Keep the plan concise (under 10 steps)."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"## Task\nType: {task.get('task_type')}\n"
-                        f"Description: {task.get('description')}\n"
-                        f"Target files: {task.get('target_files')}\n"
-                        f"Evidence: {task.get('evidence')}\n\n"
-                        f"## Relevant Code\n{code}"
-                    ),
-                },
-            ],
-        )
-        usage = None
-        if resp.usage:
-            usage = {
-                "prompt_tokens": resp.usage.prompt_tokens,
-                "completion_tokens": resp.usage.completion_tokens,
-                "total_tokens": resp.usage.total_tokens,
-            }
-        return resp.choices[0].message.content, usage
-    except Exception:
-        log.exception("plan_code_change failed")
-        return None, None
+    system = "You are a senior Python developer. Create a step-by-step plan for the code change."
+    user = (
+        f"## Task\nType: {task.get('task_type')}\n"
+        f"Description: {task.get('description')}\n"
+        f"Target files: {task.get('target_files')}\n\n"
+        f"## Relevant Code\n{code}"
+    )
+    content, usage = chat_completion(client, system, user, model, max_tokens=800)
+    return (content if content else None, usage)
 
 
 def generate_code(
-    client: OpenAI,
+    client: Any,
     plan: str,
     files: dict,
     constraints: str,
     model: str = "gpt-4o",
 ) -> tuple[Optional[list], Optional[dict]]:
-    """Generate code changes based on a plan.
-
-    Args:
-        plan: The improvement plan.
-        files: Dict mapping file paths to their current contents.
-        constraints: Safety constraints to follow.
-
-    Returns (list_of_changes, usage_dict). Returns (None, None) on failure.
-    """
-    file_contents = "\n\n".join(
-        f"### {path}\n```python\n{content}\n```"
-        for path, content in files.items()
+    file_contents = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in files.items())
+    system = (
+        "You are a Python code generator. Produce the complete new file contents.\n"
+        "Output JSON with key 'changes', a list of {file_path, new_content, description}."
     )
-
+    user = f"## Plan\n{plan}\n\n## Constraints\n{constraints}\n\n## Current Code\n{file_contents}"
+    
+    content, usage = chat_completion(
+        client, system, user, model, 
+        response_format={"type": "json_object"} if _get_provider(model) == "openai" else None,
+        max_tokens=2500
+    )
+    
     try:
-        resp = client.chat.completions.create(
-            model=model,
-            max_tokens=2000,
-            response_format={"type": "json_object"},
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a Python code generator. Given a plan and existing code, "
-                        "produce the complete new file contents for each file that needs changing.\n\n"
-                        "Output JSON with key 'changes', a list of objects:\n"
-                        "- file_path: relative path of the file\n"
-                        "- new_content: the COMPLETE new file content (not a diff)\n"
-                        "- description: what was changed and why (1 sentence)\n\n"
-                        "IMPORTANT:\n"
-                        "- Output complete file contents, not patches\n"
-                        "- Preserve existing functionality\n"
-                        "- Follow existing code style\n"
-                        "- Do not add unnecessary imports or code\n"
-                        f"\nConstraints:\n{constraints}"
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"## Plan\n{plan}\n\n"
-                        f"## Current File Contents\n{file_contents}"
-                    ),
-                },
-            ],
-        )
-        content = resp.choices[0].message.content
+        if "{" in content:
+            content = content[content.find("{"):content.rfind("}")+1]
         result = json.loads(content)
-        usage = None
-        if resp.usage:
-            usage = {
-                "prompt_tokens": resp.usage.prompt_tokens,
-                "completion_tokens": resp.usage.completion_tokens,
-                "total_tokens": resp.usage.total_tokens,
-            }
         return result.get("changes", []), usage
     except Exception:
-        log.exception("generate_code failed")
-        return None, None
+        log.exception("generate_code failed to parse JSON")
+        return None, usage
+
+
+def review_code_changes(
+    client: Any,
+    task: dict,
+    changes: List[dict],
+    model: str = "claude-3-5-sonnet-20240620",
+) -> tuple[bool, str, Optional[dict]]:
+    """Review proposed changes for logic errors, bugs, or security issues."""
+    changes_text = "\n\n".join([
+        f"### {c.get('file_path')}\n{c.get('description')}\n```python\n{c.get('new_content')}\n```"
+        for c in changes
+    ])
+    system = (
+        "You are a Senior Security & Logic Reviewer. Be extremely critical.\n"
+        "Output JSON with keys: 'approved' (boolean), 'feedback' (string), 'concerns' (list)."
+    )
+    user = f"## Task\n{task.get('description')}\n\n## Proposed Changes\n{changes_text}\n\nDoes this change correctly and safely address the task?"
+    content, usage = chat_completion(client, system, user, model, max_tokens=1000)
+    try:
+        if "{" in content:
+            content = content[content.find("{"):content.rfind("}")+1]
+        result = json.loads(content)
+        return result.get("approved", False), result.get("feedback", ""), usage
+    except Exception:
+        return False, "Reviewer failed to provide structured feedback.", usage
 
 
 def generate_question_post(
-    client: OpenAI,
+    client: Any,
     task_data: dict,
     code_context: dict,
     test_failures: str,
     model: str = "gpt-4o",
 ) -> Optional[dict]:
-    """Generate a StackOverflow-style question post for Moltbook.
-
-    Args:
-        task_data: Dict with task_type, description, target_files, evidence.
-        code_context: Dict mapping file paths to code content (truncated).
-        test_failures: Pytest output showing failures.
-
-    Returns dict with 'title' and 'content' keys, or None on failure.
-    """
-    code_block = "\n\n".join(
-        f"### {path}\n```python\n{content}\n```"
-        for path, content in code_context.items()
-    )
-
+    code_block = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
     try:
         resp = client.chat.completions.create(
-            model=model,
-            max_tokens=600,
-            response_format={"type": "json_object"},
+            model=model, max_tokens=600, response_format={"type": "json_object"},
             messages=[
-                {
-                    "role": "system",
-                    "content": prompts.load_question_post_prompt(),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"## Task\nType: {task_data.get('task_type')}\n"
-                        f"Description: {task_data.get('description')}\n"
-                        f"Target files: {task_data.get('target_files')}\n"
-                        f"Evidence: {task_data.get('evidence')}\n\n"
-                        f"## Code Context\n{code_block}\n\n"
-                        f"## Test Output\n{test_failures}"
-                    ),
-                },
-            ],
+                {"role": "system", "content": prompts.load_question_post_prompt()},
+                {"role": "user", "content": f"## Task\n{task_data}\n\n## Code\n{code_block}\n\n## Tests\n{test_failures}"}
+            ]
         )
-        content = resp.choices[0].message.content
-        return json.loads(content)
-    except Exception:
-        log.exception("generate_question_post failed")
-        return None
+        return json.loads(resp.choices[0].message.content)
+    except Exception: return None
 
 
 def analyze_code_suggestions(
-    client: OpenAI,
+    client: Any,
     problem: str,
     code_context: dict,
     comments: list,
     model: str = "gpt-4o",
 ) -> Optional[dict]:
-    """Analyze comments for code-level suggestions (not config changes).
-
-    Returns dict with 'suggestions' list and 'has_actionable' bool, or None.
-    """
-    code_block = "\n\n".join(
-        f"### {path}\n```python\n{content}\n```"
-        for path, content in code_context.items()
-    )
-
-    comments_text = "\n\n".join(
-        f"Comment by {c.get('author', {}).get('name', 'unknown')} "
-        f"(id: {c.get('id', 'unknown')}): {c.get('content', '')}"
-        for c in comments
-    )
-
+    code_block = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
+    comments_text = "\n\n".join(f"Comment by {c.get('author', {}).get('name')}: {c.get('content')}" for c in comments)
     try:
         resp = client.chat.completions.create(
-            model=model,
-            max_tokens=800,
-            response_format={"type": "json_object"},
+            model=model, max_tokens=800, response_format={"type": "json_object"},
             messages=[
-                {
-                    "role": "system",
-                    "content": prompts.load_code_suggestion_prompt(),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"## Problem\n{problem}\n\n"
-                        f"## Code Context\n{code_block}\n\n"
-                        f"## Comments\n{comments_text}"
-                    ),
-                },
-            ],
+                {"role": "system", "content": prompts.load_code_suggestion_prompt()},
+                {"role": "user", "content": f"## Problem\n{problem}\n\n## Code\n{code_block}\n\n## Comments\n{comments_text}"}
+            ]
         )
-        content = resp.choices[0].message.content
-        return json.loads(content)
-    except Exception:
-        log.exception("analyze_code_suggestions failed")
-        return None
+        return json.loads(resp.choices[0].message.content)
+    except Exception: return None
 
 
 def generate_code_from_suggestion(
-    client: OpenAI,
+    client: Any,
     suggestion: dict,
     code_context: dict,
     plan: str,
     constraints: str,
     model: str = "gpt-4o",
 ) -> Optional[list]:
-    """Generate code changes guided by a community suggestion.
-
-    Args:
-        suggestion: Dict with author, approach, code_snippets, target_files.
-        code_context: Dict mapping file paths to current contents.
-        plan: The improvement plan.
-        constraints: Safety constraints string.
-
-    Returns list of dicts with file_path, new_content, description. None on failure.
-    """
-    file_contents = "\n\n".join(
-        f"### {path}\n```python\n{content}\n```"
-        for path, content in code_context.items()
-    )
-
-    suggestion_text = (
-        f"Commenter: {suggestion.get('author', 'unknown')}\n"
-        f"Approach: {suggestion.get('approach', '')}\n"
-    )
-    snippets = suggestion.get("code_snippets", [])
-    if snippets:
-        suggestion_text += "Code snippets from commenter:\n"
-        for s in snippets:
-            suggestion_text += f"```\n{s}\n```\n"
-
+    file_contents = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
     try:
         resp = client.chat.completions.create(
-            model=model,
-            max_tokens=2000,
-            response_format={"type": "json_object"},
+            model=model, max_tokens=2000, response_format={"type": "json_object"},
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        prompts.load_suggestion_implementation_prompt()
-                        + f"\n\nConstraints:\n{constraints}"
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"## Community Suggestion\n{suggestion_text}\n\n"
-                        f"## Plan\n{plan}\n\n"
-                        f"## Current File Contents\n{file_contents}"
-                    ),
-                },
-            ],
+                {"role": "system", "content": prompts.load_suggestion_implementation_prompt() + f"\n\nConstraints:\n{constraints}"},
+                {"role": "user", "content": f"## Suggestion\n{suggestion}\n\n## Plan\n{plan}\n\n## Code\n{file_contents}"}
+            ]
         )
-        content = resp.choices[0].message.content
-        result = json.loads(content)
-        return result.get("changes", [])
-    except Exception:
-        log.exception("generate_code_from_suggestion failed")
-        return None
+        return json.loads(resp.choices[0].message.content).get("changes", [])
+    except Exception: return None
 
 
 def analyze_comments_for_upgrades(
-    client: OpenAI,
+    client: Any,
     post_title: str,
     post_content: str,
     comments: list,
     model: str = "gpt-4o-mini",
 ) -> Optional[dict]:
-    """Analyze comments on agent's post to extract actionable improvements.
-
-    Returns dict with:
-    - 'has_suggestions': bool
-    - 'suggestions': list of dicts with 'type', 'description', 'config_changes'
-    Returns None on failure.
-    """
+    comments_text = "\n\n".join([f"Comment by {c.get('author', {}).get('name')}: {c.get('content')}" for c in comments])
     try:
-        comments_text = "\n\n".join([
-            f"Comment by {c.get('author', {}).get('name', 'unknown')}: {c.get('content', '')}"
-            for c in comments
-        ])
-
         resp = client.chat.completions.create(
-            model=model,
-            max_tokens=600,
-            response_format={"type": "json_object"},
+            model=model, max_tokens=600, response_format={"type": "json_object"},
             messages=[
-                {
-                    "role": "system",
-                    "content": prompts.load_comment_analysis_prompt(),
-                },
-                {
-                    "role": "user",
-                    "content": f"""Post Title: {post_title}
-
-Post Content: {post_content}
-
-Comments received:
-{comments_text}
-
-Analyze these comments for actionable improvements to the agent's configuration or behavior.""",
-                },
-            ],
+                {"role": "system", "content": prompts.load_comment_analysis_prompt()},
+                {"role": "user", "content": f"Post: {post_title}\n{post_content}\n\nComments:\n{comments_text}"}
+            ]
         )
-        content = resp.choices[0].message.content
-        return json.loads(content)
-    except Exception:
-        log.exception("analyze_comments_for_upgrades failed")
-        return None
+        return json.loads(resp.choices[0].message.content)
+    except Exception: return None
 
 
 def mine_insight_for_codebase(
-    client: OpenAI,
+    client: Any,
     post_title: str,
     post_content: str,
     bot_comment: str,
     model: str = "gpt-4o-mini",
 ) -> Optional[str]:
-    """Mine a codebase improvement insight from a commented post.
-
-    Returns a 1-2 sentence task description, or None if nothing applicable.
-    """
     try:
         resp = client.chat.completions.create(
-            model=model,
-            max_tokens=150,
+            model=model, max_tokens=150,
             messages=[
-                {
-                    "role": "system",
-                    "content": prompts.load_comment_mining_prompt(),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"Post title: {post_title}\n\n"
-                        f"Post content: {post_content}\n\n"
-                        f"Your comment: {bot_comment}"
-                    ),
-                },
-            ],
+                {"role": "system", "content": prompts.load_comment_mining_prompt()},
+                {"role": "user", "content": f"Post: {post_title}\n{post_content}\n\nYour comment: {bot_comment}"}
+            ]
         )
         text = resp.choices[0].message.content
-        if text and text.strip().upper() == "NONE":
-            return None
-        return text
-    except Exception:
-        log.exception("mine_insight_for_codebase failed")
-        return None
+        return None if text and text.strip().upper() == "NONE" else text
+    except Exception: return None
 
 
 def extract_topic_signal(
-    client: OpenAI,
+    client: Any,
     post_title: str,
     bot_comment: str,
     replies: list,
     model: str = "gpt-4o-mini",
 ) -> Optional[str]:
-    """Extract the technical topic that resonated from engagement.
-
-    Returns a one-sentence topic signal, or None on failure.
-    """
+    replies_text = "\n".join([f"- {r.get('content') if isinstance(r, dict) else r}" for r in replies])
     try:
-        replies_text = "\n".join(
-            f"- {r}" if isinstance(r, str) else f"- {r.get('content', '')}"
-            for r in replies
-        )
         resp = client.chat.completions.create(
-            model=model,
-            max_tokens=80,
+            model=model, max_tokens=80,
             messages=[
-                {
-                    "role": "system",
-                    "content": prompts.load_topic_signal_prompt(),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"Post title: {post_title}\n\n"
-                        f"Bot's comment: {bot_comment}\n\n"
-                        f"Replies:\n{replies_text}"
-                    ),
-                },
-            ],
+                {"role": "system", "content": prompts.load_topic_signal_prompt()},
+                {"role": "user", "content": f"Title: {post_title}\nComment: {bot_comment}\nReplies: {replies_text}"}
+            ]
         )
         return resp.choices[0].message.content
-    except Exception:
-        log.exception("extract_topic_signal failed")
-        return None
+    except Exception: return None
 
 
 def extract_insights_batch(
-    client: OpenAI,
+    client: Any,
     posts: list,
     model: str = "gpt-4o-mini",
 ) -> Optional[list]:
-    """Batch-extract technical insights from posts for the knowledge base.
-
-    Takes up to 5 posts. Returns list of dicts with post_index, insight, tags.
-    Returns None on failure.
-    """
-    posts_text = "\n\n".join(
-        f"[Post {i}] Title: {p.get('title', '')}\nContent: {p.get('content', '')}"
-        for i, p in enumerate(posts[:5])
-    )
+    posts_text = "\n\n".join([f"[{i}] {p.get('title')}: {p.get('content')}" for i, p in enumerate(posts[:5])])
     try:
         resp = client.chat.completions.create(
-            model=model,
-            max_tokens=300,
-            response_format={"type": "json_object"},
+            model=model, max_tokens=300, response_format={"type": "json_object"},
             messages=[
-                {
-                    "role": "system",
-                    "content": prompts.load_insight_extraction_prompt(),
-                },
-                {
-                    "role": "user",
-                    "content": posts_text,
-                },
-            ],
+                {"role": "system", "content": prompts.load_insight_extraction_prompt()},
+                {"role": "user", "content": posts_text}
+            ]
         )
-        content = resp.choices[0].message.content
-        result = json.loads(content)
-        # Handle both {"insights": [...]} and raw [...]
-        if isinstance(result, list):
-            return result
-        return result.get("insights", [])
-    except Exception:
-        log.exception("extract_insights_batch failed")
-        return None
+        data = json.loads(resp.choices[0].message.content)
+        return data if isinstance(data, list) else data.get("insights", [])
+    except Exception: return None
 
 
 def generate_kb_summary(
-    client: OpenAI,
+    client: Any,
     entries: list,
     model: str = "gpt-4o-mini",
 ) -> Optional[str]:
-    """Generate a summary of knowledge base entries grouped by topic.
-
-    Returns summary string, or None on failure.
-    """
-    entries_text = "\n".join(
-        f"- [{', '.join(e.get('tags', []))}] {e.get('insight', '')}"
-        for e in entries
-    )
+    entries_text = "\n".join([f"- {e.get('insight')}" for e in entries])
     try:
         resp = client.chat.completions.create(
-            model=model,
-            max_tokens=200,
+            model=model, max_tokens=200,
             messages=[
-                {
-                    "role": "system",
-                    "content": prompts.load_kb_summary_prompt(),
-                },
-                {
-                    "role": "user",
-                    "content": entries_text,
-                },
-            ],
+                {"role": "system", "content": prompts.load_kb_summary_prompt()},
+                {"role": "user", "content": entries_text}
+            ]
         )
         return resp.choices[0].message.content
-    except Exception:
-        log.exception("generate_kb_summary failed")
-        return None
+    except Exception: return None
 
 
 def pick_oddities(
-    client: OpenAI,
+    client: Any,
     posts: list,
     model: str = "gpt-4o-mini",
 ) -> Optional[str]:
-    """Pick the top 3-5 oddest/weirdest posts from a batch.
-
-    Returns a short human-readable digest, or None on failure.
-    """
-    if not posts:
-        return None
-    posts_text = "\n\n".join(
-        f"[{i}] {p.get('title', '(no title)')}\n{p.get('content', '')[:300]}"
-        for i, p in enumerate(posts[:30])
-    )
+    posts_text = "\n\n".join([f"[{i}] {p.get('title')}: {p.get('content')[:200]}" for i, p in enumerate(posts[:20])])
     try:
         resp = client.chat.completions.create(
-            model=model,
-            max_tokens=400,
+            model=model, max_tokens=400,
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You curate a daily digest of the weirdest, funniest, or most "
-                        "unexpected posts from an AI agent social network called Moltbook. "
-                        "Pick 3-5 posts that are genuinely odd, absurd, surprising, or "
-                        "unintentionally hilarious. For each, write one short witty line "
-                        "explaining why it's notable. Keep it concise and entertaining. "
-                        "Format as a numbered list. Skip boring or generic posts."
-                    ),
-                },
-                {"role": "user", "content": posts_text},
-            ],
+                {"role": "system", "content": "Curate a digest of weird AI posts. Be witty."},
+                {"role": "user", "content": posts_text}
+            ]
         )
         return resp.choices[0].message.content
-    except Exception:
-        log.exception("pick_oddities failed")
-        return None
+    except Exception: return None
+
+
+def get_tools_definition():
+    """Return the OpenAI tools definition for the agent's internal toolbox."""
+    return [
+        {"type": "function", "function": {"name": "grep_codebase", "description": "Search for a regex pattern.", "parameters": {"type": "object", "properties": {"pattern": {"type": "string"}}, "required": ["pattern"]}}},
+        {"type": "function", "function": {"name": "read_file_metadata", "description": "Read classes/functions for a file.", "parameters": {"type": "object", "properties": {"file_path": {"type": "string"}}, "required": ["file_path"]}}},
+        {"type": "function", "function": {"name": "read_file_content", "description": "Read raw content.", "parameters": {"type": "object", "properties": {"file_path": {"type": "string"}}, "required": ["file_path"]}}},
+        {"type": "function", "function": {"name": "run_tests", "description": "Run tests.", "parameters": {"type": "object", "properties": {}}}},
+        {"type": "function", "function": {"name": "read_system_logs", "description": "Read recent systemd service logs.", "parameters": {"type": "object", "properties": {"lines": {"type": "integer", "default": 50}}}}},
+        {"type": "function", "function": {"name": "check_system_health", "description": "Get CPU, RAM, and temperature stats.", "parameters": {"type": "object", "properties": {}}}}
+    ]
+
+# --- Legacy/Helper wrappers for social features (OpenAI only for now) ---
+
+def generate_comment(client: OpenAI, post_title: str, post_content: str, model: str = "gpt-4o-mini", codebase_context: str = "") -> Optional[str]:
+    user_msg = f"Post title: {post_title}\n\nPost content: {post_content}\n\nContext: {codebase_context}"
+    try:
+        resp = client.chat.completions.create(model=model, max_tokens=300, messages=[{"role": "system", "content": prompts.load_comment_system_prompt()}, {"role": "user", "content": user_msg}])
+        text = resp.choices[0].message.content
+        return None if text and text.strip().upper() == "SKIP" else text
+    except Exception: return None
+
+def answer_question(client: OpenAI, question: str, codebase_summary: str = "", model: str = "gpt-4o-mini") -> Optional[str]:
+    user_content = f"## Codebase\n{codebase_summary}\n\n## Question\n{question}"
+    try:
+        resp = client.chat.completions.create(model=model, max_tokens=300, messages=[{"role": "system", "content": "You are a self-reflective agent."}, {"role": "user", "content": user_content}])
+        return resp.choices[0].message.content
+    except Exception: return None

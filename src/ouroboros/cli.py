@@ -315,6 +315,31 @@ def cmd_improve_identify(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_backlog_list(_args: argparse.Namespace) -> int:
+    """List pending backlog items."""
+    from .backlog import get_pending
+    from .codebase import get_repo_root
+    pending = get_pending(get_repo_root())
+    if not pending:
+        print("Backlog is empty.")
+        return 0
+    for item in pending:
+        print(f"[{item['id']}] P{item['priority']} {item['task_type']}: {item['description']}")
+    return 0
+
+
+def cmd_backlog_clean(_args: argparse.Namespace) -> int:
+    """Trigger semantic backlog organization."""
+    from .backlog import organize_backlog
+    from .codebase import get_repo_root
+    from .llm import make_client, load_openai_key
+    print("Organizing backlog semantically...")
+    client = make_client(load_openai_key())
+    organize_backlog(get_repo_root(), client)
+    print("Done.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ouroboros")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -351,6 +376,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_modify = cfg_sub.add_parser("modify", help="Modify configuration (autonomous mode)")
     p_modify.add_argument("updates", nargs="+", help="key=value pairs to update")
     p_modify.set_defaults(func=cmd_config_modify)
+
+    # -- backlog --
+    p_backlog = sub.add_parser("backlog", help="Manage the improvement backlog")
+    backlog_subs = p_backlog.add_subparsers(dest="subcommand", required=True)
+    
+    p_backlog_list = backlog_subs.add_parser("list", help="List pending tasks")
+    p_backlog_list.set_defaults(func=cmd_backlog_list)
+    
+    p_backlog_clean = backlog_subs.add_parser("clean", help="Organize backlog using LLM")
+    p_backlog_clean.set_defaults(func=cmd_backlog_clean)
 
     # -- improve subcommand --
     p_improve = sub.add_parser("improve", help="Self-improvement tools")

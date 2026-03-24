@@ -3,6 +3,7 @@
 import logging
 import time
 import uuid
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -158,7 +159,7 @@ def identify_improvements(
                 test_summary += f"  {fail.traceback[:200]}\n"
 
     history_summary = summarize_history(history)
-    result = llm.analyze_codebase(
+    result = llm.identify_improvements(
         client, codebase_summary, test_summary, history_summary,
         model=model, additional_context=additional_context,
     )
@@ -582,6 +583,18 @@ class ToolRunner:
                 return res.summary()
             except Exception as e:
                 return f"Error running tests: {e}"
+        elif name == "read_system_logs":
+            try:
+                from .system import get_service_logs
+                return get_service_logs(args.get("lines", 50))
+            except Exception as e:
+                return f"Error reading logs: {e}"
+        elif name == "check_system_health":
+            try:
+                from .system import get_system_summary
+                return get_system_summary()
+            except Exception as e:
+                return f"Error checking health: {e}"
         return f"Unknown tool: {name}"
 
 
@@ -605,29 +618,65 @@ def run_improvement_cycle(
 
     _fire("cycle_start", "Starting improvement cycle")
 
-    # (Rate limiting and staleness checks omitted for brevity in replace call, 
-    # but assume they stay before this point in the real file)
-    
+    # Rate limiting
+    today_count = improvements_today(repo_root)
+    if today_count >= config.max_improvements_per_day:
+        log.info("Rate limit reached: %d improvements today (max %d)", today_count, config.max_improvements_per_day)
+        _fire("cycle_end", f"Rate limit reached: {today_count}/{config.max_improvements_per_day} today")
+        return None
+
+    # Check for open PRs
+    if git_ops.has_open_improvement_prs(repo_root):
+        log.info("Skipping improvement: open improvement PRs exist")
+        _fire("cycle_end", "Skipped: open improvement PRs exist")
+        return None
+
+    # Dedup: skip if recent attempts at the same task_type made no test progress
+    history = load_history(repo_root)
+    _MAX_STALE_ATTEMPTS = 2
+    recent = [r for r in history if r.timestamp > time.time() - 7 * 86400]
+    if recent:
+        last_type = recent[-1].task_type
+        streak = [r for r in reversed(recent) if r.task_type == last_type]
+        if len(streak) >= _MAX_STALE_ATTEMPTS:
+            all_no_progress = all(
+                r.test_delta.get("before") == r.test_delta.get("after")
+                for r in streak[:_MAX_STALE_ATTEMPTS]
+            )
+            if all_no_progress:
+                log.info("Skipping improvement: %d recent '%s' attempts with no test progress", len(streak), last_type)
+                _fire("cycle_end", f"Skipped: {len(streak)} stale '{last_type}' attempts")
+                return None
+
     # Step 1: Understand the codebase
     log.info("[improve] Analyzing codebase...")
-    from .codebase import get_codebase_summary
     codebase_summary = get_codebase_summary(repo_root)
     test_results = run_tests(repo_root)
 
-    # ... baseline broken logic ...
-
     # Step 2: Identify an improvement (with tool support)
     log.info("[improve] Identifying improvements...")
-    history = load_history(repo_root)
     history_summary = summarize_history(history)
+    
+    # Inject system awareness
+    from .system import get_system_summary
+    from .memory import IndexManager
+    system_ctx = f"### System Environment\n{get_system_summary()}\n"
+    
+    # Inject semantic memory
+    memory = IndexManager(client)
+    memory_ctx = memory.retrieve_relevant_context(codebase_summary[:1000])
+    
     additional_context = _assemble_feed_context(client, state)
+    final_ctx = f"{system_ctx}\n{memory_ctx}\n{additional_context}" if additional_context else f"{system_ctx}\n{memory_ctx}"
     
     task_data = llm.identify_improvements(
         client, codebase_summary, test_results.summary(), history_summary,
-        model=model, additional_context=additional_context
+        model=model, additional_context=final_ctx
     )
     
     if not task_data:
+        log.info("[improve] No improvements identified")
+        _fire("cycle_end", "No improvements identified")
         return None
 
     # Handle Tool Calls (simplified ReAct: 1 turn)
@@ -661,22 +710,111 @@ def run_improvement_cycle(
             }
 
     task = ImprovementTask.from_llm_response(task_data)
-    
+    log.info("[improve] Identified: [%s] %s", task.task_type, task.description)
+    _fire("task_identified", f"Task: [{task.task_type}] {task.description}", {
+        "task_type": task.task_type,
+        "description": task.description,
+        "target_files": task.target_files,
+    })
+
     improvement_result = ImprovementResult(task=task)
     if task._usage:
         improvement_result.total_usage["prompt_tokens"] += task._usage.get("prompt_tokens", 0)
         improvement_result.total_usage["completion_tokens"] += task._usage.get("completion_tokens", 0)
 
-    # ... rest of the cycle (plan, generate, validate) ...
+    if dry_run:
+        improvement_result.status = "skipped"
+        log.info("[improve] Dry run -- would proceed with: %s", task.description)
+        return improvement_result
+
+    # Step 3: Read target files
+    relevant_code = {}
+    for file_path in task.target_files:
+        full_path = repo_root / file_path
+        relevant_code[file_path] = read_file_raw(full_path) if full_path.exists() else ""
+
+    # Step 4: Plan the improvement
+    log.info("[improve] Planning changes...")
+    _fire("planning", f"Planning: {task.description[:100]}")
+    plan, plan_usage = plan_improvement(client, task, relevant_code, model=model)
+    if plan_usage:
+        improvement_result.total_usage["prompt_tokens"] += plan_usage.get("prompt_tokens", 0)
+        improvement_result.total_usage["completion_tokens"] += plan_usage.get("completion_tokens", 0)
+
+    if not plan:
+        log.warning("[improve] Failed to generate plan")
+        improvement_result.status = "failed"
+        improvement_result.details = "Failed to generate a concrete implementation plan"
+        _fire("failed", f"Failed to plan: {task.description[:100]}")
+        record_improvement(improvement_result, repo_root)
+        return improvement_result
+
+    # Step 5: Generate code changes
+    log.info("[improve] Generating code changes...")
+    _fire("generating", f"Generating code for: {task.description[:100]}")
+    changes, gen_usage = generate_changes(client, task, plan, relevant_code, config, model=model)
+    if gen_usage:
+        improvement_result.total_usage["prompt_tokens"] += gen_usage.get("prompt_tokens", 0)
+        improvement_result.total_usage["completion_tokens"] += gen_usage.get("completion_tokens", 0)
+
+    if not changes:
+        log.warning("[improve] Failed to generate code changes")
+        improvement_result.status = "failed"
+        _fire("failed", f"Failed to generate code: {task.description[:100]}")
+        record_improvement(improvement_result, repo_root)
+        return improvement_result
+
+    improvement_result.changes = changes
+
+    # Step 5.5: Peer Review (Consensus)
+    if config.reviewer_model:
+        log.info("[improve] Requesting peer review from %s...", config.reviewer_model)
+        _fire("reviewing", f"Reviewing changes with {config.reviewer_model}")
+        
+        anthropic_key = llm.load_anthropic_key()
+        if anthropic_key:
+            reviewer_client = llm.make_client(anthropic_key, provider="anthropic")
+            approved, feedback, rev_usage = llm.review_code_changes(
+                reviewer_client, 
+                {"description": task.description}, 
+                [{"file_path": c.file_path, "new_content": c.new_content, "description": c.description} for c in changes],
+                model=config.reviewer_model
+            )
+            
+            if rev_usage:
+                improvement_result.total_usage["prompt_tokens"] += rev_usage.get("prompt_tokens", 0)
+                improvement_result.total_usage["completion_tokens"] += rev_usage.get("completion_tokens", 0)
+
+            if not approved:
+                log.warning("[improve] Reviewer REJECTED changes: %s", feedback)
+                _fire("review_failed", f"Reviewer rejected changes: {feedback[:100]}")
+                improvement_result.status = "failed"
+                improvement_result.details = f"Reviewer rejection: {feedback}"
+                record_improvement(improvement_result, repo_root)
+                return improvement_result
+            else:
+                log.info("[improve] Reviewer approved changes.")
+                _fire("review_passed", "Peer review approved changes.")
+        else:
+            log.warning("[improve] Anthropic key missing, skipping peer review.")
+
+    # Step 6: Validate (apply, test, revert if needed, retry on regression)
+    log.info("[improve] Validating changes...")
+    _fire("validating", f"Validating: {task.description[:100]}")
+    validation_result = validate_improvement(
+        task, changes, repo_root,
+        client=client, config=config, model=model,
+        on_event=on_event,
+    )
+    # Merge validation result
+    improvement_result.test_before = validation_result.test_before
+    improvement_result.test_after = validation_result.test_after
+    improvement_result.status = validation_result.status
+    improvement_result.details = validation_result.details
+    improvement_result.changes = validation_result.changes
 
     if improvement_result.status == "reverted":
-        _fire("reverted", (
-            f"Reverted: {task.description[:80]}\n"
-            f"{improvement_result.details}"
-        ), {
-            "before_passed": improvement_result.test_before.passed if improvement_result.test_before else 0,
-            "after_passed": improvement_result.test_after.passed if improvement_result.test_after else 0,
-        })
+        _fire("reverted", f"Reverted: {task.description[:80]}\n{improvement_result.details}")
 
     if improvement_result.status != "success":
         log.warning("[improve] Improvement failed: %s", improvement_result.status)
@@ -707,42 +845,36 @@ def run_improvement_cycle(
         _fire("pr_created", f"PR created: {task.description[:80]}\n{pr_url}", {
             "pr_url": pr_url,
             "task_type": task.task_type,
-            "tests_passed": improvement_result.test_after.passed if improvement_result.test_after else 0,
         })
 
-        # Step 8: Auto-merge if enabled
         if config.enable_auto_merge and pr_url:
             log.info("[improve] Attempting auto-merge...")
-            merged = git_ops.auto_merge_pr(repo_root, pr_url)
-            if merged:
-                _fire("auto_merged", f"Auto-merged: {task.description[:80]}\n{pr_url}", {
-                    "pr_url": pr_url,
-                })
-            else:
-                log.info("[improve] Auto-merge not completed (may be pending checks)")
+            if git_ops.auto_merge_pr(repo_root, pr_url):
+                _fire("auto_merged", f"Auto-merged: {pr_url}")
 
     except Exception:
         log.exception("[improve] Failed to create PR")
-        improvement_result.details = "Validated changes could not be published as a pull request"
         improvement_result.status = "failed"
-        _fire("failed", f"Failed to create PR: {task.description[:80]}")
+        improvement_result.details = "PR creation failed"
+        _fire("failed", "PR creation failed")
     finally:
-        # Return to original branch
         git_ops.checkout_branch(repo_root, original_branch)
 
     record_improvement(improvement_result, repo_root)
 
-    # Record metrics snapshot
+    # Update Memory
     try:
-        from .metrics import record_snapshot
-        record_snapshot(repo_root, improvement_result)
+        from .memory import IndexManager
+        memory = IndexManager(client)
+        if improvement_result.status == "success":
+            for change in improvement_result.changes:
+                memory.index_file(change.file_path, change.new_content)
+        elif improvement_result.status in ("failed", "reverted"):
+            memory.index_failure(task.task_id, task.description, improvement_result.details)
     except Exception:
-        log.debug("Metrics recording failed")
+        log.debug("Memory indexing failed")
 
-    _fire("cycle_end", f"Cycle complete: [{improvement_result.status}] {task.description[:80]}", {
-        "status": improvement_result.status,
-        "pr_url": improvement_result.pr_url,
-    })
+    _fire("cycle_end", f"Cycle complete: {improvement_result.status}")
     return improvement_result
 
 

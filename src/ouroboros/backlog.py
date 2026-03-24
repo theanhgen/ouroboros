@@ -106,3 +106,63 @@ def format_backlog_for_llm(items: List[Dict[str, Any]]) -> str:
             f"{item.get('description', '')} (attempts: {item.get('attempts', 0)})"
         )
     return "\n".join(lines)
+
+
+def organize_backlog(repo_root: Path, client: Any, model: str = "gpt-4o-mini") -> None:
+    """Use an LLM to prune, merge, and prioritize the backlog."""
+    items = load_backlog(repo_root)
+    if not items:
+        return
+
+    backlog_text = json.dumps([
+        {"id": i["id"], "type": i["task_type"], "desc": i["description"], "priority": i["priority"]}
+        for i in items if i["status"] == "pending"
+    ], indent=2)
+
+    system = (
+        "You are a Backlog Manager. Your goal is to clean up a list of pending tasks.\n"
+        "1. Identify duplicates and merge them.\n"
+        "2. Group small related bugs into a single 'refactor' task if they share a file.\n"
+        "3. Update priorities (1-10) based on perceived impact.\n\n"
+        "Output JSON with a single key 'items', a list of updated task objects."
+    )
+    
+    user = f"Current Pending Backlog:\n{backlog_text}\n\nPlease organize this backlog."
+    
+    from .llm import chat_completion
+    content, _ = chat_completion(client, system, user, model=model)
+    
+    try:
+        if "{" in content:
+            content = content[content.find("{"):content.rfind("}")+1]
+        data = json.loads(content)
+        new_items = data.get("items", [])
+        
+        # Merge new items back with non-pending ones
+        final_items = [i for i in items if i["status"] != "pending"]
+        for ni in new_items:
+            # Check if this was an existing ID
+            existing = [i for i in items if i["id"] == ni.get("id")]
+            if existing:
+                e = existing[0]
+                e["task_type"] = ni.get("type", e["task_type"])
+                e["description"] = ni.get("desc", e["description"])
+                e["priority"] = ni.get("priority", e["priority"])
+                final_items.append(e)
+            else:
+                # New "Epic" or merged task
+                final_items.append({
+                    "id": ni.get("id") or str(uuid.uuid4())[:8],
+                    "task_type": ni.get("type", "refactor"),
+                    "description": ni.get("desc", ""),
+                    "priority": ni.get("priority", 5),
+                    "status": ni.get("status", "pending"),
+                    "source": "backlog_organizer",
+                    "created_at": time.time(),
+                    "attempts": 0
+                })
+        
+        save_backlog(repo_root, final_items)
+        log.info("Backlog organized semantically.")
+    except Exception:
+        log.exception("Backlog organization failed")

@@ -7,7 +7,7 @@ class SafetyConfig:
     pr_only: bool = True
     allow_network: bool = True
     allow_write_default_branch: bool = False
-    require_human_approval: bool = False
+    require_human_approval: bool = True
     allow_self_modification: bool = True
     enable_auto_merge: bool = True  # Auto-merge PRs when checks pass
     max_retry_on_failure: int = 1  # Retry with root cause analysis on test regression
@@ -15,6 +15,9 @@ class SafetyConfig:
     # Sandbox configuration
     sandbox_enabled: bool = False
     sandbox_image: str = "python:3.11-slim"
+
+    # Multi-model review
+    reviewer_model: str = "claude-3-5-sonnet-20240620"
 
     # Self-improvement limits
     max_improvements_per_day: int = 3

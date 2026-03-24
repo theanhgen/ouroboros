@@ -2,6 +2,7 @@
 
 import sqlite3
 import time
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
@@ -57,6 +58,16 @@ class OuroborosStorage:
                     FOREIGN KEY (cycle_id) REFERENCES cycles (id)
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS embeddings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    content_type TEXT, -- 'code' | 'failure' | 'cycle'
+                    ref_id TEXT, -- file path, task_id, etc.
+                    content TEXT,
+                    embedding TEXT, -- JSON string of float list
+                    ts REAL
+                )
+            """)
 
     def record_cycle(self, record: CycleRecord) -> int:
         with sqlite3.connect(self.db_path) as conn:
@@ -89,3 +100,25 @@ class OuroborosStorage:
             cursor = conn.execute("SELECT SUM(cost) FROM metrics")
             row = cursor.fetchone()
             return row[0] if row[0] is not None else 0.0
+
+    def add_embedding(self, content_type: str, ref_id: str, content: str, embedding: List[float]):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO embeddings (content_type, ref_id, content, embedding, ts) VALUES (?, ?, ?, ?, ?)",
+                (content_type, ref_id, content, json.dumps(embedding), time.time())
+            )
+
+    def search_embeddings(self, content_type: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """Return raw embeddings for local similarity search."""
+        query = "SELECT * FROM embeddings"
+        params = []
+        if content_type:
+            query += " WHERE content_type = ?"
+            params.append(content_type)
+        query += " ORDER BY ts DESC LIMIT ?"
+        params.append(limit)
+        
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(query, params)
+            return [dict(row) for row in cursor.fetchall()]
