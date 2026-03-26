@@ -7,40 +7,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from . import prompts
+from .codebase import get_repo_root
 
 log = logging.getLogger(__name__)
 
 MAX_PROMPT_CHARS = 900
-
-
-def _repo_root() -> Path:
-    # Try git first
-    try:
-        out = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL,
-            text=True,
-        ).strip()
-        if out:
-            return Path(out)
-    except Exception:
-        pass
-
-    # Fallback: walk up from this file
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        if (parent / ".git").exists():
-            return parent
-    return here.parents[2]
-
-
-def _safe_git_env() -> Dict[str, str]:
-    env = os.environ.copy()
-    env.setdefault("GIT_AUTHOR_NAME", "ouroboros-bot")
-    env.setdefault("GIT_AUTHOR_EMAIL", "ouroboros-bot@localhost")
-    env.setdefault("GIT_COMMITTER_NAME", "ouroboros-bot")
-    env.setdefault("GIT_COMMITTER_EMAIL", "ouroboros-bot@localhost")
-    return env
 
 
 def _git_clean(repo: Path) -> bool:
@@ -150,7 +121,7 @@ def _git_commit_and_pr(repo: Path, message: str) -> Optional[str]:
 
 
 def run_self_improve(client: Any, state: Dict[str, Any], model: str = "gpt-4o-mini") -> Optional[str]:
-    repo = _repo_root()
+    repo = get_repo_root()
     if not _git_clean(repo):
         log.warning("Repo has uncommitted changes; skipping self-improve.")
         return None

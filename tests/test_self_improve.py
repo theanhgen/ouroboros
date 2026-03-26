@@ -59,7 +59,7 @@ class TestSelfImprove:
         assert "old prompt" in req
         assert "JSON" in req
 
-    @patch("ouroboros.self_improve._repo_root")
+    @patch("ouroboros.self_improve.get_repo_root")
     @patch("ouroboros.self_improve._git_clean")
     @patch("ouroboros.prompts.load_comment_system_prompt")
     @patch("ouroboros.prompts._prompts_path")

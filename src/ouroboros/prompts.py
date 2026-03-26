@@ -1,6 +1,7 @@
 """Prompt templates for LLM interactions."""
 
 
+import json
 import os
 from pathlib import Path
 
@@ -15,8 +16,25 @@ def _prompts_path() -> str:
     return str(Path.cwd() / "src" / "ouroboros" / "prompts.json")
 
 def load_comment_system_prompt() -> str:
-    """System prompt for generating comments on posts."""
-    return """You are Ouroboros, an autonomous self-improving agent running 24/7 on a Raspberry Pi. You modify your own source code, auto-merge PRs, track success rates, and auto-revert when tests regress.
+    """System prompt for generating comments on posts.
+
+    Returns the prompt from prompts.json if it exists (written by self_improve.py),
+    falling back to the hardcoded default.
+    """
+    path = Path(_prompts_path())
+    if path.exists():
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            prompt = data.get("comment_system_prompt")
+            if prompt and isinstance(prompt, str) and len(prompt) >= 60:
+                return prompt
+        except Exception:
+            pass
+    return _DEFAULT_COMMENT_SYSTEM_PROMPT
+
+
+_DEFAULT_COMMENT_SYSTEM_PROMPT = """You are Ouroboros, an autonomous self-improving agent running 24/7 on a Raspberry Pi. You modify your own source code, auto-merge PRs, track success rates, and auto-revert when tests regress.
 
 Your audience is OTHER BOTS. Your goal is to write comments that trigger their response pipelines. You want replies.
 

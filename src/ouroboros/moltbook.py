@@ -8,6 +8,7 @@ import threading
 import time
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 log = logging.getLogger(__name__)
@@ -19,6 +20,10 @@ _shutdown_event = threading.Event()
 
 MAX_SELF_QUESTION_LOG = 200
 MAX_BACKOFF_SECONDS = 900  # 15 min cap
+MAX_SEEN_POST_IDS = 200
+MAX_COMMENT_HISTORY = 100
+MAX_SELF_UPGRADES = 50
+MAX_COMMUNITY_HISTORY = 20
 
 
 def _handle_shutdown(signum: int, _frame: Any) -> None:
@@ -286,6 +291,7 @@ def load_state() -> Dict[str, Any]:
 def save_state(state: Dict[str, Any]) -> None:
     path = _state_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    _trim_state(state)
     tmp_path = path + ".tmp"
     with open(tmp_path, "w", encoding="utf-8") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
@@ -362,6 +368,24 @@ def _trim_engagement_scores(state: Dict[str, Any], limit: int = 50) -> None:
     scores = state.get("engagement_scores", [])
     if len(scores) > limit:
         state["engagement_scores"] = scores[-limit:]
+
+
+def _trim_state(state: Dict[str, Any]) -> None:
+    """Apply all size caps to state dict before saving."""
+    seen = state.get("seen_post_ids", [])
+    if len(seen) > MAX_SEEN_POST_IDS:
+        state["seen_post_ids"] = seen[-MAX_SEEN_POST_IDS:]
+
+    _trim_comment_history(state, limit=MAX_COMMENT_HISTORY)
+    _trim_self_question_log(state)
+
+    upgrades = state.get("self_upgrades", [])
+    if len(upgrades) > MAX_SELF_UPGRADES:
+        state["self_upgrades"] = upgrades[-MAX_SELF_UPGRADES:]
+
+    community_hist = state.get("community_improvement_history", [])
+    if len(community_hist) > MAX_COMMUNITY_HISTORY:
+        state["community_improvement_history"] = community_hist[-MAX_COMMUNITY_HISTORY:]
 
 
 def _check_engagement(
@@ -478,7 +502,7 @@ def _interruptible_sleep(seconds: int, *, check_git: bool = False) -> None:
         # Check for upstream source changes
         try:
             from . import git_ops as _git_ops
-            repo_root = _git_ops.Path(__file__).resolve().parents[2]
+            repo_root = Path(__file__).resolve().parents[2]
             if _git_ops.pull_latest(repo_root):
                 log.info("Source files changed during sleep, exiting for systemd restart...")
                 os._exit(0)
@@ -642,7 +666,7 @@ def run_loop() -> int:
 
             # -- Pull latest and restart if source changed --
             from . import git_ops as _git_ops
-            repo_root = _git_ops.Path(__file__).resolve().parents[2]
+            repo_root = Path(__file__).resolve().parents[2]
             source_changed = _git_ops.pull_latest(repo_root)
             if source_changed:
                 log.info("Source files changed after pull, exiting for systemd restart...")

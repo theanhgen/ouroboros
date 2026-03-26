@@ -138,7 +138,7 @@ def _step_identify(
             log.info("[community] Dedup: avoiding repeated task_type '%s'", recent_types[0])
 
     # Ask LLM to identify a problem suitable for community input
-    task_data = llm.analyze_codebase(
+    task_data = llm.identify_improvements(
         client, codebase_summary, test_text, history_summary,
         model=getattr(cfg, "improvement_model", "gpt-4o"),
         additional_context=additional_context,
@@ -408,7 +408,7 @@ def _step_implement(
     )
 
     # Generate plan
-    plan = llm.plan_code_change(
+    plan, _ = llm.plan_code_change(
         client,
         {
             "task_type": task.task_type,
@@ -427,7 +427,7 @@ def _step_implement(
 
     # Generate code -- from suggestion or LLM-only
     if is_fallback:
-        raw_changes = llm.generate_code(
+        raw_changes, _ = llm.generate_code(
             client, plan, file_contents, constraints,
             model=getattr(cfg, "improvement_model", "gpt-4o"),
         )

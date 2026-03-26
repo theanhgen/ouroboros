@@ -45,13 +45,13 @@ class TestGitHubImprovement:
     def test_analyze_issue(self, mock_sigs, mock_list, mock_llm):
         mock_list.return_value = [self.repo_root / "src/a.py"]
         mock_sigs.return_value = "def a(): pass"
-        mock_llm.return_value = json.dumps({
+        mock_llm.return_value = (json.dumps({
             "summary": "fix it",
             "task_type": "bug_fix",
             "target_files": ["src/a.py"],
             "plan": ["fix it"],
             "confidence": 0.9
-        })
+        }), None)
         
         issue = GitHubIssue(1, "t", "b", "a", "u")
         analysis = analyze_issue(MagicMock(), issue, self.repo_root)
@@ -71,10 +71,10 @@ class TestGitHubImprovement:
     @patch("pathlib.Path.write_text")
     @patch("pathlib.Path.exists")
     def test_apply_github_fix_success(self, mock_exists, mock_write, mock_read, mock_test, mock_pr, mock_push, mock_commit, mock_checkout, mock_curr, mock_branch, mock_llm):
-        mock_llm.return_value = json.dumps({
+        mock_llm.return_value = (json.dumps({
             "explanation": "fixed bug",
             "changes": [{"file_path": "src/a.py", "new_content": "new code"}]
-        })
+        }), None)
         mock_exists.return_value = True
         mock_read.return_value = "old code"
         mock_test.return_value = MagicMock(failed=0, errors=0)
@@ -101,10 +101,10 @@ class TestGitHubImprovement:
     @patch("pathlib.Path.write_text")
     @patch("pathlib.Path.exists")
     def test_apply_github_fix_test_failure(self, mock_exists, mock_write, mock_branch, mock_curr, mock_del, mock_checkout, mock_test, mock_llm):
-        mock_llm.return_value = json.dumps({
+        mock_llm.return_value = (json.dumps({
             "explanation": "bad fix",
             "changes": [{"file_path": "src/a.py", "new_content": "bad code"}]
-        })
+        }), None)
         mock_test.return_value = MagicMock(failed=1, errors=0)
         mock_curr.return_value = "main"
         

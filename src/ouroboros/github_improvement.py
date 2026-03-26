@@ -83,7 +83,7 @@ Codebase context (relevant files):
 {codebase_context}
 """
 
-    response = llm.chat_completion(
+    content, _ = llm.chat_completion(
         client,
         system_prompt=prompts.load_github_issue_analysis_prompt(),
         user_prompt=user_prompt,
@@ -92,7 +92,7 @@ Codebase context (relevant files):
     )
 
     try:
-        return json.loads(response)
+        return json.loads(content)
     except json.JSONDecodeError:
         log.error("Failed to parse issue analysis JSON")
         return {}
@@ -125,7 +125,7 @@ Current file contents:
 Please provide the fix as a JSON object with 'explanation', 'changes' (list of {{file_path, new_content}}), and optionally 'new_tests'.
 """
 
-    response = llm.chat_completion(
+    content, _ = llm.chat_completion(
         client,
         system_prompt=prompts.load_github_issue_fix_prompt(),
         user_prompt=user_prompt,
@@ -134,7 +134,7 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
     )
 
     try:
-        fix_data = json.loads(response)
+        fix_data = json.loads(content)
     except json.JSONDecodeError:
         return IssueResolutionResult(issue.id, "failed", error="Failed to parse fix JSON")
 

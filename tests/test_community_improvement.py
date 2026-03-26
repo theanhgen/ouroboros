@@ -86,7 +86,7 @@ def test_step_identify_creates_state(
     mock_summary.return_value = "codebase summary"
     mock_tests.return_value = RunnerOutcome(passed=5, failed=1, errors=0, returncode=1)
     mock_history.return_value = []
-    mock_llm.analyze_codebase.return_value = {
+    mock_llm.identify_improvements.return_value = {
         "task_type": "fix_test",
         "description": "Fix test_foo",
         "target_files": ["tests/test_foo.py"],
@@ -279,7 +279,7 @@ def test_step_implement_creates_pr_with_credit(
 ):
     mock_root.return_value = Path("/fake/repo")
     mock_read.return_value = "original content"
-    mock_llm.plan_code_change.return_value = "Step 1: fix assertion"
+    mock_llm.plan_code_change.return_value = ("Step 1: fix assertion", None)
     mock_llm.generate_code_from_suggestion.return_value = [
         {"file_path": "tests/test_foo.py", "new_content": "fixed content", "description": "fixed assertion"},
     ]
@@ -333,7 +333,7 @@ def test_step_implement_creates_pr_with_credit(
 def test_step_implement_reverts_on_regression(mock_llm, mock_validate, mock_read, mock_root):
     mock_root.return_value = Path("/fake/repo")
     mock_read.return_value = "original"
-    mock_llm.plan_code_change.return_value = "Step 1: try fix"
+    mock_llm.plan_code_change.return_value = ("Step 1: try fix", None)
     mock_llm.generate_code_from_suggestion.return_value = [
         {"file_path": "tests/test_foo.py", "new_content": "bad fix", "description": "broken"},
     ]

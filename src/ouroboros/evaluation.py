@@ -42,7 +42,7 @@ def _history_path(repo_root: Optional[Path] = None) -> Path:
     return root / HISTORY_FILE
 
 
-def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = None) -> None:
+def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = None, model: str = "gpt-4o") -> None:
     """Append an improvement result to the history file and SQLite storage."""
     from .improvement import ImprovementResult  # avoid circular import
 
@@ -82,7 +82,7 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
         cycle_id = storage.record_cycle(CycleRecord(
             ts=record.timestamp,
             task_type=record.task_type,
-            model="gpt-4o",  # Default, should ideally be passed in
+            model=model,
             status=record.outcome,
             description=record.description,
         ))

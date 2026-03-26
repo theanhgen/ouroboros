@@ -1,5 +1,6 @@
 """Core self-improvement engine -- identify, plan, generate, validate, PR."""
 
+import datetime
 import logging
 import time
 import uuid
@@ -661,14 +662,50 @@ def run_improvement_cycle(
     from .system import get_system_summary
     from .memory import IndexManager
     system_ctx = f"### System Environment\n{get_system_summary()}\n"
-    
+
     # Inject semantic memory
     memory = IndexManager(client)
     memory_ctx = memory.retrieve_relevant_context(codebase_summary[:1000])
-    
+
     additional_context = _assemble_feed_context(client, state)
     final_ctx = f"{system_ctx}\n{memory_ctx}\n{additional_context}" if additional_context else f"{system_ctx}\n{memory_ctx}"
-    
+
+    # Failure-driven task prioritization
+    if test_results.failed > 0 or test_results.errors > 0:
+        n_failing = test_results.failed + test_results.errors
+        failure_lines = ""
+        if test_results.failure_details:
+            failure_lines = "\n".join(
+                f"  - {f.file}::{f.test_name}: {f.message}"
+                for f in test_results.failure_details
+            )
+        priority_ctx = (
+            f"PRIORITY: There are currently {n_failing} failing tests. "
+            f"Prioritize fixing them before any other task type.\n"
+            f"Failing tests:\n{failure_lines}"
+        )
+        final_ctx = f"{priority_ctx}\n\n{final_ctx}"
+
+    # Inject high-priority backlog item if present
+    try:
+        from . import backlog as _backlog
+        pending = _backlog.get_pending(repo_root)
+        if pending and pending[0].get("priority", 0) >= 8:
+            top = pending[0]
+            backlog_ctx = (
+                f"HIGH-PRIORITY BACKLOG ITEM: [{top.get('task_type', '?')}] "
+                f"{top.get('description', '')} (priority={top.get('priority', '?')})"
+            )
+            final_ctx = f"{backlog_ctx}\n\n{final_ctx}"
+    except Exception:
+        log.debug("Backlog context injection failed")
+
+    # Inject recent learning history
+    recent_learnings = _read_recent_learnings(repo_root)
+    if recent_learnings:
+        learnings_ctx = f"Recent improvement history (last 20):\n{recent_learnings}"
+        final_ctx = f"{final_ctx}\n\n{learnings_ctx}"
+
     task_data = llm.identify_improvements(
         client, codebase_summary, test_results.summary(), history_summary,
         model=model, additional_context=final_ctx
@@ -679,7 +716,7 @@ def run_improvement_cycle(
         _fire("cycle_end", "No improvements identified")
         return None
 
-    # Handle Tool Calls (simplified ReAct: 1 turn)
+    # Handle Tool Calls -- multi-step ReAct loop (up to 5 rounds)
     if "_tool_calls" in task_data:
         tool_calls = task_data["_tool_calls"]
         messages = [
@@ -687,27 +724,58 @@ def run_improvement_cycle(
             {"role": "assistant", "tool_calls": tool_calls}
         ]
         for tool_call in tool_calls:
-            result = tool_runner.execute(tool_call.function.name, json.loads(tool_call.function.arguments))
+            tool_result = tool_runner.execute(tool_call.function.name, json.loads(tool_call.function.arguments))
             messages.append({
                 "tool_call_id": tool_call.id,
                 "role": "tool",
                 "name": tool_call.function.name,
-                "content": result,
+                "content": tool_result,
             })
-        
-        # Second call to get final task selection
-        resp = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            response_format={"type": "json_object"}
-        )
-        task_data = json.loads(resp.choices[0].message.content)
-        if resp.usage:
-            task_data["_usage"] = {
-                "prompt_tokens": resp.usage.prompt_tokens,
-                "completion_tokens": resp.usage.completion_tokens,
-                "total_tokens": resp.usage.total_tokens,
-            }
+
+        _MAX_REACT_ROUNDS = 5
+        for react_round in range(1, _MAX_REACT_ROUNDS + 1):
+            log.info("[improve] ReAct round %d/%d", react_round, _MAX_REACT_ROUNDS)
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                response_format={"type": "json_object"}
+            )
+            msg = resp.choices[0].message
+            # If no tool calls, treat as final answer
+            if not msg.tool_calls:
+                task_data = json.loads(msg.content)
+                if resp.usage:
+                    task_data["_usage"] = {
+                        "prompt_tokens": resp.usage.prompt_tokens,
+                        "completion_tokens": resp.usage.completion_tokens,
+                        "total_tokens": resp.usage.total_tokens,
+                    }
+                break
+            # More tool calls -- execute and feed results back
+            messages.append({"role": "assistant", "tool_calls": msg.tool_calls})
+            for tool_call in msg.tool_calls:
+                tool_result = tool_runner.execute(tool_call.function.name, json.loads(tool_call.function.arguments))
+                messages.append({
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": tool_call.function.name,
+                    "content": tool_result,
+                })
+            if react_round == _MAX_REACT_ROUNDS:
+                log.info("[improve] ReAct loop hit max rounds (%d), forcing final answer", _MAX_REACT_ROUNDS)
+                # Force a final answer without tools
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    response_format={"type": "json_object"}
+                )
+                task_data = json.loads(resp.choices[0].message.content)
+                if resp.usage:
+                    task_data["_usage"] = {
+                        "prompt_tokens": resp.usage.prompt_tokens,
+                        "completion_tokens": resp.usage.completion_tokens,
+                        "total_tokens": resp.usage.total_tokens,
+                    }
 
     task = ImprovementTask.from_llm_response(task_data)
     log.info("[improve] Identified: [%s] %s", task.task_type, task.description)
@@ -746,7 +814,8 @@ def run_improvement_cycle(
         improvement_result.status = "failed"
         improvement_result.details = "Failed to generate a concrete implementation plan"
         _fire("failed", f"Failed to plan: {task.description[:100]}")
-        record_improvement(improvement_result, repo_root)
+        record_improvement(improvement_result, repo_root, model=model)
+        _append_learning(repo_root, f"{_today()} | {task.task_type} | {task.description[:60]} | failed | no plan generated")
         return improvement_result
 
     # Step 5: Generate code changes
@@ -761,7 +830,8 @@ def run_improvement_cycle(
         log.warning("[improve] Failed to generate code changes")
         improvement_result.status = "failed"
         _fire("failed", f"Failed to generate code: {task.description[:100]}")
-        record_improvement(improvement_result, repo_root)
+        record_improvement(improvement_result, repo_root, model=model)
+        _append_learning(repo_root, f"{_today()} | {task.task_type} | {task.description[:60]} | failed | no code generated")
         return improvement_result
 
     improvement_result.changes = changes
@@ -790,7 +860,8 @@ def run_improvement_cycle(
                 _fire("review_failed", f"Reviewer rejected changes: {feedback[:100]}")
                 improvement_result.status = "failed"
                 improvement_result.details = f"Reviewer rejection: {feedback}"
-                record_improvement(improvement_result, repo_root)
+                record_improvement(improvement_result, repo_root, model=model)
+                _append_learning(repo_root, f"{_today()} | {task.task_type} | {task.description[:60]} | failed | reviewer rejected")
                 return improvement_result
             else:
                 log.info("[improve] Reviewer approved changes.")
@@ -818,7 +889,14 @@ def run_improvement_cycle(
 
     if improvement_result.status != "success":
         log.warning("[improve] Improvement failed: %s", improvement_result.status)
-        record_improvement(improvement_result, repo_root)
+        record_improvement(improvement_result, repo_root, model=model)
+        before_str = improvement_result.test_before.summary() if improvement_result.test_before else "?"
+        after_str = improvement_result.test_after.summary() if improvement_result.test_after else "?"
+        reason = improvement_result.details[:80] if improvement_result.details else improvement_result.status
+        _append_learning(
+            repo_root,
+            f"{_today()} | {task.task_type} | {task.description[:60]} | {improvement_result.status} | {reason}",
+        )
         return improvement_result
 
     # Step 7: Create PR
@@ -860,7 +938,25 @@ def run_improvement_cycle(
     finally:
         git_ops.checkout_branch(repo_root, original_branch)
 
-    record_improvement(improvement_result, repo_root)
+    record_improvement(improvement_result, repo_root, model=model)
+
+    # Append to learnings pattern library
+    try:
+        before_passed = improvement_result.test_before.passed if improvement_result.test_before else "?"
+        after_passed = improvement_result.test_after.passed if improvement_result.test_after else "?"
+        if improvement_result.status == "success":
+            _append_learning(
+                repo_root,
+                f"{_today()} | {task.task_type} | {task.description[:60]} | success | tests: {before_passed} -> {after_passed}",
+            )
+        else:
+            reason = improvement_result.details[:80] if improvement_result.details else improvement_result.status
+            _append_learning(
+                repo_root,
+                f"{_today()} | {task.task_type} | {task.description[:60]} | {improvement_result.status} | {reason}",
+            )
+    except Exception:
+        log.debug("Failed to append learning entry")
 
     # Update Memory
     try:
@@ -876,6 +972,38 @@ def run_improvement_cycle(
 
     _fire("cycle_end", f"Cycle complete: {improvement_result.status}")
     return improvement_result
+
+
+def _today() -> str:
+    """Return today's date as YYYY-MM-DD."""
+    return datetime.date.today().isoformat()
+
+
+def _append_learning(repo_root: Path, entry: str) -> None:
+    """Append a one-line learning entry to config/learnings.md, capped at 100 lines."""
+    learnings_path = repo_root / "config" / "learnings.md"
+    learnings_path.parent.mkdir(parents=True, exist_ok=True)
+
+    existing_lines: List[str] = []
+    if learnings_path.exists():
+        existing_lines = learnings_path.read_text(encoding="utf-8").splitlines()
+
+    existing_lines.append(entry)
+
+    # Cap at 100 lines (trim oldest from top)
+    if len(existing_lines) > 100:
+        existing_lines = existing_lines[-100:]
+
+    learnings_path.write_text("\n".join(existing_lines) + "\n", encoding="utf-8")
+
+
+def _read_recent_learnings(repo_root: Path, n: int = 20) -> str:
+    """Read the last n lines from config/learnings.md. Returns empty string if file absent."""
+    learnings_path = repo_root / "config" / "learnings.md"
+    if not learnings_path.exists():
+        return ""
+    lines = learnings_path.read_text(encoding="utf-8").splitlines()
+    return "\n".join(lines[-n:]) if lines else ""
 
 
 def _build_pr_body(
