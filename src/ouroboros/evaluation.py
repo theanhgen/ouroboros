@@ -6,13 +6,22 @@ import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from . import git_ops
 from .codebase import get_repo_root
 from .storage import OuroborosStorage, CycleRecord, MetricRecord
 
 log = logging.getLogger(__name__)
+
+# Approximate pricing per 1M tokens (input, output).
+MODEL_PRICING: Dict[str, Tuple[float, float]] = {
+    "gpt-4o": (2.50, 10.00),
+    "gpt-4o-mini": (0.15, 0.60),
+    "gpt-4-turbo": (10.00, 30.00),
+    "gpt-3.5-turbo": (0.50, 1.50),
+}
+_DEFAULT_PRICING = (2.50, 10.00)
 
 HISTORY_FILE = "config/improvement_history.json"
 TERMINAL_OUTCOMES = frozenset({"closed", "failed", "merged", "reverted", "skipped"})
@@ -87,10 +96,10 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
             description=record.description,
         ))
         
-        # Simple cost estimation (example prices for gpt-4o)
         prompt_tokens = result.total_usage.get("prompt_tokens", 0)
         completion_tokens = result.total_usage.get("completion_tokens", 0)
-        cost = (prompt_tokens / 1_000_000 * 2.50) + (completion_tokens / 1_000_000 * 10.00)
+        input_rate, output_rate = MODEL_PRICING.get(model, _DEFAULT_PRICING)
+        cost = (prompt_tokens / 1_000_000 * input_rate) + (completion_tokens / 1_000_000 * output_rate)
         
         storage.record_metrics(MetricRecord(
             cycle_id=cycle_id,

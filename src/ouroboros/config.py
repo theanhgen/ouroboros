@@ -28,7 +28,7 @@ class SafetyConfig:
     sandbox_image: str = "python:3.11-slim"
 
     # Multi-model review
-    reviewer_model: str = "claude-3-5-sonnet-20240620"
+    reviewer_model: str = "gpt-4o"
 
     # Self-improvement limits
     max_improvements_per_day: int = 3

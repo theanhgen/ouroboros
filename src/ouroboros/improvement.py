@@ -160,11 +160,14 @@ def identify_improvements(
                 test_summary += f"  {fail.traceback[:200]}\n"
 
     history_summary = summarize_history(history)
-    result = llm.identify_improvements(
+    result, err = llm.identify_improvements(
         client, codebase_summary, test_summary, history_summary,
         model=model, additional_context=additional_context,
     )
 
+    if err:
+        log.warning("[improve] LLM error during identification: %s", err)
+        return None
     if not result or result.get("task_type") == "none":
         return None
 
@@ -706,11 +709,15 @@ def run_improvement_cycle(
         learnings_ctx = f"Recent improvement history (last 20):\n{recent_learnings}"
         final_ctx = f"{final_ctx}\n\n{learnings_ctx}"
 
-    task_data = llm.identify_improvements(
+    task_data, id_err = llm.identify_improvements(
         client, codebase_summary, test_results.summary(), history_summary,
         model=model, additional_context=final_ctx
     )
-    
+
+    if id_err:
+        log.warning("[improve] LLM error during identification: %s", id_err)
+        _fire("failed", f"LLM error: {id_err}")
+        return None
     if not task_data:
         log.info("[improve] No improvements identified")
         _fire("cycle_end", "No improvements identified")
@@ -841,33 +848,28 @@ def run_improvement_cycle(
         log.info("[improve] Requesting peer review from %s...", config.reviewer_model)
         _fire("reviewing", f"Reviewing changes with {config.reviewer_model}")
         
-        anthropic_key = llm.load_anthropic_key()
-        if anthropic_key:
-            reviewer_client = llm.make_client(anthropic_key, provider="anthropic")
-            approved, feedback, rev_usage = llm.review_code_changes(
-                reviewer_client, 
-                {"description": task.description}, 
-                [{"file_path": c.file_path, "new_content": c.new_content, "description": c.description} for c in changes],
-                model=config.reviewer_model
-            )
-            
-            if rev_usage:
-                improvement_result.total_usage["prompt_tokens"] += rev_usage.get("prompt_tokens", 0)
-                improvement_result.total_usage["completion_tokens"] += rev_usage.get("completion_tokens", 0)
+        approved, feedback, rev_usage = llm.review_code_changes(
+            client,
+            {"description": task.description},
+            [{"file_path": c.file_path, "new_content": c.new_content, "description": c.description} for c in changes],
+            model=config.reviewer_model
+        )
 
-            if not approved:
-                log.warning("[improve] Reviewer REJECTED changes: %s", feedback)
-                _fire("review_failed", f"Reviewer rejected changes: {feedback[:100]}")
-                improvement_result.status = "failed"
-                improvement_result.details = f"Reviewer rejection: {feedback}"
-                record_improvement(improvement_result, repo_root, model=model)
-                _append_learning(repo_root, f"{_today()} | {task.task_type} | {task.description[:60]} | failed | reviewer rejected")
-                return improvement_result
-            else:
-                log.info("[improve] Reviewer approved changes.")
-                _fire("review_passed", "Peer review approved changes.")
+        if rev_usage:
+            improvement_result.total_usage["prompt_tokens"] += rev_usage.get("prompt_tokens", 0)
+            improvement_result.total_usage["completion_tokens"] += rev_usage.get("completion_tokens", 0)
+
+        if not approved:
+            log.warning("[improve] Reviewer REJECTED changes: %s", feedback)
+            _fire("review_failed", f"Reviewer rejected changes: {feedback[:100]}")
+            improvement_result.status = "failed"
+            improvement_result.details = f"Reviewer rejection: {feedback}"
+            record_improvement(improvement_result, repo_root, model=model)
+            _append_learning(repo_root, f"{_today()} | {task.task_type} | {task.description[:60]} | failed | reviewer rejected")
+            return improvement_result
         else:
-            log.warning("[improve] Anthropic key missing, skipping peer review.")
+            log.info("[improve] Reviewer approved changes.")
+            _fire("review_passed", "Peer review approved changes.")
 
     # Step 6: Validate (apply, test, revert if needed, retry on regression)
     log.info("[improve] Validating changes...")

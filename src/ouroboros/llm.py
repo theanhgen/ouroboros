@@ -123,8 +123,11 @@ def identify_improvements(
     history: str,
     model: str = "gpt-4o",
     additional_context: str = "",
-) -> Optional[dict]:
-    """Identify a single improvement task using tool-calling (if supported)."""
+) -> tuple[Optional[dict], Optional[str]]:
+    """Identify a single improvement task using tool-calling (if supported).
+
+    Returns (result_dict, error_string). On success error_string is None.
+    """
     system_prompt = (
         "You are an autonomous code quality agent. Your goal is to identify ONE concrete "
         "improvement for the Ouroboros codebase.\n\n"
@@ -149,18 +152,18 @@ def identify_improvements(
                 return {"_tool_calls": msg.tool_calls, "_usage": {
                     "prompt_tokens": resp.usage.prompt_tokens,
                     "completion_tokens": resp.usage.completion_tokens,
-                }}
-            
+                }}, None
+
             data = json.loads(msg.content)
             if resp.usage:
                 data["_usage"] = {
                     "prompt_tokens": resp.usage.prompt_tokens,
                     "completion_tokens": resp.usage.completion_tokens,
                 }
-            return data
-        except Exception:
+            return data, None
+        except Exception as e:
             log.exception("identify_improvements failed")
-            return None
+            return None, f"OpenAI API error: {e}"
     else:
         content, usage = chat_completion(client, system_prompt, user_prompt + "\nOutput JSON.", model)
         try:
@@ -168,9 +171,10 @@ def identify_improvements(
                 content = content[content.find("{"):content.rfind("}")+1]
             data = json.loads(content)
             if usage: data["_usage"] = usage
-            return data
-        except Exception:
-            return None
+            return data, None
+        except Exception as e:
+            log.warning("identify_improvements: failed to parse response: %s", e)
+            return None, f"Failed to parse LLM response: {e}"
 
 
 def plan_code_change(
@@ -224,7 +228,7 @@ def review_code_changes(
     client: Any,
     task: dict,
     changes: List[dict],
-    model: str = "claude-3-5-sonnet-20240620",
+    model: str = "gpt-4o",
 ) -> tuple[bool, str, Optional[dict]]:
     """Review proposed changes for logic errors, bugs, or security issues."""
     changes_text = "\n\n".join([
@@ -243,6 +247,7 @@ def review_code_changes(
         result = json.loads(content)
         return result.get("approved", False), result.get("feedback", ""), usage
     except Exception:
+        log.warning("review_code_changes: failed to parse reviewer response", exc_info=True)
         return False, "Reviewer failed to provide structured feedback.", usage
 
 
@@ -263,7 +268,9 @@ def generate_question_post(
             ]
         )
         return json.loads(resp.choices[0].message.content)
-    except Exception: return None
+    except Exception:
+        log.warning("generate_question_post failed", exc_info=True)
+        return None
 
 
 def analyze_code_suggestions(
@@ -284,7 +291,9 @@ def analyze_code_suggestions(
             ]
         )
         return json.loads(resp.choices[0].message.content)
-    except Exception: return None
+    except Exception:
+        log.warning("analyze_code_suggestions failed", exc_info=True)
+        return None
 
 
 def generate_code_from_suggestion(
@@ -305,7 +314,9 @@ def generate_code_from_suggestion(
             ]
         )
         return json.loads(resp.choices[0].message.content).get("changes", [])
-    except Exception: return None
+    except Exception:
+        log.warning("generate_code_from_suggestion failed", exc_info=True)
+        return None
 
 
 def analyze_comments_for_upgrades(
@@ -325,7 +336,9 @@ def analyze_comments_for_upgrades(
             ]
         )
         return json.loads(resp.choices[0].message.content)
-    except Exception: return None
+    except Exception:
+        log.warning("analyze_comments_for_upgrades failed", exc_info=True)
+        return None
 
 
 def mine_insight_for_codebase(
@@ -345,7 +358,9 @@ def mine_insight_for_codebase(
         )
         text = resp.choices[0].message.content
         return None if text and text.strip().upper() == "NONE" else text
-    except Exception: return None
+    except Exception:
+        log.warning("mine_insight_for_codebase failed", exc_info=True)
+        return None
 
 
 def extract_topic_signal(
@@ -365,7 +380,9 @@ def extract_topic_signal(
             ]
         )
         return resp.choices[0].message.content
-    except Exception: return None
+    except Exception:
+        log.warning("extract_topic_signal failed", exc_info=True)
+        return None
 
 
 def extract_insights_batch(
@@ -384,7 +401,9 @@ def extract_insights_batch(
         )
         data = json.loads(resp.choices[0].message.content)
         return data if isinstance(data, list) else data.get("insights", [])
-    except Exception: return None
+    except Exception:
+        log.warning("extract_insights_batch failed", exc_info=True)
+        return None
 
 
 def generate_kb_summary(
@@ -402,7 +421,9 @@ def generate_kb_summary(
             ]
         )
         return resp.choices[0].message.content
-    except Exception: return None
+    except Exception:
+        log.warning("generate_kb_summary failed", exc_info=True)
+        return None
 
 
 def pick_oddities(
@@ -420,7 +441,9 @@ def pick_oddities(
             ]
         )
         return resp.choices[0].message.content
-    except Exception: return None
+    except Exception:
+        log.warning("pick_oddities failed", exc_info=True)
+        return None
 
 
 def get_tools_definition():
@@ -442,11 +465,15 @@ def generate_comment(client: OpenAI, post_title: str, post_content: str, model: 
         resp = client.chat.completions.create(model=model, max_tokens=300, messages=[{"role": "system", "content": prompts.load_comment_system_prompt()}, {"role": "user", "content": user_msg}])
         text = resp.choices[0].message.content
         return None if text and text.strip().upper() == "SKIP" else text
-    except Exception: return None
+    except Exception:
+        log.warning("generate_comment failed", exc_info=True)
+        return None
 
 def answer_question(client: OpenAI, question: str, codebase_summary: str = "", model: str = "gpt-4o-mini") -> Optional[str]:
     user_content = f"## Codebase\n{codebase_summary}\n\n## Question\n{question}"
     try:
         resp = client.chat.completions.create(model=model, max_tokens=300, messages=[{"role": "system", "content": "You are a self-reflective agent."}, {"role": "user", "content": user_content}])
         return resp.choices[0].message.content
-    except Exception: return None
+    except Exception:
+        log.warning("answer_question failed", exc_info=True)
+        return None

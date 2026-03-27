@@ -86,12 +86,12 @@ def test_step_identify_creates_state(
     mock_summary.return_value = "codebase summary"
     mock_tests.return_value = RunnerOutcome(passed=5, failed=1, errors=0, returncode=1)
     mock_history.return_value = []
-    mock_llm.identify_improvements.return_value = {
+    mock_llm.identify_improvements.return_value = ({
         "task_type": "fix_test",
         "description": "Fix test_foo",
         "target_files": ["tests/test_foo.py"],
         "evidence": "AssertionError in test_foo",
-    }
+    }, None)
 
     state = _make_state()
     cfg = _make_cfg()

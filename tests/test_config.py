@@ -4,6 +4,7 @@ def test_safety_config_defaults():
     config = SafetyConfig()
     assert config.pr_only is True
     assert config.allow_self_modification is True
+    assert config.reviewer_model == "gpt-4o"
     assert "src/ouroboros/" in config.allowed_modification_paths
     assert "config.py" in config.forbidden_modification_paths
 

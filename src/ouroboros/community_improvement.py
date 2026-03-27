@@ -138,12 +138,15 @@ def _step_identify(
             log.info("[community] Dedup: avoiding repeated task_type '%s'", recent_types[0])
 
     # Ask LLM to identify a problem suitable for community input
-    task_data = llm.identify_improvements(
+    task_data, id_err = llm.identify_improvements(
         client, codebase_summary, test_text, history_summary,
         model=getattr(cfg, "improvement_model", "gpt-4o"),
         additional_context=additional_context,
     )
 
+    if id_err:
+        log.warning("[community] LLM error during identification: %s", id_err)
+        return "error"
     if not task_data or task_data.get("task_type") == "none":
         log.info("[community] No problems identified for community input")
         state["last_community_improvement_start"] = int(time.time())
