@@ -1,9 +1,12 @@
 # Failure Patterns
 
 What went wrong and what was learned. Auto-generated from improvement history.
-Last updated: 2026-03-14 22:52 UTC
+Last updated: 2026-03-27 09:33 UTC
 
-## fix_test (2 failures)
+## fix_test (8 failures)
 
-- **failed**: Investigate and resolve the issue causing all tests to fail and return no results.
-- **failed**: Resolve the AssertionErrors in test_load_runner_config_from_file and test_load_runner_config_missing_file by ensuring cfg.telegram_bot_token is None when expected, and handling missing configuration files appropriately.
+- **failed**: Resolve the failing tests in `tests/test_moltbook.py` by ensuring that when the configuration file lacks a telegram_bot_token, the value should be None, and improve handling for missing configuration files in `tests/test_policies.py`.
+- **failed**: Fix the failing tests in tests/test_moltbook.py related to the unexpected presence of a telegram_bot_token when the configuration file is expected to be missing or lack this token, and in tests/test_policies.py where the default SafetyConfig should be fixed to match expected values.
+- **failed**: Fix the failing test in tests/test_moltbook.py::test_load_runner_config_from_file by ensuring that cfg.telegram_bot_token is handled gracefully when not set, and tests/test_policies.py::test_config_defaults_are_safe to ensure correct default behavior for safety configurations.
+- **failed**: Fix the failing test `test_load_runner_config_from_file` in `tests/test_moltbook.py` by ensuring that the configuration loading function correctly handles the case when the file lacks a `telegram_bot_token`, and ensure that `None` is expected when it should be absent. Also, address the erroneous behavior in `test_load_runner_config_missing_file` to ensure it handles missing files adequately, either by returning a default configuration or raising a clear exception.
+- **failed**: Fix the failing tests in tests/test_moltbook.py by ensuring the configuration loading function correctly handles cases when the configuration file lacks a telegram_bot_token, and returns None. Also, improve the handling for missing configuration files by returning a default configuration or raising a clear exception.

@@ -6,7 +6,6 @@ import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from openai import OpenAI
-from anthropic import Anthropic
 
 from . import prompts
 
@@ -52,6 +51,7 @@ def load_anthropic_key() -> str:
 def make_client(api_key: str, provider: str = "openai") -> Any:
     """Create a reusable client instance."""
     if provider == "anthropic":
+        from anthropic import Anthropic
         return Anthropic(api_key=api_key)
     return OpenAI(api_key=api_key)
 

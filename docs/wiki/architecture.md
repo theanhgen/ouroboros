@@ -1,11 +1,11 @@
 # Architecture
 
 Auto-generated overview of the Ouroboros codebase.
-Last updated: 2026-03-14 22:52 UTC
+Last updated: 2026-03-27 09:33 UTC
 
 ## Modules
 
-### `backlog.py` (108 lines)
+### `backlog.py` (168 lines)
 - `_backlog_path(repo_root)`
 - `load_backlog(repo_root)`
 - `save_backlog(repo_root, items)`
@@ -14,8 +14,9 @@ Last updated: 2026-03-14 22:52 UTC
 - `mark_failed(repo_root, item_id)`
 - `get_pending(repo_root)`
 - `format_backlog_for_llm(items)`
+- `organize_backlog(repo_root, client, model)`
 
-### `cli.py` (383 lines)
+### `cli.py` (430 lines)
 - `cmd_plan(_args)`
 - `cmd_propose(_args)`
 - `cmd_apply(_args)`
@@ -30,10 +31,13 @@ Last updated: 2026-03-14 22:52 UTC
 - `cmd_improve_community(args)`
 - `cmd_improve_github(args)`
 - `cmd_improve_identify(args)`
+- `cmd_backlog_list(_args)`
+- `cmd_backlog_clean(_args)`
 - `build_parser()`
 - `main()`
 
-### `codebase.py` (146 lines)
+### `codebase.py` (230 lines)
+- `extract_code_metadata(content, path)`
 - `get_repo_root()`
 - `list_source_files(repo_root)`
 - `get_test_files(repo_root)`
@@ -52,11 +56,11 @@ Last updated: 2026-03-14 22:52 UTC
 - `_build_community_pr_body(task, changes, result, ci)`
 - `clear_community_improvement(state)`
 
-### `config.py` (32 lines)
+### `config.py` (50 lines)
 
-### `evaluation.py` (155 lines)
+### `evaluation.py` (184 lines)
 - `_history_path(repo_root)`
-- `record_improvement(result, repo_root)`
+- `record_improvement(result, repo_root, model)`
 - `load_history(repo_root)`
 - `check_pr_outcomes(repo_root)`
 - `improvements_today(repo_root)`
@@ -92,7 +96,7 @@ Last updated: 2026-03-14 22:52 UTC
 - `apply_github_fix(client, issue, analysis, repo_root, model, dry_run)`
 - `run_github_improvement_cycle(client, repo_root, model, dry_run, enable_auto_merge)`
 
-### `improvement.py` (852 lines)
+### `improvement.py` (1043 lines)
 - `_is_path_allowed(file_path, config)`
 - `_validate_changes(changes, config)`
 - `_count_changed_lines(original, new)`
@@ -108,8 +112,13 @@ Last updated: 2026-03-14 22:52 UTC
 - `_build_success_rate_context(history)`
 - `_assemble_feed_context(client, state)`
 - `run_improvement_cycle(client, state, config, model, dry_run, on_event)`
+- `_today()`
+- `_append_learning(repo_root, entry)`
+- `_read_recent_learnings(repo_root, n)`
 - `_build_pr_body(task, changes, result)`
 - `from_llm_response(cls, data)`
+- `__init__(self, repo_root)`
+- `execute(self, name, args)`
 - `_fire(event_type, message, data)`
 
 ### `improvement_runner.py` (336 lines)
@@ -136,14 +145,16 @@ Last updated: 2026-03-14 22:52 UTC
 - `add_entries(entries, path)`
 - `get_summary(client, kb, force_refresh, path)`
 
-### `llm.py` (710 lines)
+### `llm.py` (452 lines)
 - `load_openai_key()`
-- `make_client(api_key)`
-- `generate_comment(client, post_title, post_content, model, codebase_context)`
-- `answer_question(client, question, codebase_summary, model)`
-- `analyze_codebase(client, summary, test_results, history, model, additional_context)`
+- `load_anthropic_key()`
+- `make_client(api_key, provider)`
+- `_get_provider(model)`
+- `chat_completion(client, system_prompt, user_prompt, model, response_format, max_tokens)`
+- `identify_improvements(client, summary, test_results, history, model, additional_context)`
 - `plan_code_change(client, task, code, model)`
 - `generate_code(client, plan, files, constraints, model)`
+- `review_code_changes(client, task, changes, model)`
 - `generate_question_post(client, task_data, code_context, test_failures, model)`
 - `analyze_code_suggestions(client, problem, code_context, comments, model)`
 - `generate_code_from_suggestion(client, suggestion, code_context, plan, constraints, model)`
@@ -153,6 +164,17 @@ Last updated: 2026-03-14 22:52 UTC
 - `extract_insights_batch(client, posts, model)`
 - `generate_kb_summary(client, entries, model)`
 - `pick_oddities(client, posts, model)`
+- `get_tools_definition()`
+- `generate_comment(client, post_title, post_content, model, codebase_context)`
+- `answer_question(client, question, codebase_summary, model)`
+
+### `memory.py` (77 lines)
+- `cosine_similarity(v1, v2)`
+- `__init__(self, client, storage)`
+- `get_embedding(self, text, model)`
+- `index_file(self, file_path, content)`
+- `index_failure(self, task_id, description, failure_msg)`
+- `retrieve_relevant_context(self, query, limit)`
 
 ### `metrics.py` (133 lines)
 - `_metrics_path(repo_root)`
@@ -161,7 +183,7 @@ Last updated: 2026-03-14 22:52 UTC
 - `record_snapshot(repo_root, improvement_result)`
 - `get_summary(repo_root)`
 
-### `moltbook.py` (1271 lines)
+### `moltbook.py` (1267 lines)
 - `_handle_shutdown(signum, _frame)`
 - `_read_json_file(path)`
 - `load_credentials()`
@@ -186,6 +208,7 @@ Last updated: 2026-03-14 22:52 UTC
 - `_trim_comment_history(state, limit)`
 - `_trim_feed_suggestions(state, limit)`
 - `_trim_engagement_scores(state, limit)`
+- `_trim_state(state)`
 - `_check_engagement(cfg, creds, state, openai_client)`
 - `_interruptible_sleep(seconds)`
 - `_auto_git_push(state, dry_run)`
@@ -198,7 +221,8 @@ Last updated: 2026-03-14 22:52 UTC
 - `validate_modification_scope(file_paths, config)`
 - `validate_change_size(num_files, num_lines, config)`
 
-### `prompts.py` (275 lines)
+### `prompts.py` (306 lines)
+- `_prompts_path()`
 - `load_comment_system_prompt()`
 - `load_comment_analysis_prompt()`
 - `load_question_post_prompt()`
@@ -211,15 +235,12 @@ Last updated: 2026-03-14 22:52 UTC
 - `load_github_issue_fix_prompt()`
 - `load_suggestion_implementation_prompt()`
 
-### `self_improve.py` (204 lines)
-- `_repo_root()`
-- `_safe_git_env()`
+### `self_improve.py` (162 lines)
 - `_git_clean(repo)`
 - `_load_prompt_context(state)`
 - `_build_prompt_update_request(current_prompt, context)`
 - `_parse_prompt_update(payload)`
 - `_write_prompt(new_prompt)`
-- `_append_log(repo, rationale, new_prompt)`
 - `_git_commit_and_pr(repo, message)`
 - `run_self_improve(client, state, model)`
 
@@ -235,8 +256,24 @@ Last updated: 2026-03-14 22:52 UTC
 - `choose_question(state, questions)`
 - `record_question(state, question, answer)`
 
-### `test_runner.py` (142 lines)
+### `storage.py` (124 lines)
+- `__init__(self, db_path)`
+- `_init_db(self)`
+- `record_cycle(self, record)`
+- `record_metrics(self, metrics)`
+- `get_recent_cycles(self, limit)`
+- `get_total_cost(self)`
+- `add_embedding(self, content_type, ref_id, content, embedding)`
+- `search_embeddings(self, content_type, limit)`
+
+### `system.py` (95 lines)
+- `get_system_stats()`
+- `get_service_logs(lines)`
+- `get_system_summary()`
+
+### `test_runner.py` (168 lines)
 - `_parse_pytest_output(output)`
+- `_run_tests_sandboxed(repo_root, config, timeout)`
 - `run_tests(repo_root, timeout)`
 - `success(self)`
 - `total(self)`

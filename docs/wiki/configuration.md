@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Last updated: 2026-03-14 22:52 UTC
+Last updated: 2026-03-27 09:33 UTC
 
 ## Safety Config (`src/ouroboros/config.py`)
 
@@ -9,10 +9,13 @@ Last updated: 2026-03-14 22:52 UTC
 | `pr_only` | `True` | Only create PRs, never commit to default branch directly |
 | `allow_network` | `True` | Allow network access during improvement |
 | `allow_write_default_branch` | `False` | Allow writing directly to main/master |
-| `require_human_approval` | `True` | Require human review before merge |
+| `require_human_approval` | `False` | Require human review before merge |
 | `allow_self_modification` | `True` | Allow modifying own runtime config |
-| `enable_auto_merge` | `False` | Auto-merge PRs when CI checks pass |
+| `enable_auto_merge` | `True` | Auto-merge PRs when CI checks pass |
 | `max_retry_on_failure` | `1` | Number of root-cause-analysis retries on test regression |
+| `sandbox_enabled` | `False` |  |
+| `sandbox_image` | `python:3.11-slim` |  |
+| `reviewer_model` | `claude-3-5-sonnet-20240620` |  |
 | `max_improvements_per_day` | `3` | Rate limit on daily improvement attempts |
 | `max_changed_files_per_pr` | `3` | Max files per autonomous PR |
 | `max_lines_changed_per_pr` | `200` | Max lines changed per autonomous PR |
