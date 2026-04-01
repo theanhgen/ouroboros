@@ -1,7 +1,7 @@
 # Architecture
 
 Auto-generated overview of the Ouroboros codebase.
-Last updated: 2026-03-27 09:33 UTC
+Last updated: 2026-03-31 14:11 UTC
 
 ## Modules
 
@@ -46,7 +46,7 @@ Last updated: 2026-03-27 09:33 UTC
 - `get_function_signatures(path)`
 - `get_codebase_summary(repo_root)`
 
-### `community_improvement.py` (599 lines)
+### `community_improvement.py` (602 lines)
 - `step_community_improvement(client, state, creds, cfg, safety_config)`
 - `_step_identify(client, state, cfg, safety_config)`
 - `_step_post(client, state, creds, cfg)`
@@ -58,7 +58,7 @@ Last updated: 2026-03-27 09:33 UTC
 
 ### `config.py` (50 lines)
 
-### `evaluation.py` (184 lines)
+### `evaluation.py` (193 lines)
 - `_history_path(repo_root)`
 - `record_improvement(result, repo_root, model)`
 - `load_history(repo_root)`
@@ -96,7 +96,7 @@ Last updated: 2026-03-27 09:33 UTC
 - `apply_github_fix(client, issue, analysis, repo_root, model, dry_run)`
 - `run_github_improvement_cycle(client, repo_root, model, dry_run, enable_auto_merge)`
 
-### `improvement.py` (1043 lines)
+### `improvement.py` (1045 lines)
 - `_is_path_allowed(file_path, config)`
 - `_validate_changes(changes, config)`
 - `_count_changed_lines(original, new)`
@@ -145,7 +145,7 @@ Last updated: 2026-03-27 09:33 UTC
 - `add_entries(entries, path)`
 - `get_summary(client, kb, force_refresh, path)`
 
-### `llm.py` (452 lines)
+### `llm.py` (479 lines)
 - `load_openai_key()`
 - `load_anthropic_key()`
 - `make_client(api_key, provider)`

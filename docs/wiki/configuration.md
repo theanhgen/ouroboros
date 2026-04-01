@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Last updated: 2026-03-27 09:33 UTC
+Last updated: 2026-03-31 14:11 UTC
 
 ## Safety Config (`src/ouroboros/config.py`)
 
@@ -15,7 +15,7 @@ Last updated: 2026-03-27 09:33 UTC
 | `max_retry_on_failure` | `1` | Number of root-cause-analysis retries on test regression |
 | `sandbox_enabled` | `False` |  |
 | `sandbox_image` | `python:3.11-slim` |  |
-| `reviewer_model` | `claude-3-5-sonnet-20240620` |  |
+| `reviewer_model` | `gpt-4o` |  |
 | `max_improvements_per_day` | `3` | Rate limit on daily improvement attempts |
 | `max_changed_files_per_pr` | `3` | Max files per autonomous PR |
 | `max_lines_changed_per_pr` | `200` | Max lines changed per autonomous PR |

@@ -1,7 +1,7 @@
 # Failure Patterns
 
 What went wrong and what was learned. Auto-generated from improvement history.
-Last updated: 2026-03-27 09:33 UTC
+Last updated: 2026-03-31 14:11 UTC
 
 ## fix_test (8 failures)
 
@@ -10,3 +10,8 @@ Last updated: 2026-03-27 09:33 UTC
 - **failed**: Fix the failing test in tests/test_moltbook.py::test_load_runner_config_from_file by ensuring that cfg.telegram_bot_token is handled gracefully when not set, and tests/test_policies.py::test_config_defaults_are_safe to ensure correct default behavior for safety configurations.
 - **failed**: Fix the failing test `test_load_runner_config_from_file` in `tests/test_moltbook.py` by ensuring that the configuration loading function correctly handles the case when the file lacks a `telegram_bot_token`, and ensure that `None` is expected when it should be absent. Also, address the erroneous behavior in `test_load_runner_config_missing_file` to ensure it handles missing files adequately, either by returning a default configuration or raising a clear exception.
 - **failed**: Fix the failing tests in tests/test_moltbook.py by ensuring the configuration loading function correctly handles cases when the configuration file lacks a telegram_bot_token, and returns None. Also, improve the handling for missing configuration files by returning a default configuration or raising a clear exception.
+
+## fix_bug (1 failures)
+
+- **failed**: 
+  - Feedback: Reviewer rejection: While the implementation focuses on preventing transactions with negative amounts, it fails to address several critical security and logic concerns.
