@@ -1,7 +1,7 @@
 # Architecture
 
 Auto-generated overview of the Ouroboros codebase.
-Last updated: 2026-03-31 14:11 UTC
+Last updated: 2026-04-01 14:19 UTC
 
 ## Modules
 
@@ -56,7 +56,7 @@ Last updated: 2026-03-31 14:11 UTC
 - `_build_community_pr_body(task, changes, result, ci)`
 - `clear_community_improvement(state)`
 
-### `config.py` (50 lines)
+### `config.py` (51 lines)
 
 ### `evaluation.py` (193 lines)
 - `_history_path(repo_root)`
@@ -68,15 +68,17 @@ Last updated: 2026-03-31 14:11 UTC
 - `to_dict(self)`
 - `from_dict(cls, data)`
 
-### `git_ops.py` (296 lines)
+### `git_ops.py` (351 lines)
 - `_safe_git_env()`
 - `_git(repo)`
 - `is_clean(repo)`
+- `commit_auto_state(repo)`
 - `current_branch(repo)`
 - `create_branch(repo, name)`
 - `checkout_branch(repo, name)`
 - `checkout_main(repo)`
 - `delete_branch(repo, name)`
+- `delete_remote_branch(repo, branch)`
 - `commit_changes(repo, message, files)`
 - `pull_latest(repo)`
 - `push_branch(repo, branch)`
@@ -96,7 +98,7 @@ Last updated: 2026-03-31 14:11 UTC
 - `apply_github_fix(client, issue, analysis, repo_root, model, dry_run)`
 - `run_github_improvement_cycle(client, repo_root, model, dry_run, enable_auto_merge)`
 
-### `improvement.py` (1045 lines)
+### `improvement.py` (1074 lines)
 - `_is_path_allowed(file_path, config)`
 - `_validate_changes(changes, config)`
 - `_count_changed_lines(original, new)`
@@ -121,7 +123,7 @@ Last updated: 2026-03-31 14:11 UTC
 - `execute(self, name, args)`
 - `_fire(event_type, message, data)`
 
-### `improvement_runner.py` (336 lines)
+### `improvement_runner.py` (384 lines)
 - `_send_notification(cfg, message)`
 - `_scheduler_state_path()`
 - `load_scheduler_state()`
@@ -235,7 +237,7 @@ Last updated: 2026-03-31 14:11 UTC
 - `load_github_issue_fix_prompt()`
 - `load_suggestion_implementation_prompt()`
 
-### `self_improve.py` (162 lines)
+### `self_improve.py` (166 lines)
 - `_git_clean(repo)`
 - `_load_prompt_context(state)`
 - `_build_prompt_update_request(current_prompt, context)`
@@ -256,13 +258,14 @@ Last updated: 2026-03-31 14:11 UTC
 - `choose_question(state, questions)`
 - `record_question(state, question, answer)`
 
-### `storage.py` (124 lines)
+### `storage.py` (136 lines)
 - `__init__(self, db_path)`
 - `_init_db(self)`
 - `record_cycle(self, record)`
 - `record_metrics(self, metrics)`
 - `get_recent_cycles(self, limit)`
 - `get_total_cost(self)`
+- `get_monthly_cost(self)`
 - `add_embedding(self, content_type, ref_id, content, embedding)`
 - `search_embeddings(self, content_type, limit)`
 
