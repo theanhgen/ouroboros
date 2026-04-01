@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ouroboros.git_ops import (
     _safe_git_env,
+    commit_auto_state,
     create_issue,
     find_open_issue_by_marker,
     make_branch_name,
@@ -58,6 +59,37 @@ def test_is_not_clean(mock_git):
 def test_current_branch(mock_git):
     mock_git.return_value = MagicMock(stdout="main\n")
     assert current_branch(Path("/tmp/repo")) == "main"
+
+
+@patch("ouroboros.git_ops._git")
+def test_commit_auto_state_nothing_dirty(mock_git):
+    mock_git.return_value = MagicMock(stdout="")
+    assert commit_auto_state(Path("/tmp/repo")) is False
+
+
+@patch("ouroboros.git_ops.current_branch", return_value="main")
+@patch("ouroboros.git_ops._git")
+def test_commit_auto_state_commits_state_files(mock_git, mock_branch):
+    # First call: status --porcelain returns dirty state files
+    # Second call: git add
+    # Third call: diff --cached returns staged files
+    # Fourth call: git commit
+    # Fifth call: git push
+    mock_git.side_effect = [
+        MagicMock(stdout=" M config/state.json\n M config/improvement_history.json\n"),
+        MagicMock(),  # git add
+        MagicMock(stdout="config/state.json\nconfig/improvement_history.json\n"),  # diff --cached
+        MagicMock(),  # git commit
+        MagicMock(),  # git push
+    ]
+    assert commit_auto_state(Path("/tmp/repo")) is True
+
+
+@patch("ouroboros.git_ops._git")
+def test_commit_auto_state_ignores_non_state_files(mock_git):
+    # Only non-state files are dirty -- should not commit
+    mock_git.return_value = MagicMock(stdout=" M src/ouroboros/config.py\n")
+    assert commit_auto_state(Path("/tmp/repo")) is False
 
 
 @patch("subprocess.run")

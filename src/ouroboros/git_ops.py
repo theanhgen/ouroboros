@@ -40,6 +40,48 @@ def is_clean(repo: Path) -> bool:
     return result.stdout.strip() == ""
 
 
+# Files that the main loop modifies during normal operation.
+_AUTO_STATE_FILES = [
+    "config/state.json",
+    "config/improvement_history.json",
+    "config/self_improvement_state.json",
+    "config/learnings.md",
+    "config/metrics.json",
+    "docs/wiki/",
+]
+
+
+def commit_auto_state(repo: Path) -> bool:
+    """Commit auto-generated state files so the worktree stays clean.
+
+    Returns True if a commit was created, False if there was nothing to commit.
+    """
+    porcelain = _git(repo, "status", "--porcelain", check=False).stdout
+    if not porcelain.strip():
+        return False
+
+    to_add: list[str] = []
+    for line in porcelain.splitlines():
+        # porcelain format: XY <path>  or  XY <orig> -> <path>
+        path = line[3:].split(" -> ")[-1]
+        if any(path.startswith(prefix) or path == prefix.rstrip("/") for prefix in _AUTO_STATE_FILES):
+            to_add.append(path)
+
+    if not to_add:
+        return False
+
+    _git(repo, "add", *to_add)
+    # Only commit if staging actually produced changes
+    staged = _git(repo, "diff", "--cached", "--name-only", check=False).stdout.strip()
+    if not staged:
+        return False
+
+    _git(repo, "commit", "-m", "chore: auto-commit state files before improvement cycle")
+    _git(repo, "push", "origin", current_branch(repo), timeout=60)
+    log.info("Auto-committed state files: %s", ", ".join(to_add))
+    return True
+
+
 def current_branch(repo: Path) -> str:
     """Return the name of the current branch."""
     result = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")

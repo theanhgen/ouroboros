@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from . import prompts
+from . import git_ops, prompts
 from .codebase import get_repo_root
 
 log = logging.getLogger(__name__)
@@ -122,6 +122,10 @@ def _git_commit_and_pr(repo: Path, message: str) -> Optional[str]:
 
 def run_self_improve(client: Any, state: Dict[str, Any], model: str = "gpt-4o-mini") -> Optional[str]:
     repo = get_repo_root()
+    try:
+        git_ops.commit_auto_state(repo)
+    except Exception:
+        log.warning("Failed to auto-commit state files before self-improve.")
     if not _git_clean(repo):
         log.warning("Repo has uncommitted changes; skipping self-improve.")
         return None

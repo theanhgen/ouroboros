@@ -235,6 +235,14 @@ def run_scheduled_self_improvement(
         )
 
     repo_root = get_repo_root()
+
+    # Auto-commit volatile state files so the worktree is clean for the PR branch.
+    try:
+        if git_ops.commit_auto_state(repo_root):
+            log.info("Auto-committed state files to unblock improvement cycle.")
+    except Exception as exc:
+        log.warning("Failed to auto-commit state files: %s", exc)
+
     if not git_ops.is_clean(repo_root):
         _set_deferred_state(
             state,
