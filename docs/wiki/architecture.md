@@ -1,7 +1,7 @@
 # Architecture
 
 Auto-generated overview of the Ouroboros codebase.
-Last updated: 2026-04-05 14:44 UTC
+Last updated: 2026-04-06 14:53 UTC
 
 ## Modules
 
@@ -58,7 +58,7 @@ Last updated: 2026-04-05 14:44 UTC
 
 ### `config.py` (51 lines)
 
-### `evaluation.py` (193 lines)
+### `evaluation.py` (186 lines)
 - `_history_path(repo_root)`
 - `record_improvement(result, repo_root, model)`
 - `load_history(repo_root)`
@@ -68,7 +68,7 @@ Last updated: 2026-04-05 14:44 UTC
 - `to_dict(self)`
 - `from_dict(cls, data)`
 
-### `git_ops.py` (351 lines)
+### `git_ops.py` (367 lines)
 - `_safe_git_env()`
 - `_git(repo)`
 - `is_clean(repo)`
@@ -87,7 +87,8 @@ Last updated: 2026-04-05 14:44 UTC
 - `find_open_issue_by_marker(repo, marker)`
 - `has_open_improvement_prs(repo)`
 - `make_branch_name(task_type)`
-- `get_pr_status(repo, branch)`
+- `get_pr_status(repo, pr_ref)`
+- `get_pr_head_branch(repo, pr_ref)`
 - `auto_merge_pr(repo, pr_url, strategy)`
 - `get_pr_checks_status(repo, pr_url)`
 - `get_pr_feedback(repo, pr_url, max_chars)`
@@ -98,7 +99,7 @@ Last updated: 2026-04-05 14:44 UTC
 - `apply_github_fix(client, issue, analysis, repo_root, model, dry_run)`
 - `run_github_improvement_cycle(client, repo_root, model, dry_run, enable_auto_merge)`
 
-### `improvement.py` (1074 lines)
+### `improvement.py` (1080 lines)
 - `_is_path_allowed(file_path, config)`
 - `_validate_changes(changes, config)`
 - `_count_changed_lines(original, new)`
@@ -123,7 +124,7 @@ Last updated: 2026-04-05 14:44 UTC
 - `execute(self, name, args)`
 - `_fire(event_type, message, data)`
 
-### `improvement_runner.py` (384 lines)
+### `improvement_runner.py` (424 lines)
 - `_send_notification(cfg, message)`
 - `_scheduler_state_path()`
 - `load_scheduler_state()`
@@ -138,7 +139,10 @@ Last updated: 2026-04-05 14:44 UTC
 - `_task_issue_marker(task)`
 - `_build_followup_issue_body(task, result, marker)`
 - `_maybe_create_followup_issue(repo_root, cfg, result)`
+- `_acquire_process_lock()`
+- `_release_process_lock(fd)`
 - `run_scheduled_self_improvement()`
+- `_run_scheduled_self_improvement_locked()`
 - `_on_event(event_type, message, data)`
 
 ### `knowledge_base.py` (103 lines)
@@ -147,12 +151,12 @@ Last updated: 2026-04-05 14:44 UTC
 - `add_entries(entries, path)`
 - `get_summary(client, kb, force_refresh, path)`
 
-### `llm.py` (479 lines)
+### `llm.py` (488 lines)
 - `load_openai_key()`
 - `load_anthropic_key()`
 - `make_client(api_key, provider)`
 - `_get_provider(model)`
-- `chat_completion(client, system_prompt, user_prompt, model, response_format, max_tokens)`
+- `chat_completion(client, system_prompt, user_prompt, model, response_format, max_tokens, timeout)`
 - `identify_improvements(client, summary, test_results, history, model, additional_context)`
 - `plan_code_change(client, task, code, model)`
 - `generate_code(client, plan, files, constraints, model)`
@@ -237,8 +241,7 @@ Last updated: 2026-04-05 14:44 UTC
 - `load_github_issue_fix_prompt()`
 - `load_suggestion_implementation_prompt()`
 
-### `self_improve.py` (166 lines)
-- `_git_clean(repo)`
+### `self_improve.py` (156 lines)
 - `_load_prompt_context(state)`
 - `_build_prompt_update_request(current_prompt, context)`
 - `_parse_prompt_update(payload)`
