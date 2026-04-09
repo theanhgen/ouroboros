@@ -1,7 +1,7 @@
 # Failure Patterns
 
 What went wrong and what was learned. Auto-generated from improvement history.
-Last updated: 2026-04-08 15:11 UTC
+Last updated: 2026-04-09 15:16 UTC
 
 ## fix_test (8 failures)
 
@@ -11,7 +11,9 @@ Last updated: 2026-04-08 15:11 UTC
 - **failed**: Fix the failing test `test_load_runner_config_from_file` in `tests/test_moltbook.py` by ensuring that the configuration loading function correctly handles the case when the file lacks a `telegram_bot_token`, and ensure that `None` is expected when it should be absent. Also, address the erroneous behavior in `test_load_runner_config_missing_file` to ensure it handles missing files adequately, either by returning a default configuration or raising a clear exception.
 - **failed**: Fix the failing tests in tests/test_moltbook.py by ensuring the configuration loading function correctly handles cases when the configuration file lacks a telegram_bot_token, and returns None. Also, improve the handling for missing configuration files by returning a default configuration or raising a clear exception.
 
-## fix_bug (1 failures)
+## fix_bug (2 failures)
 
 - **failed**: 
   - Feedback: Reviewer rejection: While the implementation focuses on preventing transactions with negative amounts, it fails to address several critical security and logic concerns.
+- **failed**: 
+  - Feedback: Reviewer rejection: The proposed changes attempt to fix divide by zero and invalid input handling, but there are several concerns. Firstly, returning strings as error messages can lead to inconsistenc
