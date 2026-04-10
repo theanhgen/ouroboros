@@ -1,7 +1,7 @@
 # Failure Patterns
 
 What went wrong and what was learned. Auto-generated from improvement history.
-Last updated: 2026-04-09 15:16 UTC
+Last updated: 2026-04-10 15:26 UTC
 
 ## fix_test (8 failures)
 
