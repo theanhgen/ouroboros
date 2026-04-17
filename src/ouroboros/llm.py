@@ -62,6 +62,30 @@ def _get_provider(model: str) -> str:
     return "openai"
 
 
+def load_local_model_url() -> str:
+    """Return Ollama base URL from env var or default."""
+    return os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+
+
+def make_local_client(base_url: str) -> Any:
+    """Create an OpenAI-compatible client pointing at a local Ollama instance."""
+    return OpenAI(api_key="ollama", base_url=base_url)
+
+
+def _is_local_model(model: str) -> bool:
+    """Return True if model is expected to be served by a local Ollama instance."""
+    return model.startswith(("gemma4", "gemma3", "ollama/"))
+
+
+def _maybe_strip_response_format(kwargs: dict, model: str) -> dict:
+    """Strip response_format from kwargs copy for local models (Ollama/Gemma JSON grammar mode is unreliable)."""
+    if _is_local_model(model):
+        kwargs = dict(kwargs)
+        kwargs.pop("response_format", None)
+    return kwargs
+
+
+
 def chat_completion(
     client: Any,
     system_prompt: str,
@@ -85,7 +109,7 @@ def chat_completion(
                 ],
                 "max_tokens": max_tokens,
             }
-            if response_format:
+            if response_format and not _is_local_model(model):
                 kwargs["response_format"] = response_format
             resp = client.chat.completions.create(**kwargs)
             usage = None
@@ -459,7 +483,7 @@ def get_tools_definition():
 
 # --- Legacy/Helper wrappers for social features (OpenAI only for now) ---
 
-def generate_comment(client: OpenAI, post_title: str, post_content: str, model: str = "gpt-4o-mini", codebase_context: str = "") -> Optional[str]:
+def generate_comment(client: Any, post_title: str, post_content: str, model: str = "gpt-4o-mini", codebase_context: str = "") -> Optional[str]:
     user_msg = f"Post title: {post_title}\n\nPost content: {post_content}\n\nContext: {codebase_context}"
     try:
         resp = client.chat.completions.create(model=model, max_tokens=300, messages=[{"role": "system", "content": prompts.load_comment_system_prompt()}, {"role": "user", "content": user_msg}])
@@ -469,7 +493,7 @@ def generate_comment(client: OpenAI, post_title: str, post_content: str, model: 
         log.warning("generate_comment failed", exc_info=True)
         return None
 
-def answer_question(client: OpenAI, question: str, codebase_summary: str = "", model: str = "gpt-4o-mini") -> Optional[str]:
+def answer_question(client: Any, question: str, codebase_summary: str = "", model: str = "gpt-4o-mini") -> Optional[str]:
     user_content = f"## Codebase\n{codebase_summary}\n\n## Question\n{question}"
     try:
         resp = client.chat.completions.create(model=model, max_tokens=300, messages=[{"role": "system", "content": "You are a self-reflective agent."}, {"role": "user", "content": user_content}])
