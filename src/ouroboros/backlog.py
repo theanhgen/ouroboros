@@ -7,6 +7,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .model_defaults import DEFAULT_OPENAI_MODEL
+
 log = logging.getLogger(__name__)
 
 BACKLOG_FILE = "config/backlog.json"
@@ -108,7 +110,7 @@ def format_backlog_for_llm(items: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def organize_backlog(repo_root: Path, client: Any, model: str = "gpt-4o-mini") -> None:
+def organize_backlog(repo_root: Path, client: Any, model: str = DEFAULT_OPENAI_MODEL) -> None:
     """Use an LLM to prune, merge, and prioritize the backlog."""
     items = load_backlog(repo_root)
     if not items:

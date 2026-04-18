@@ -19,6 +19,7 @@ from .evaluation import (
     record_improvement,
     summarize_history,
 )
+from .model_defaults import DEFAULT_OPENAI_MODEL
 from .test_runner import RunnerOutcome, run_tests
 
 log = logging.getLogger(__name__)
@@ -147,7 +148,7 @@ def identify_improvements(
     codebase_summary: str,
     test_results: RunnerOutcome,
     history: List[EvaluationRecord],
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
     additional_context: str = "",
 ) -> Optional[ImprovementTask]:
     """Ask the LLM to identify one improvement to make."""
@@ -178,7 +179,7 @@ def plan_improvement(
     client: Any,
     task: ImprovementTask,
     relevant_code: Dict[str, str],
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> tuple[Optional[str], Optional[dict]]:
     """Generate a plan for the improvement. Returns (plan, usage)."""
     code_text = "\n\n".join(
@@ -199,7 +200,7 @@ def generate_changes(
     plan: str,
     file_contents: Dict[str, str],
     config: SafetyConfig,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> tuple[Optional[List[CodeChange]], Optional[dict]]:
     """Generate code changes from a plan. Returns (changes, usage)."""
     constraints = (
@@ -273,7 +274,7 @@ def _retry_with_root_cause(
     test_after: RunnerOutcome,
     config: SafetyConfig,
     repo_root: Path,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
     on_event: EventCallback = None,
 ) -> Optional[ImprovementResult]:
     """After a test regression, analyze the root cause and retry once."""
@@ -371,7 +372,7 @@ def validate_improvement(
     *,
     client: Any = None,
     config: SafetyConfig | None = None,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
     on_event: EventCallback = None,
 ) -> ImprovementResult:
     """Apply changes, run tests, revert if tests regress.
@@ -606,7 +607,7 @@ def run_improvement_cycle(
     client: Any,
     state: Dict[str, Any],
     config: SafetyConfig | None = None,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
     dry_run: bool = False,
     on_event: EventCallback = None,
 ) -> Optional[ImprovementResult]:
@@ -666,8 +667,8 @@ def run_improvement_cycle(
     from .memory import IndexManager
     system_ctx = f"### System Environment\n{get_system_summary()}\n"
 
-    # Inject semantic memory
-    memory = IndexManager(client)
+    # Inject semantic memory (local HRR -- no API calls)
+    memory = IndexManager()
     memory_ctx = memory.retrieve_relevant_context(codebase_summary[:1000])
 
     additional_context = _assemble_feed_context(client, state)
@@ -963,12 +964,17 @@ def run_improvement_cycle(
     # Update Memory
     try:
         from .memory import IndexManager
-        memory = IndexManager(client)
+        memory = IndexManager()
         if improvement_result.status == "success":
             for change in improvement_result.changes:
                 memory.index_file(change.file_path, change.new_content)
+            memory.index_success(task.task_id, task.description,
+                                 improvement_result.details or "")
+            memory.record_outcome_feedback(task.description, success=True)
         elif improvement_result.status in ("failed", "reverted"):
-            memory.index_failure(task.task_id, task.description, improvement_result.details)
+            memory.index_failure(task.task_id, task.description,
+                                 improvement_result.details or "")
+            memory.record_outcome_feedback(task.description, success=False)
     except Exception:
         log.debug("Memory indexing failed")
 

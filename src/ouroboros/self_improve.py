@@ -6,8 +6,9 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from . import git_ops, prompts
+from . import git_ops, llm, prompts
 from .codebase import get_repo_root
+from .model_defaults import DEFAULT_OPENAI_MODEL
 
 log = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ def _git_commit_and_pr(repo: Path, message: str) -> Optional[str]:
         git_ops.checkout_branch(repo, original_branch)
 
 
-def run_self_improve(client: Any, state: Dict[str, Any], model: str = "gpt-4o-mini") -> Optional[str]:
+def run_self_improve(client: Any, state: Dict[str, Any], model: str = DEFAULT_OPENAI_MODEL) -> Optional[str]:
     repo = get_repo_root()
     try:
         git_ops.commit_auto_state(repo)
@@ -137,7 +138,7 @@ def run_self_improve(client: Any, state: Dict[str, Any], model: str = "gpt-4o-mi
     try:
         resp = client.chat.completions.create(
             model=model,
-            max_tokens=400,
+            **llm._completion_token_kwargs(model, 400),
             messages=[
                 {"role": "system", "content": "You revise prompts carefully and output JSON only."},
                 {"role": "user", "content": req},

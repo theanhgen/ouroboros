@@ -24,6 +24,7 @@ from .improvement import (
     revert_changes,
     validate_improvement,
 )
+from .model_defaults import DEFAULT_OPENAI_MODEL
 from .test_runner import run_tests
 
 log = logging.getLogger(__name__)
@@ -140,7 +141,7 @@ def _step_identify(
     # Ask LLM to identify a problem suitable for community input
     task_data, id_err = llm.identify_improvements(
         client, codebase_summary, test_text, history_summary,
-        model=getattr(cfg, "improvement_model", "gpt-4o"),
+        model=getattr(cfg, "improvement_model", DEFAULT_OPENAI_MODEL),
         additional_context=additional_context,
     )
 
@@ -225,7 +226,7 @@ def _step_post(
         task_data,
         ci.get("code_context", {}),
         ci.get("test_output", ""),
-        model=getattr(cfg, "improvement_model", "gpt-4o"),
+        model=getattr(cfg, "improvement_model", DEFAULT_OPENAI_MODEL),
     )
 
     if not post_data or "title" not in post_data or "content" not in post_data:
@@ -339,7 +340,7 @@ def _step_analyze(
         ci["description"],
         ci.get("code_context", {}),
         comments,
-        model=getattr(cfg, "improvement_model", "gpt-4o"),
+        model=getattr(cfg, "improvement_model", DEFAULT_OPENAI_MODEL),
     )
 
     if not analysis or not analysis.get("has_actionable"):
@@ -420,7 +421,7 @@ def _step_implement(
             "evidence": task.evidence,
         },
         "\n\n".join(f"### {p}\n{c}" for p, c in file_contents.items()),
-        model=getattr(cfg, "improvement_model", "gpt-4o"),
+        model=getattr(cfg, "improvement_model", DEFAULT_OPENAI_MODEL),
     )
 
     if not plan:
@@ -432,13 +433,13 @@ def _step_implement(
     if is_fallback:
         raw_changes, _ = llm.generate_code(
             client, plan, file_contents, constraints,
-            model=getattr(cfg, "improvement_model", "gpt-4o"),
+            model=getattr(cfg, "improvement_model", DEFAULT_OPENAI_MODEL),
         )
     else:
         suggestion = ci.get("selected_comment", {})
         raw_changes = llm.generate_code_from_suggestion(
             client, suggestion, file_contents, plan, constraints,
-            model=getattr(cfg, "improvement_model", "gpt-4o"),
+            model=getattr(cfg, "improvement_model", DEFAULT_OPENAI_MODEL),
         )
 
     if not raw_changes:

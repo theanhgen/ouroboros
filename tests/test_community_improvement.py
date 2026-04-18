@@ -17,6 +17,7 @@ from ouroboros.community_improvement import (
 from ouroboros.config import SafetyConfig
 from ouroboros.improvement import CodeChange, ImprovementResult, ImprovementTask
 from ouroboros.moltbook import Credentials, RunnerConfig
+from ouroboros.model_defaults import DEFAULT_OPENAI_MODEL
 from ouroboros.test_runner import RunnerOutcome
 
 
@@ -26,7 +27,7 @@ def _make_cfg(**overrides) -> RunnerConfig:
         "community_wait_hours": 48,
         "community_min_comments_for_early": 3,
         "community_improvement_interval_hours": 72,
-        "improvement_model": "gpt-4o",
+        "improvement_model": DEFAULT_OPENAI_MODEL,
         "dry_run": False,
         "default_submolt": "general",
     }

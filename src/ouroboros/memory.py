@@ -1,77 +1,710 @@
-"""Long-term memory management using vector embeddings."""
+"""Long-term memory with holographic reduced representations.
 
-import json
+Replaces the old OpenAI-embedding IndexManager with a fully local system:
+- SQLite-backed fact store with FTS5 full-text search
+- HRR phase vectors for compositional retrieval (no API calls)
+- Entity extraction, trust scoring, and memory bank management
+- Hybrid retrieval: FTS5 + Jaccard + HRR similarity
+
+Inspired by NousResearch/hermes-agent's holographic memory plugin.
+"""
+
 import logging
 import math
+import re
+import sqlite3
+import threading
+import time
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .storage import OuroborosStorage
+from . import holographic as hrr
 from .codebase import get_repo_root
 
 log = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Schema
+# ---------------------------------------------------------------------------
 
-def cosine_similarity(v1: List[float], v2: List[float]) -> float:
-    """Compute cosine similarity between two vectors."""
-    dot_product = sum(x * y for x, y in zip(v1, v2))
-    magnitude1 = math.sqrt(sum(x * x for x in v1))
-    magnitude2 = math.sqrt(sum(x * x for x in v2))
-    if magnitude1 == 0 or magnitude2 == 0:
-        return 0.0
-    return dot_product / (magnitude1 * magnitude2)
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS facts (
+    fact_id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    content         TEXT NOT NULL UNIQUE,
+    category        TEXT DEFAULT 'general',
+    tags            TEXT DEFAULT '',
+    trust_score     REAL DEFAULT 0.5,
+    retrieval_count INTEGER DEFAULT 0,
+    helpful_count   INTEGER DEFAULT 0,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    hrr_vector      BLOB
+);
+
+CREATE TABLE IF NOT EXISTS entities (
+    entity_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,
+    entity_type TEXT DEFAULT 'unknown',
+    aliases     TEXT DEFAULT '',
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS fact_entities (
+    fact_id   INTEGER REFERENCES facts(fact_id),
+    entity_id INTEGER REFERENCES entities(entity_id),
+    PRIMARY KEY (fact_id, entity_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_facts_trust    ON facts(trust_score DESC);
+CREATE INDEX IF NOT EXISTS idx_facts_category ON facts(category);
+CREATE INDEX IF NOT EXISTS idx_entities_name  ON entities(name);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts
+    USING fts5(content, tags, content=facts, content_rowid=fact_id);
+
+CREATE TRIGGER IF NOT EXISTS facts_ai AFTER INSERT ON facts BEGIN
+    INSERT INTO facts_fts(rowid, content, tags)
+        VALUES (new.fact_id, new.content, new.tags);
+END;
+
+CREATE TRIGGER IF NOT EXISTS facts_ad AFTER DELETE ON facts BEGIN
+    INSERT INTO facts_fts(facts_fts, rowid, content, tags)
+        VALUES ('delete', old.fact_id, old.content, old.tags);
+END;
+
+CREATE TRIGGER IF NOT EXISTS facts_au AFTER UPDATE ON facts BEGIN
+    INSERT INTO facts_fts(facts_fts, rowid, content, tags)
+        VALUES ('delete', old.fact_id, old.content, old.tags);
+    INSERT INTO facts_fts(rowid, content, tags)
+        VALUES (new.fact_id, new.content, new.tags);
+END;
+
+CREATE TABLE IF NOT EXISTS memory_banks (
+    bank_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    bank_name  TEXT NOT NULL UNIQUE,
+    vector     BLOB NOT NULL,
+    dim        INTEGER NOT NULL,
+    fact_count INTEGER DEFAULT 0,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+# Trust constants
+_HELPFUL_DELTA = 0.05
+_UNHELPFUL_DELTA = -0.10
+_TRUST_MIN = 0.0
+_TRUST_MAX = 1.0
+
+# Entity extraction patterns
+_RE_CAPITALIZED = re.compile(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b')
+_RE_DOUBLE_QUOTE = re.compile(r'"([^"]+)"')
+_RE_SINGLE_QUOTE = re.compile(r"'([^']+)'")
 
 
-class IndexManager:
-    def __init__(self, client: Any, storage: Optional[OuroborosStorage] = None):
-        self.client = client
-        self.storage = storage or OuroborosStorage()
+def _clamp_trust(value: float) -> float:
+    return max(_TRUST_MIN, min(_TRUST_MAX, value))
 
-    def get_embedding(self, text: str, model: str = "text-embedding-3-small") -> List[float]:
-        """Generate embedding for text using OpenAI."""
-        text = text.replace("\n", " ")
-        try:
-            return self.client.embeddings.create(input=[text], model=model).data[0].embedding
-        except Exception:
-            log.exception("Embedding generation failed")
+
+# ---------------------------------------------------------------------------
+# MemoryStore
+# ---------------------------------------------------------------------------
+
+class MemoryStore:
+    """SQLite-backed fact store with entity resolution, trust scoring, and HRR vectors."""
+
+    def __init__(self, db_path: Optional[Path] = None, hrr_dim: int = 1024) -> None:
+        if db_path is None:
+            db_path = get_repo_root() / "config" / "memory.db"
+        self.db_path = Path(db_path).expanduser()
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.hrr_dim = hrr_dim
+        self._hrr_available = hrr.HAS_NUMPY
+        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False, timeout=10.0)
+        self._lock = threading.RLock()
+        self._conn.row_factory = sqlite3.Row
+        self._init_db()
+
+    def _init_db(self) -> None:
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.executescript(_SCHEMA)
+        self._conn.commit()
+
+    # -- Public API ----------------------------------------------------------
+
+    def add_fact(self, content: str, category: str = "general", tags: str = "") -> int:
+        """Insert a fact. Returns fact_id. Deduplicates by content."""
+        with self._lock:
+            content = content.strip()
+            if not content:
+                raise ValueError("content must not be empty")
+            try:
+                cur = self._conn.execute(
+                    "INSERT INTO facts (content, category, tags, trust_score) VALUES (?, ?, ?, ?)",
+                    (content, category, tags, 0.5),
+                )
+                self._conn.commit()
+                fact_id: int = cur.lastrowid  # type: ignore[assignment]
+            except sqlite3.IntegrityError:
+                row = self._conn.execute(
+                    "SELECT fact_id FROM facts WHERE content = ?", (content,)
+                ).fetchone()
+                return int(row["fact_id"])
+
+            for name in self._extract_entities(content):
+                entity_id = self._resolve_entity(name)
+                self._link_fact_entity(fact_id, entity_id)
+
+            self._compute_hrr_vector(fact_id, content)
+            self._rebuild_bank(category)
+            return fact_id
+
+    def search_facts(self, query: str, category: Optional[str] = None,
+                     min_trust: float = 0.3, limit: int = 10) -> List[Dict]:
+        """Full-text search over facts using FTS5."""
+        with self._lock:
+            query = query.strip()
+            if not query:
+                return []
+            params: list = [query, min_trust]
+            cat_clause = ""
+            if category is not None:
+                cat_clause = "AND f.category = ?"
+                params.append(category)
+            params.append(limit)
+            sql = f"""
+                SELECT f.fact_id, f.content, f.category, f.tags,
+                       f.trust_score, f.retrieval_count, f.helpful_count,
+                       f.created_at, f.updated_at
+                FROM facts f
+                JOIN facts_fts fts ON fts.rowid = f.fact_id
+                WHERE facts_fts MATCH ?
+                  AND f.trust_score >= ?
+                  {cat_clause}
+                ORDER BY fts.rank, f.trust_score DESC
+                LIMIT ?
+            """
+            rows = self._conn.execute(sql, params).fetchall()
+            results = [dict(r) for r in rows]
+            if results:
+                ids = [r["fact_id"] for r in results]
+                ph = ",".join("?" * len(ids))
+                self._conn.execute(
+                    f"UPDATE facts SET retrieval_count = retrieval_count + 1 WHERE fact_id IN ({ph})",
+                    ids,
+                )
+                self._conn.commit()
+            return results
+
+    def update_fact(self, fact_id: int, content: Optional[str] = None,
+                    trust_delta: Optional[float] = None, tags: Optional[str] = None,
+                    category: Optional[str] = None) -> bool:
+        """Partially update a fact. Returns True if row existed."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT fact_id, trust_score, category FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone()
+            if row is None:
+                return False
+
+            assignments = ["updated_at = CURRENT_TIMESTAMP"]
+            params: list = []
+            if content is not None:
+                assignments.append("content = ?")
+                params.append(content.strip())
+            if tags is not None:
+                assignments.append("tags = ?")
+                params.append(tags)
+            if category is not None:
+                assignments.append("category = ?")
+                params.append(category)
+            if trust_delta is not None:
+                new_trust = _clamp_trust(row["trust_score"] + trust_delta)
+                assignments.append("trust_score = ?")
+                params.append(new_trust)
+
+            params.append(fact_id)
+            self._conn.execute(
+                f"UPDATE facts SET {', '.join(assignments)} WHERE fact_id = ?", params,
+            )
+            self._conn.commit()
+
+            if content is not None:
+                self._conn.execute("DELETE FROM fact_entities WHERE fact_id = ?", (fact_id,))
+                for name in self._extract_entities(content):
+                    eid = self._resolve_entity(name)
+                    self._link_fact_entity(fact_id, eid)
+                self._conn.commit()
+                self._compute_hrr_vector(fact_id, content)
+
+            cat = category or row["category"]
+            self._rebuild_bank(cat)
+            return True
+
+    def remove_fact(self, fact_id: int) -> bool:
+        """Delete a fact and its entity links."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT fact_id, category FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone()
+            if row is None:
+                return False
+            self._conn.execute("DELETE FROM fact_entities WHERE fact_id = ?", (fact_id,))
+            self._conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
+            self._conn.commit()
+            self._rebuild_bank(row["category"])
+            return True
+
+    def list_facts(self, category: Optional[str] = None, min_trust: float = 0.0,
+                   limit: int = 50) -> List[Dict]:
+        """Browse facts ordered by trust_score descending."""
+        with self._lock:
+            params: list = [min_trust]
+            cat_clause = ""
+            if category is not None:
+                cat_clause = "AND category = ?"
+                params.append(category)
+            params.append(limit)
+            sql = f"""
+                SELECT fact_id, content, category, tags, trust_score,
+                       retrieval_count, helpful_count, created_at, updated_at
+                FROM facts WHERE trust_score >= ? {cat_clause}
+                ORDER BY trust_score DESC LIMIT ?
+            """
+            return [dict(r) for r in self._conn.execute(sql, params).fetchall()]
+
+    def record_feedback(self, fact_id: int, helpful: bool) -> Dict:
+        """Adjust trust based on feedback. Returns old/new trust."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT fact_id, trust_score, helpful_count FROM facts WHERE fact_id = ?",
+                (fact_id,),
+            ).fetchone()
+            if row is None:
+                raise KeyError(f"fact_id {fact_id} not found")
+            old_trust = row["trust_score"]
+            delta = _HELPFUL_DELTA if helpful else _UNHELPFUL_DELTA
+            new_trust = _clamp_trust(old_trust + delta)
+            inc = 1 if helpful else 0
+            self._conn.execute(
+                "UPDATE facts SET trust_score = ?, helpful_count = helpful_count + ?, "
+                "updated_at = CURRENT_TIMESTAMP WHERE fact_id = ?",
+                (new_trust, inc, fact_id),
+            )
+            self._conn.commit()
+            return {"fact_id": fact_id, "old_trust": old_trust, "new_trust": new_trust}
+
+    def fact_count(self) -> int:
+        """Total number of facts stored."""
+        with self._lock:
+            row = self._conn.execute("SELECT COUNT(*) FROM facts").fetchone()
+            return row[0] if row else 0
+
+    def close(self) -> None:
+        self._conn.close()
+
+    # -- Entity helpers ------------------------------------------------------
+
+    def _extract_entities(self, text: str) -> List[str]:
+        seen: set = set()
+        candidates: list = []
+
+        def _add(name: str) -> None:
+            s = name.strip()
+            if s and s.lower() not in seen:
+                seen.add(s.lower())
+                candidates.append(s)
+
+        for m in _RE_CAPITALIZED.finditer(text):
+            _add(m.group(1))
+        for m in _RE_DOUBLE_QUOTE.finditer(text):
+            _add(m.group(1))
+        for m in _RE_SINGLE_QUOTE.finditer(text):
+            _add(m.group(1))
+        return candidates
+
+    def _resolve_entity(self, name: str) -> int:
+        row = self._conn.execute(
+            "SELECT entity_id FROM entities WHERE name LIKE ?", (name,)
+        ).fetchone()
+        if row is not None:
+            return int(row["entity_id"])
+        alias_row = self._conn.execute(
+            "SELECT entity_id FROM entities WHERE ',' || aliases || ',' LIKE '%,' || ? || ',%'",
+            (name,),
+        ).fetchone()
+        if alias_row is not None:
+            return int(alias_row["entity_id"])
+        cur = self._conn.execute("INSERT INTO entities (name) VALUES (?)", (name,))
+        self._conn.commit()
+        return int(cur.lastrowid)  # type: ignore[return-value]
+
+    def _link_fact_entity(self, fact_id: int, entity_id: int) -> None:
+        self._conn.execute(
+            "INSERT OR IGNORE INTO fact_entities (fact_id, entity_id) VALUES (?, ?)",
+            (fact_id, entity_id),
+        )
+        self._conn.commit()
+
+    def _compute_hrr_vector(self, fact_id: int, content: str) -> None:
+        if not self._hrr_available:
+            return
+        rows = self._conn.execute(
+            "SELECT e.name FROM entities e "
+            "JOIN fact_entities fe ON fe.entity_id = e.entity_id "
+            "WHERE fe.fact_id = ?", (fact_id,),
+        ).fetchall()
+        entities = [row["name"] for row in rows]
+        vector = hrr.encode_fact(content, entities, self.hrr_dim)
+        self._conn.execute(
+            "UPDATE facts SET hrr_vector = ? WHERE fact_id = ?",
+            (hrr.phases_to_bytes(vector), fact_id),
+        )
+        self._conn.commit()
+
+    def _rebuild_bank(self, category: str) -> None:
+        if not self._hrr_available:
+            return
+        bank_name = f"cat:{category}"
+        rows = self._conn.execute(
+            "SELECT hrr_vector FROM facts WHERE category = ? AND hrr_vector IS NOT NULL",
+            (category,),
+        ).fetchall()
+        if not rows:
+            self._conn.execute("DELETE FROM memory_banks WHERE bank_name = ?", (bank_name,))
+            self._conn.commit()
+            return
+        vectors = [hrr.bytes_to_phases(row["hrr_vector"]) for row in rows]
+        bank_vector = hrr.bundle(*vectors)
+        hrr.snr_estimate(self.hrr_dim, len(vectors))
+        self._conn.execute(
+            "INSERT INTO memory_banks (bank_name, vector, dim, fact_count, updated_at) "
+            "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) "
+            "ON CONFLICT(bank_name) DO UPDATE SET "
+            "vector=excluded.vector, dim=excluded.dim, fact_count=excluded.fact_count, "
+            "updated_at=excluded.updated_at",
+            (bank_name, hrr.phases_to_bytes(bank_vector), self.hrr_dim, len(vectors)),
+        )
+        self._conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# FactRetriever -- hybrid keyword/HRR retrieval
+# ---------------------------------------------------------------------------
+
+class FactRetriever:
+    """Multi-strategy fact retrieval with trust-weighted scoring."""
+
+    def __init__(self, store: MemoryStore, fts_weight: float = 0.4,
+                 jaccard_weight: float = 0.3, hrr_weight: float = 0.3) -> None:
+        self.store = store
+        self.hrr_dim = store.hrr_dim
+        if hrr_weight > 0 and not hrr.HAS_NUMPY:
+            fts_weight, jaccard_weight, hrr_weight = 0.6, 0.4, 0.0
+        self.fts_weight = fts_weight
+        self.jaccard_weight = jaccard_weight
+        self.hrr_weight = hrr_weight
+
+    def search(self, query: str, category: Optional[str] = None,
+               min_trust: float = 0.3, limit: int = 10) -> List[Dict]:
+        """Hybrid search: FTS5 candidates -> Jaccard + HRR rerank -> trust weighting."""
+        candidates = self._fts_candidates(query, category, min_trust, limit * 3)
+        if not candidates:
             return []
 
-    def index_file(self, file_path: str, content: str):
-        """Index a code file."""
-        # Chunking could be more sophisticated (e.g. by function)
-        # For now, index the whole file if small, or first 2000 chars
-        embedding = self.get_embedding(content[:2000])
-        if embedding:
-            self.storage.add_embedding("code", file_path, content[:500], embedding)
-
-    def index_failure(self, task_id: str, description: str, failure_msg: str):
-        """Index a failed improvement attempt."""
-        text = f"Task: {description}\nFailure: {failure_msg}"
-        embedding = self.get_embedding(text)
-        if embedding:
-            self.storage.add_embedding("failure", task_id, text, embedding)
-
-    def retrieve_relevant_context(self, query: str, limit: int = 3) -> str:
-        """Search memory for relevant past experiences."""
-        query_vec = self.get_embedding(query)
-        if not query_vec:
-            return ""
-
-        all_embeddings = self.storage.search_embeddings()
+        query_tokens = self._tokenize(query)
         scored = []
-        for item in all_embeddings:
-            vec = json.loads(item["embedding"])
-            score = cosine_similarity(query_vec, vec)
-            scored.append((score, item))
+        for fact in candidates:
+            content_tokens = self._tokenize(fact["content"])
+            tag_tokens = self._tokenize(fact.get("tags", ""))
+            jaccard = self._jaccard(query_tokens, content_tokens | tag_tokens)
+            fts_score = fact.get("fts_rank", 0.0)
 
-        scored.sort(key=lambda x: x[0], reverse=True)
-        results = scored[:limit]
-        
+            if self.hrr_weight > 0 and fact.get("hrr_vector"):
+                fact_vec = hrr.bytes_to_phases(fact["hrr_vector"])
+                query_vec = hrr.encode_text(query, self.hrr_dim)
+                hrr_sim = (hrr.similarity(query_vec, fact_vec) + 1.0) / 2.0
+            else:
+                hrr_sim = 0.5
+
+            relevance = (self.fts_weight * fts_score
+                         + self.jaccard_weight * jaccard
+                         + self.hrr_weight * hrr_sim)
+            fact["score"] = relevance * fact["trust_score"]
+            fact.pop("hrr_vector", None)
+            scored.append(fact)
+
+        scored.sort(key=lambda x: x["score"], reverse=True)
+        return scored[:limit]
+
+    def probe(self, entity: str, category: Optional[str] = None,
+              limit: int = 10) -> List[Dict]:
+        """Compositional entity query using HRR algebra."""
+        if not hrr.HAS_NUMPY:
+            return self.search(entity, category=category, limit=limit)
+
+        conn = self.store._conn
+        role_entity = hrr.encode_atom("__hrr_role_entity__", self.hrr_dim)
+        entity_vec = hrr.encode_atom(entity.lower(), self.hrr_dim)
+        probe_key = hrr.bind(entity_vec, role_entity)
+        role_content = hrr.encode_atom("__hrr_role_content__", self.hrr_dim)
+
+        where = "WHERE hrr_vector IS NOT NULL"
+        params: list = []
+        if category:
+            where += " AND category = ?"
+            params.append(category)
+
+        rows = conn.execute(
+            f"SELECT fact_id, content, category, tags, trust_score, "
+            f"retrieval_count, helpful_count, created_at, updated_at, hrr_vector "
+            f"FROM facts {where}", params,
+        ).fetchall()
+
+        if not rows:
+            return self.search(entity, category=category, limit=limit)
+
+        scored = []
+        for row in rows:
+            fact = dict(row)
+            fact_vec = hrr.bytes_to_phases(fact.pop("hrr_vector"))
+            residual = hrr.unbind(fact_vec, probe_key)
+            content_vec = hrr.bind(hrr.encode_text(fact["content"], self.hrr_dim), role_content)
+            sim = hrr.similarity(residual, content_vec)
+            fact["score"] = (sim + 1.0) / 2.0 * fact["trust_score"]
+            scored.append(fact)
+
+        scored.sort(key=lambda x: x["score"], reverse=True)
+        return scored[:limit]
+
+    def reason(self, entities: List[str], category: Optional[str] = None,
+               limit: int = 10) -> List[Dict]:
+        """Multi-entity compositional query -- vector-space JOIN."""
+        if not hrr.HAS_NUMPY or not entities:
+            return self.search(" ".join(entities), category=category, limit=limit)
+
+        conn = self.store._conn
+        role_entity = hrr.encode_atom("__hrr_role_entity__", self.hrr_dim)
+        role_content = hrr.encode_atom("__hrr_role_content__", self.hrr_dim)
+
+        probe_keys = []
+        for entity in entities:
+            ev = hrr.encode_atom(entity.lower(), self.hrr_dim)
+            probe_keys.append(hrr.bind(ev, role_entity))
+
+        where = "WHERE hrr_vector IS NOT NULL"
+        params: list = []
+        if category:
+            where += " AND category = ?"
+            params.append(category)
+
+        rows = conn.execute(
+            f"SELECT fact_id, content, category, tags, trust_score, "
+            f"retrieval_count, helpful_count, created_at, updated_at, hrr_vector "
+            f"FROM facts {where}", params,
+        ).fetchall()
+
+        if not rows:
+            return self.search(" ".join(entities), category=category, limit=limit)
+
+        scored = []
+        for row in rows:
+            fact = dict(row)
+            fact_vec = hrr.bytes_to_phases(fact.pop("hrr_vector"))
+            entity_scores = []
+            for pk in probe_keys:
+                residual = hrr.unbind(fact_vec, pk)
+                sim = hrr.similarity(residual, role_content)
+                entity_scores.append(sim)
+            min_sim = min(entity_scores)
+            fact["score"] = (min_sim + 1.0) / 2.0 * fact["trust_score"]
+            scored.append(fact)
+
+        scored.sort(key=lambda x: x["score"], reverse=True)
+        return scored[:limit]
+
+    def contradict(self, category: Optional[str] = None, threshold: float = 0.3,
+                   limit: int = 10) -> List[Dict]:
+        """Find potentially contradictory facts via entity overlap + content divergence."""
+        if not hrr.HAS_NUMPY:
+            return []
+
+        conn = self.store._conn
+        where = "WHERE f.hrr_vector IS NOT NULL"
+        params: list = []
+        if category:
+            where += " AND f.category = ?"
+            params.append(category)
+
+        rows = conn.execute(
+            f"SELECT f.fact_id, f.content, f.category, f.tags, f.trust_score, "
+            f"f.created_at, f.updated_at, f.hrr_vector FROM facts f {where}", params,
+        ).fetchall()
+
+        if len(rows) < 2:
+            return []
+
+        # Cap at 500 to avoid O(n^2) explosion
+        if len(rows) > 500:
+            rows = sorted(rows, key=lambda r: r["updated_at"] or r["created_at"], reverse=True)[:500]
+
+        fact_entities: Dict[int, set] = {}
+        for row in rows:
+            fid = row["fact_id"]
+            ent_rows = conn.execute(
+                "SELECT e.name FROM entities e "
+                "JOIN fact_entities fe ON fe.entity_id = e.entity_id "
+                "WHERE fe.fact_id = ?", (fid,),
+            ).fetchall()
+            fact_entities[fid] = {r["name"].lower() for r in ent_rows}
+
+        facts = [dict(r) for r in rows]
+        contradictions = []
+        for i in range(len(facts)):
+            for j in range(i + 1, len(facts)):
+                f1, f2 = facts[i], facts[j]
+                ents1 = fact_entities.get(f1["fact_id"], set())
+                ents2 = fact_entities.get(f2["fact_id"], set())
+                if not ents1 or not ents2:
+                    continue
+                overlap = len(ents1 & ents2) / len(ents1 | ents2) if (ents1 | ents2) else 0.0
+                if overlap < 0.3:
+                    continue
+                v1 = hrr.bytes_to_phases(f1["hrr_vector"])
+                v2 = hrr.bytes_to_phases(f2["hrr_vector"])
+                content_sim = hrr.similarity(v1, v2)
+                score = overlap * (1.0 - (content_sim + 1.0) / 2.0)
+                if score >= threshold:
+                    f1c = {k: v for k, v in f1.items() if k != "hrr_vector"}
+                    f2c = {k: v for k, v in f2.items() if k != "hrr_vector"}
+                    contradictions.append({
+                        "fact_a": f1c, "fact_b": f2c,
+                        "entity_overlap": round(overlap, 3),
+                        "content_similarity": round(content_sim, 3),
+                        "contradiction_score": round(score, 3),
+                        "shared_entities": sorted(ents1 & ents2),
+                    })
+
+        contradictions.sort(key=lambda x: x["contradiction_score"], reverse=True)
+        return contradictions[:limit]
+
+    # -- Internal helpers ----------------------------------------------------
+
+    def _fts_candidates(self, query: str, category: Optional[str],
+                        min_trust: float, limit: int) -> List[Dict]:
+        conn = self.store._conn
+        params: list = [query]
+        where_parts = ["facts_fts MATCH ?"]
+        if category:
+            where_parts.append("f.category = ?")
+            params.append(category)
+        where_parts.append("f.trust_score >= ?")
+        params.append(min_trust)
+        params.append(limit)
+
+        sql = f"""
+            SELECT f.*, facts_fts.rank as fts_rank_raw
+            FROM facts_fts
+            JOIN facts f ON f.fact_id = facts_fts.rowid
+            WHERE {' AND '.join(where_parts)}
+            ORDER BY facts_fts.rank LIMIT ?
+        """
+        try:
+            rows = conn.execute(sql, params).fetchall()
+        except Exception:
+            return []
+        if not rows:
+            return []
+
+        raw_ranks = [abs(row["fts_rank_raw"]) for row in rows]
+        max_rank = max(raw_ranks) if raw_ranks else 1.0
+        max_rank = max(max_rank, 1e-6)
+        results = []
+        for row, rr in zip(rows, raw_ranks):
+            fact = dict(row)
+            fact.pop("fts_rank_raw", None)
+            fact["fts_rank"] = rr / max_rank
+            results.append(fact)
+        return results
+
+    @staticmethod
+    def _tokenize(text: str) -> set:
+        if not text:
+            return set()
+        return {w.strip(".,;:!?\"'()[]{}#@<>") for w in text.lower().split()} - {""}
+
+    @staticmethod
+    def _jaccard(a: set, b: set) -> float:
+        if not a or not b:
+            return 0.0
+        return len(a & b) / len(a | b)
+
+
+# ---------------------------------------------------------------------------
+# Convenience: backward-compatible IndexManager wrapper
+# ---------------------------------------------------------------------------
+
+class IndexManager:
+    """Backward-compatible wrapper around MemoryStore for existing callers."""
+
+    def __init__(self, client: Any = None, storage: Any = None) -> None:
+        # client is no longer needed (no API calls), kept for signature compat
+        self._store = MemoryStore()
+        self._retriever = FactRetriever(self._store)
+
+    def index_file(self, file_path: str, content: str) -> None:
+        """Index a code file as a fact."""
+        summary = content[:500]
+        self._store.add_fact(
+            f"[code] {file_path}: {summary}",
+            category="code",
+            tags=file_path,
+        )
+
+    def index_failure(self, task_id: str, description: str, failure_msg: str) -> None:
+        """Index a failed improvement attempt."""
+        text = f"[failure] {description}: {failure_msg[:300]}"
+        self._store.add_fact(text, category="failure", tags=task_id)
+
+    def index_success(self, task_id: str, description: str, details: str = "") -> None:
+        """Index a successful improvement."""
+        text = f"[success] {description}"
+        if details:
+            text += f": {details[:300]}"
+        self._store.add_fact(text, category="success", tags=task_id)
+
+    def retrieve_relevant_context(self, query: str, limit: int = 5) -> str:
+        """Search memory for relevant past experiences."""
+        results = self._retriever.search(query, limit=limit)
         if not results:
             return ""
-
-        parts = ["### Relevant Past Context"]
-        for score, item in results:
-            if score < 0.3: continue # Threshold
-            parts.append(f"- [{item['content_type']}] {item['ref_id']}: {item['content']} (similarity: {score:.2f})")
-        
+        parts = ["### Relevant Past Context (Holographic Memory)"]
+        for fact in results:
+            if fact.get("score", 0) < 0.1:
+                continue
+            parts.append(
+                f"- [{fact['category']}] {fact['content'][:200]} "
+                f"(trust: {fact['trust_score']:.2f})"
+            )
         return "\n".join(parts) if len(parts) > 1 else ""
+
+    def record_outcome_feedback(self, description: str, success: bool) -> None:
+        """Find facts related to a task and adjust trust based on outcome."""
+        try:
+            results = self._retriever.search(description, limit=3)
+            for fact in results:
+                if fact.get("score", 0) > 0.2:
+                    self._store.record_feedback(fact["fact_id"], helpful=success)
+        except Exception:
+            log.debug("Failed to record outcome feedback")
+
+    def run_hygiene(self) -> int:
+        """Run contradiction detection and prune low-trust facts. Returns count removed."""
+        removed = 0
+        # Prune facts with very low trust
+        low_trust = self._store.list_facts(min_trust=0.0, limit=100)
+        for fact in low_trust:
+            if fact["trust_score"] <= 0.05 and fact["retrieval_count"] == 0:
+                self._store.remove_fact(fact["fact_id"])
+                removed += 1
+        return removed

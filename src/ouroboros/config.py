@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Tuple
 
+from .model_defaults import DEFAULT_OPENAI_MODEL
+
 
 @dataclass(frozen=True)
 class SafetyConfig:
@@ -28,7 +30,7 @@ class SafetyConfig:
     sandbox_image: str = "python:3.11-slim"
 
     # Multi-model review
-    reviewer_model: str = "gpt-4o"
+    reviewer_model: str = DEFAULT_OPENAI_MODEL
 
     # Self-improvement limits
     max_improvements_per_day: int = 3

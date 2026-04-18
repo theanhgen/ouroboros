@@ -10,12 +10,15 @@ from typing import Dict, List, Optional, Tuple
 
 from . import git_ops
 from .codebase import get_repo_root
+from .model_defaults import DEFAULT_OPENAI_MODEL
 from .storage import OuroborosStorage, CycleRecord, MetricRecord
 
 log = logging.getLogger(__name__)
 
 # Approximate pricing per 1M tokens (input, output).
 MODEL_PRICING: Dict[str, Tuple[float, float]] = {
+    "gpt-5.4-nano": (0.20, 1.25),
+    "gpt-5.4-nano-2026-03-17": (0.20, 1.25),
     "gpt-4o": (2.50, 10.00),
     "gpt-4o-mini": (0.15, 0.60),
     "gpt-4-turbo": (10.00, 30.00),
@@ -51,7 +54,7 @@ def _history_path(repo_root: Optional[Path] = None) -> Path:
     return root / HISTORY_FILE
 
 
-def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = None, model: str = "gpt-4o") -> None:
+def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = None, model: str = DEFAULT_OPENAI_MODEL) -> None:
     """Append an improvement result to the history file and SQLite storage."""
     from .improvement import ImprovementResult  # avoid circular import
 

@@ -5,6 +5,7 @@ from unittest import mock
 import pytest
 
 from ouroboros.llm import answer_question, generate_comment, load_openai_key, make_client
+from ouroboros.model_defaults import DEFAULT_OPENAI_MODEL
 
 
 # -- load_openai_key tests --
@@ -33,6 +34,27 @@ def test_load_key_from_file(tmp_path):
         with mock.patch("ouroboros.llm.os.path.expanduser", side_effect=fake_expanduser):
             with mock.patch("ouroboros.llm.os.path.exists", side_effect=fake_exists):
                 assert load_openai_key() == "sk-file"
+
+
+def test_load_key_does_not_use_moltbook_api_key(tmp_path):
+    cfg = tmp_path / "credentials.json"
+    cfg.write_text(json.dumps({"api_key": "moltbook-only-key"}))
+
+    with mock.patch.dict(os.environ, {}, clear=True):
+        def fake_expanduser(path):
+            if path == "~/.config/moltbook/credentials.json":
+                return str(cfg)
+            if path == "~/.config/moltbook/openai.json":
+                return str(tmp_path / "openai.json")
+            return path
+
+        def fake_exists(path):
+            return path == str(cfg)
+
+        with mock.patch("ouroboros.llm.os.path.expanduser", side_effect=fake_expanduser):
+            with mock.patch("ouroboros.llm.os.path.exists", side_effect=fake_exists):
+                with pytest.raises(RuntimeError, match="Missing OpenAI API key"):
+                    load_openai_key()
 
 
 def test_load_key_from_legacy_file(tmp_path):
@@ -92,6 +114,10 @@ def test_generate_comment_success():
     result = generate_comment(client, "Title", "Content")
     assert result == "Great post!"
     client.chat.completions.create.assert_called_once()
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["model"] == DEFAULT_OPENAI_MODEL
+    assert kwargs["max_completion_tokens"] == 300
+    assert "max_tokens" not in kwargs
 
 
 def test_generate_comment_returns_none_on_error():
@@ -109,6 +135,19 @@ def test_answer_question_success():
     client.chat.completions.create.return_value = _mock_openai_response("The design lacks X.")
     result = answer_question(client, "What is missing?")
     assert result == "The design lacks X."
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["max_completion_tokens"] == 300
+    assert "max_tokens" not in kwargs
+
+
+def test_answer_question_legacy_model_uses_max_tokens():
+    client = mock.MagicMock()
+    client.chat.completions.create.return_value = _mock_openai_response("Legacy model response")
+    result = answer_question(client, "What is missing?", model="gpt-4o")
+    assert result == "Legacy model response"
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["max_tokens"] == 300
+    assert "max_completion_tokens" not in kwargs
 
 
 def test_answer_question_returns_none_on_error():

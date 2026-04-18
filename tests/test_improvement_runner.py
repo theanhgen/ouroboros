@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from ouroboros.improvement import ImprovementResult, ImprovementTask
 from ouroboros.improvement_runner import run_scheduled_self_improvement
 from ouroboros.moltbook import RunnerConfig
+from ouroboros.model_defaults import DEFAULT_OPENAI_MODEL
 
 
 def _cfg(**overrides):
@@ -11,7 +12,7 @@ def _cfg(**overrides):
         enable_auto_issue_creation=True,
         self_improvement_retry_minutes=60,
         improvement_interval_hours=6,
-        improvement_model="gpt-4o",
+        improvement_model=DEFAULT_OPENAI_MODEL,
     )
     defaults.update(overrides)
     return RunnerConfig(**defaults)

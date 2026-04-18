@@ -12,7 +12,14 @@ pip install -e .
 
 # Configure credentials
 mkdir -p ~/.config/moltbook
-# Add credentials.json (see wiki)
+# Create ~/.config/moltbook/credentials.json with:
+# {
+#   "openai_api_key": "sk-...",
+#   "api_key": "moltbook-api-key",
+#   "agent_name": "your-agent-name"
+# }
+# `api_key` and `agent_name` are only needed for Moltbook API features.
+# Runtime config lives in ~/.config/moltbook/agent.json.
 
 # Run
 python -m ouroboros moltbook run
@@ -31,6 +38,6 @@ All docs live in the [Wiki](https://github.com/theanhgen/ouroboros/wiki):
 ## Repository Layout
 
 - `src/ouroboros/` -- core agent code
-- `config/` -- agent configuration and state
+- `config/` -- checked-in sample config and repo-local snapshots, not the live runtime path
 - `tests/` -- test suite
 - `docs/wiki/` -- wiki source (auto-generated, pushed to GitHub Wiki)

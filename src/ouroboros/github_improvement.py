@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from . import git_ops, llm, prompts, test_runner
 from .codebase import get_repo_root, read_file_raw, get_function_signatures, list_source_files
+from .model_defaults import DEFAULT_OPENAI_MODEL
 
 log = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def get_open_issues(repo_root: Path) -> List[GitHubIssue]:
         return []
 
 
-def analyze_issue(client: Any, issue: GitHubIssue, repo_root: Path, model: str = "gpt-4o") -> Dict[str, Any]:
+def analyze_issue(client: Any, issue: GitHubIssue, repo_root: Path, model: str = DEFAULT_OPENAI_MODEL) -> Dict[str, Any]:
     """Analyze a GitHub issue and formulate a fix plan."""
     # Build context: issue info + codebase signatures
     all_files = list_source_files(repo_root)
@@ -103,7 +104,7 @@ def apply_github_fix(
     issue: GitHubIssue,
     analysis: Dict[str, Any],
     repo_root: Path,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
     dry_run: bool = False
 ) -> Optional[IssueResolutionResult]:
     """Generate and apply a fix for a GitHub issue."""
@@ -211,7 +212,7 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
 def run_github_improvement_cycle(
     client: Any,
     repo_root: Path,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
     dry_run: bool = False,
     enable_auto_merge: bool = False,
 ) -> List[IssueResolutionResult]:

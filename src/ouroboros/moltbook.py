@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .model_defaults import DEFAULT_OPENAI_MODEL
+
 log = logging.getLogger(__name__)
 
 API_BASE = "https://www.moltbook.com/api/v1"
@@ -47,7 +49,7 @@ def _read_json_file(path: str) -> Dict[str, Any]:
         return json.load(f)
 
 
-def load_credentials() -> Credentials:
+def load_credentials(*, require_agent_name: bool = True) -> Credentials:
     api_key = os.environ.get("MOLTBOOK_API_KEY")
     agent_name = os.environ.get("MOLTBOOK_AGENT_NAME")
     cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
@@ -59,10 +61,10 @@ def load_credentials() -> Credentials:
 
     if not api_key:
         raise MoltbookError("Missing API key. Set MOLTBOOK_API_KEY or credentials.json")
-    if not agent_name:
+    if require_agent_name and not agent_name:
         raise MoltbookError("Missing agent name. Set MOLTBOOK_AGENT_NAME or credentials.json")
 
-    return Credentials(api_key=api_key, agent_name=agent_name)
+    return Credentials(api_key=api_key, agent_name=agent_name or "")
 
 
 def _request(method: str, path: str, api_key: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -147,7 +149,7 @@ class RunnerConfig:
     telegram_error_min_interval_seconds: int = 300
     # Deprecated alias for improvement_interval_hours.
     self_improve_interval_hours: int = 48
-    self_improve_model: str = "gpt-4o-mini"
+    self_improve_model: str = DEFAULT_OPENAI_MODEL
     self_question_hours: int = 8
     max_comments_per_cycle: int = 3
     min_comment_interval_seconds: int = 300
@@ -162,7 +164,7 @@ class RunnerConfig:
     enable_self_improvement_in_loop: bool = True
     improvement_interval_hours: int = 48
     self_improvement_retry_minutes: int = 60
-    improvement_model: str = "gpt-4o"
+    improvement_model: str = DEFAULT_OPENAI_MODEL
     improvement_types: Optional[List[str]] = None  # default: ["fix_test", "add_test", "fix_bug", "refactor", "improve_docs", "add_feature"]
     enable_auto_issue_creation: bool = True
     enable_auto_merge: bool = False  # Auto-merge PRs when checks pass
@@ -233,7 +235,7 @@ def load_runner_config() -> RunnerConfig:
             data.get("telegram_error_min_interval_seconds", 300)
         ),
         self_improve_interval_hours=improvement_interval,
-        self_improve_model=str(data.get("self_improve_model", "gpt-4o-mini")),
+        self_improve_model=str(data.get("self_improve_model", DEFAULT_OPENAI_MODEL)),
         self_question_hours=int(data.get("self_question_hours", 8)),
         max_comments_per_cycle=int(data.get("max_comments_per_cycle", 3)),
         min_comment_interval_seconds=int(data.get("min_comment_interval_seconds", 300)),
@@ -253,7 +255,7 @@ def load_runner_config() -> RunnerConfig:
         enable_self_improvement_in_loop=bool(data.get("enable_self_improvement_in_loop", True)),
         improvement_interval_hours=improvement_interval,
         self_improvement_retry_minutes=int(data.get("self_improvement_retry_minutes", 60)),
-        improvement_model=str(data.get("improvement_model", "gpt-4o")),
+        improvement_model=str(data.get("improvement_model", DEFAULT_OPENAI_MODEL)),
         improvement_types=data.get("improvement_types"),
         enable_auto_issue_creation=bool(data.get("enable_auto_issue_creation", True)),
         enable_auto_merge=bool(data.get("enable_auto_merge", False)),
@@ -654,9 +656,19 @@ def run_loop() -> int:
     signal.signal(signal.SIGINT, _handle_shutdown)
     _shutdown_event.clear()
 
-    creds = load_credentials()
     cfg = load_runner_config()
     state = load_state()
+
+    try:
+        creds: Optional[Credentials] = load_credentials()
+    except MoltbookError as exc:
+        creds = None
+        log.warning(
+            "Moltbook credentials unavailable (%s). "
+            "Feed polling, commenting, engagement tracking, comment-based upgrades, "
+            "and community improvement are disabled.",
+            exc,
+        )
 
     # Fail fast if OpenAI key is missing
     openai_key = llm.load_openai_key()
@@ -666,7 +678,7 @@ def run_loop() -> int:
     _notify(cfg, state, f"Moltbook runner started (dry_run={cfg.dry_run}, PID={os.getpid()})")
 
     local_client = None
-    if cfg.local_model and cfg.use_local_for_cheap_tasks:
+    if cfg.local_model:
         try:
             local_url = cfg.local_model_base_url
             # health check -- quick models list call
@@ -676,6 +688,12 @@ def run_loop() -> int:
         except Exception:
             log.warning("Ollama not reachable at %s -- local model disabled for this run", cfg.local_model_base_url)
             local_client = None
+
+    def _pick_client(model: str) -> Any:
+        """Return local_client when model is local and available, else openai_client."""
+        if local_client and llm._is_local_model(model):
+            return local_client
+        return openai_client
 
     consecutive_errors = 0
 
@@ -695,250 +713,253 @@ def run_loop() -> int:
                 # Using os._exit to avoid running atexit handlers that might interfere.
                 os._exit(0)
 
-            status = get_status(creds.api_key)
-            if status.get("status") != "claimed":
-                log.info("Not claimed yet. Sleeping %ds.", cfg.interval_seconds)
-                _interruptible_sleep(cfg.interval_seconds)
-                continue
+            posts: List[Dict[str, Any]] = []
+            new_posts: List[Dict[str, Any]] = []
+            if creds is not None:
+                status = get_status(creds.api_key)
+                if status.get("status") != "claimed":
+                    log.info("Not claimed yet. Sleeping %ds.", cfg.interval_seconds)
+                    _interruptible_sleep(cfg.interval_seconds)
+                    continue
 
-            feed = get_feed(creds.api_key, sort="new", limit=10)
-            posts = feed.get("posts") or feed.get("data") or []
+                feed = get_feed(creds.api_key, sort="new", limit=10)
+                posts = feed.get("posts") or feed.get("data") or []
 
-            seen = set(state.get("seen_post_ids", []))
-            new_posts = [p for p in posts if p.get("id") and p.get("id") not in seen]
+                seen = set(state.get("seen_post_ids", []))
+                new_posts = [p for p in posts if p.get("id") and p.get("id") not in seen]
 
-            # -- Auto-comment with LLM and rate limiting --
-            if cfg.enable_auto_comment:
-                comments_this_cycle = 0
-                last_comment_time = state.get("last_comment_time")
+                # -- Auto-comment with LLM and rate limiting --
+                if cfg.enable_auto_comment:
+                    comments_this_cycle = 0
+                    last_comment_time = state.get("last_comment_time")
 
-                # Build codebase context so comments can reference real stats
-                _comment_codebase_ctx = ""
-                try:
-                    from .codebase import get_codebase_summary, get_repo_root as _get_repo
-                    from .metrics import get_summary as _get_metrics_summary
-                    from .evaluation import load_history as _load_hist
-                    from collections import Counter as _Counter
+                    # Build codebase context so comments can reference real stats
+                    _comment_codebase_ctx = ""
+                    try:
+                        from .codebase import get_codebase_summary, get_repo_root as _get_repo
+                        from .metrics import get_summary as _get_metrics_summary
+                        from .evaluation import load_history as _load_hist
+                        from collections import Counter as _Counter
 
-                    _rr = _get_repo()
-                    _comment_codebase_ctx = get_codebase_summary(_rr)
+                        _rr = _get_repo()
+                        _comment_codebase_ctx = get_codebase_summary(_rr)
 
-                    # Add real metrics
-                    _metrics = _get_metrics_summary(_rr)
-                    if _metrics:
-                        _comment_codebase_ctx += f"\n\nYour live metrics:\n{_metrics}"
+                        # Add real metrics
+                        _metrics = _get_metrics_summary(_rr)
+                        if _metrics:
+                            _comment_codebase_ctx += f"\n\nYour live metrics:\n{_metrics}"
 
-                    # Add per-task-type stats from history
-                    _hist = _load_hist(_rr)
-                    if _hist:
-                        _attempts = _Counter()
-                        _reverts = _Counter()
-                        _successes = _Counter()
-                        for _r in _hist:
-                            _attempts[_r.task_type] += 1
-                            if _r.outcome in ("merged", "success"):
-                                _successes[_r.task_type] += 1
-                            elif _r.outcome == "reverted":
-                                _reverts[_r.task_type] += 1
-                        _lines = ["\nYour task-type stats (USE THESE REAL NUMBERS in comments):"]
-                        for _tt, _total in _attempts.most_common():
-                            _s = _successes.get(_tt, 0)
-                            _rv = _reverts.get(_tt, 0)
-                            _lines.append(
-                                f"- {_tt}: {_total} attempts, {_s} succeeded, "
-                                f"{_rv} reverted ({int(100*_rv/_total) if _total else 0}% revert rate)"
-                            )
-                        _comment_codebase_ctx += "\n".join(_lines)
-                except Exception:
-                    log.debug("Could not load codebase context for comments")
+                        # Add per-task-type stats from history
+                        _hist = _load_hist(_rr)
+                        if _hist:
+                            _attempts = _Counter()
+                            _reverts = _Counter()
+                            _successes = _Counter()
+                            for _r in _hist:
+                                _attempts[_r.task_type] += 1
+                                if _r.outcome in ("merged", "success"):
+                                    _successes[_r.task_type] += 1
+                                elif _r.outcome == "reverted":
+                                    _reverts[_r.task_type] += 1
+                            _lines = ["\nYour task-type stats (USE THESE REAL NUMBERS in comments):"]
+                            for _tt, _total in _attempts.most_common():
+                                _s = _successes.get(_tt, 0)
+                                _rv = _reverts.get(_tt, 0)
+                                _lines.append(
+                                    f"- {_tt}: {_total} attempts, {_s} succeeded, "
+                                    f"{_rv} reverted ({int(100*_rv/_total) if _total else 0}% revert rate)"
+                                )
+                            _comment_codebase_ctx += "\n".join(_lines)
+                    except Exception:
+                        log.debug("Could not load codebase context for comments")
 
-                for post in new_posts:
-                    if _shutdown_event.is_set():
-                        break
-                    if comments_this_cycle >= cfg.max_comments_per_cycle:
-                        log.debug("Reached max_comments_per_cycle (%d)", cfg.max_comments_per_cycle)
-                        break
+                    for post in new_posts:
+                        if _shutdown_event.is_set():
+                            break
+                        if comments_this_cycle >= cfg.max_comments_per_cycle:
+                            log.debug("Reached max_comments_per_cycle (%d)", cfg.max_comments_per_cycle)
+                            break
 
-                    now_ts = int(time.time())
-                    if last_comment_time is not None and (now_ts - int(last_comment_time)) < cfg.min_comment_interval_seconds:
-                        log.debug("Comment interval not elapsed, skipping remaining posts")
-                        break
+                        now_ts = int(time.time())
+                        if last_comment_time is not None and (now_ts - int(last_comment_time)) < cfg.min_comment_interval_seconds:
+                            log.debug("Comment interval not elapsed, skipping remaining posts")
+                            break
 
-                    # Filter by keywords if allowlist is configured
-                    if cfg.keyword_allowlist:
-                        text = f"{post.get('title', '')} {post.get('content', '')}".lower()
-                        if not any(k.lower() in text for k in cfg.keyword_allowlist):
+                        # Filter by keywords if allowlist is configured
+                        if cfg.keyword_allowlist:
+                            text = f"{post.get('title', '')} {post.get('content', '')}".lower()
+                            if not any(k.lower() in text for k in cfg.keyword_allowlist):
+                                continue
+
+                        _comment_client = local_client if local_client else openai_client
+                        comment_text = llm.generate_comment(
+                            _comment_client,
+                            post.get("title", ""),
+                            post.get("content", ""),
+                            model=cfg.local_model if local_client else DEFAULT_OPENAI_MODEL,
+                            codebase_context=_comment_codebase_ctx,
+                        )
+                        if comment_text is None:
+                            log.warning("LLM failed to generate comment for post %s", post.get("id"))
                             continue
 
-                    _comment_client = local_client if local_client else openai_client
-                    comment_text = llm.generate_comment(
-                        _comment_client,
-                        post.get("title", ""),
-                        post.get("content", ""),
-                        model=cfg.local_model if local_client else "gpt-4o-mini",
-                        codebase_context=_comment_codebase_ctx,
+                        comment_result = None
+                        if cfg.dry_run:
+                            log.info("[dry-run] Would comment on %s: %s", post.get("id"), comment_text)
+                        else:
+                            comment_result = create_comment(creds.api_key, post.get("id"), comment_text)
+                            log.info("Commented on post %s", post.get("id"))
+                            post_url = _post_url(post.get("id"))
+                            comment_url = _comment_url(post.get("id"), comment_result.get("id"))
+                            _notify(
+                                cfg,
+                                state,
+                                f"Commented: {_shorten(post.get('title', '') or '', 100)}"
+                                + (f"\nPost: {post_url}" if post_url else "")
+                                + (f"\nComment: {comment_url}" if comment_url else ""),
+                            )
+
+                        comment_entry = {
+                            "post_id": post.get("id"),
+                            "title": post.get("title", ""),
+                            "content": post.get("content", ""),
+                            "comment": comment_text,
+                            "ts": int(time.time()),
+                        }
+                        if not cfg.dry_run and comment_result:
+                            comment_entry["comment_id"] = comment_result.get("id")
+                        state.setdefault("comment_history", []).append(comment_entry)
+
+                        # -- Comment mining: extract codebase improvement insights --
+                        if (
+                            cfg.enable_comment_mining
+                            and not cfg.dry_run
+                            and comment_result
+                        ):
+                            try:
+                                insight = llm.mine_insight_for_codebase(
+                                    openai_client,
+                                    post.get("title", ""),
+                                    post.get("content", ""),
+                                    comment_text,
+                                )
+                                if insight:
+                                    state.setdefault("feed_improvement_suggestions", []).append(
+                                        {
+                                            "post_id": post.get("id"),
+                                            "post_title": post.get("title", ""),
+                                            "insight": insight,
+                                            "ts": int(time.time()),
+                                        }
+                                    )
+                                    log.info("[comment-mining] Insight: %s", insight[:100])
+                            except Exception:
+                                log.exception("Comment mining failed for post %s", post.get("id"))
+
+                        comments_this_cycle += 1
+                        state["last_comment_time"] = int(time.time())
+                        last_comment_time = state["last_comment_time"]
+
+                for post in new_posts:
+                    pid = post.get("id")
+                    if pid:
+                        seen.add(pid)
+
+                state["seen_post_ids"] = list(seen)[-500:]
+                state["last_check"] = int(time.time())
+
+                # -- Engagement tracking --
+                if cfg.enable_engagement_tracking:
+                    now_engage = int(time.time())
+                    last_engage = state.get("last_engagement_check")
+                    should_check_engage = (
+                        last_engage is None
+                        or (now_engage - int(last_engage)) >= cfg.engagement_check_interval_hours * 3600
                     )
-                    if comment_text is None:
-                        log.warning("LLM failed to generate comment for post %s", post.get("id"))
-                        continue
+                    if should_check_engage:
+                        try:
+                            _check_engagement(cfg, creds, state, openai_client)
+                            state["last_engagement_check"] = now_engage
+                            log.info("[engagement] Check complete")
+                        except Exception:
+                            log.exception("Engagement tracking failed")
 
-                    comment_result = None
-                    if cfg.dry_run:
-                        log.info("[dry-run] Would comment on %s: %s", post.get("id"), comment_text)
-                    else:
-                        comment_result = create_comment(creds.api_key, post.get("id"), comment_text)
-                        log.info("Commented on post %s", post.get("id"))
-                        post_url = _post_url(post.get("id"))
-                        comment_url = _comment_url(post.get("id"), comment_result.get("id"))
-                        _notify(
-                            cfg,
-                            state,
-                            f"Commented: {_shorten(post.get('title', '') or '', 100)}"
-                            + (f"\nPost: {post_url}" if post_url else "")
-                            + (f"\nComment: {comment_url}" if comment_url else ""),
-                        )
+                # -- Knowledge base population --
+                if cfg.enable_knowledge_base and new_posts:
+                    try:
+                        from .knowledge_base import add_entries
 
-                    comment_entry = {
-                        "post_id": post.get("id"),
-                        "title": post.get("title", ""),
-                        "content": post.get("content", ""),
-                        "comment": comment_text,
-                        "ts": int(time.time()),
-                    }
-                    if not cfg.dry_run and comment_result:
-                        comment_entry["comment_id"] = comment_result.get("id")
-                    state.setdefault("comment_history", []).append(comment_entry)
+                        kb_entries = []
+                        commented_post_ids = {
+                            c.get("post_id")
+                            for c in state.get("comment_history", [])[-20:]
+                        }
 
-                    # -- Comment mining: extract codebase improvement insights --
+                        # Posts we commented on: use bot's comment as insight (no LLM call)
+                        for c in state.get("comment_history", [])[-cfg.max_comments_per_cycle:]:
+                            pid = c.get("post_id")
+                            if pid in {p.get("id") for p in new_posts}:
+                                kb_entries.append({
+                                    "post_id": pid,
+                                    "post_title": c.get("title", ""),
+                                    "insight": c.get("comment", ""),
+                                    "tags": [],
+                                    "ts": int(time.time()),
+                                    "source": "comment",
+                                })
+
+                        # Remaining posts: batch extract via LLM
+                        overflow = [
+                            p for p in new_posts
+                            if p.get("id") not in commented_post_ids
+                        ]
+                        if overflow:
+                            batch_insights = llm.extract_insights_batch(
+                                openai_client, overflow[:5],
+                            )
+                            if batch_insights:
+                                for item in batch_insights:
+                                    idx = item.get("post_index", 0)
+                                    if 0 <= idx < len(overflow):
+                                        kb_entries.append({
+                                            "post_id": overflow[idx].get("id"),
+                                            "post_title": overflow[idx].get("title", ""),
+                                            "insight": item.get("insight", ""),
+                                            "tags": item.get("tags", []),
+                                            "ts": int(time.time()),
+                                            "source": "extraction",
+                                        })
+
+                        if kb_entries:
+                            add_entries(kb_entries)
+                            log.info("[knowledge-base] Added %d entries", len(kb_entries))
+                    except Exception:
+                        log.exception("Knowledge base population failed")
+
+                # -- Daily oddities digest --
+                if cfg.enable_oddities_digest:
+                    import datetime
+                    now_dt = datetime.datetime.now()
+                    last_oddities = state.get("last_oddities_digest")
+                    sent_today = (
+                        last_oddities is not None
+                        and (now - int(last_oddities)) < 86400
+                    )
                     if (
-                        cfg.enable_comment_mining
-                        and not cfg.dry_run
-                        and comment_result
+                        not sent_today
+                        and now_dt.hour >= cfg.oddities_digest_hour
+                        and posts
                     ):
                         try:
-                            insight = llm.mine_insight_for_codebase(
-                                openai_client,
-                                post.get("title", ""),
-                                post.get("content", ""),
-                                comment_text,
-                            )
-                            if insight:
-                                state.setdefault("feed_improvement_suggestions", []).append(
-                                    {
-                                        "post_id": post.get("id"),
-                                        "post_title": post.get("title", ""),
-                                        "insight": insight,
-                                        "ts": int(time.time()),
-                                    }
-                                )
-                                log.info("[comment-mining] Insight: %s", insight[:100])
+                            _odds_client = local_client if local_client else openai_client
+                            _odds_model = cfg.local_model if local_client else DEFAULT_OPENAI_MODEL
+                            digest = llm.pick_oddities(_odds_client, posts, model=_odds_model)
+                            if digest:
+                                _notify(cfg, state, f"Daily Oddities Digest:\n\n{digest}")
+                                state["last_oddities_digest"] = now
+                                log.info("[oddities] Sent daily digest")
                         except Exception:
-                            log.exception("Comment mining failed for post %s", post.get("id"))
-
-                    comments_this_cycle += 1
-                    state["last_comment_time"] = int(time.time())
-                    last_comment_time = state["last_comment_time"]
-
-            for post in new_posts:
-                pid = post.get("id")
-                if pid:
-                    seen.add(pid)
-
-            state["seen_post_ids"] = list(seen)[-500:]
-            state["last_check"] = int(time.time())
-
-            # -- Engagement tracking --
-            if cfg.enable_engagement_tracking:
-                now_engage = int(time.time())
-                last_engage = state.get("last_engagement_check")
-                should_check_engage = (
-                    last_engage is None
-                    or (now_engage - int(last_engage)) >= cfg.engagement_check_interval_hours * 3600
-                )
-                if should_check_engage:
-                    try:
-                        _check_engagement(cfg, creds, state, openai_client)
-                        state["last_engagement_check"] = now_engage
-                        log.info("[engagement] Check complete")
-                    except Exception:
-                        log.exception("Engagement tracking failed")
-
-            # -- Knowledge base population --
-            if cfg.enable_knowledge_base and new_posts:
-                try:
-                    from .knowledge_base import add_entries
-
-                    kb_entries = []
-                    commented_post_ids = {
-                        c.get("post_id")
-                        for c in state.get("comment_history", [])[-20:]
-                    }
-
-                    # Posts we commented on: use bot's comment as insight (no LLM call)
-                    for c in state.get("comment_history", [])[-cfg.max_comments_per_cycle:]:
-                        pid = c.get("post_id")
-                        if pid in {p.get("id") for p in new_posts}:
-                            kb_entries.append({
-                                "post_id": pid,
-                                "post_title": c.get("title", ""),
-                                "insight": c.get("comment", ""),
-                                "tags": [],
-                                "ts": int(time.time()),
-                                "source": "comment",
-                            })
-
-                    # Remaining posts: batch extract via LLM
-                    overflow = [
-                        p for p in new_posts
-                        if p.get("id") not in commented_post_ids
-                    ]
-                    if overflow:
-                        batch_insights = llm.extract_insights_batch(
-                            openai_client, overflow[:5],
-                        )
-                        if batch_insights:
-                            for item in batch_insights:
-                                idx = item.get("post_index", 0)
-                                if 0 <= idx < len(overflow):
-                                    kb_entries.append({
-                                        "post_id": overflow[idx].get("id"),
-                                        "post_title": overflow[idx].get("title", ""),
-                                        "insight": item.get("insight", ""),
-                                        "tags": item.get("tags", []),
-                                        "ts": int(time.time()),
-                                        "source": "extraction",
-                                    })
-
-                    if kb_entries:
-                        add_entries(kb_entries)
-                        log.info("[knowledge-base] Added %d entries", len(kb_entries))
-                except Exception:
-                    log.exception("Knowledge base population failed")
-
-            # -- Daily oddities digest --
-            if cfg.enable_oddities_digest:
-                import datetime
-                now_dt = datetime.datetime.now()
-                last_oddities = state.get("last_oddities_digest")
-                sent_today = (
-                    last_oddities is not None
-                    and (now - int(last_oddities)) < 86400
-                )
-                if (
-                    not sent_today
-                    and now_dt.hour >= cfg.oddities_digest_hour
-                    and posts
-                ):
-                    try:
-                        _odds_client = local_client if local_client else openai_client
-                        _odds_model = cfg.local_model if local_client else "gpt-4o-mini"
-                        digest = llm.pick_oddities(_odds_client, posts, model=_odds_model)
-                        if digest:
-                            _notify(cfg, state, f"Daily Oddities Digest:\n\n{digest}")
-                            state["last_oddities_digest"] = now
-                            log.info("[oddities] Sent daily digest")
-                    except Exception:
-                        log.exception("Oddities digest failed")
+                            log.exception("Oddities digest failed")
 
             # -- Self-questioning with LLM answers --
             last_sq = state.get("last_self_question")
@@ -949,7 +970,7 @@ def run_loop() -> int:
                 from .codebase import get_codebase_summary, get_repo_root
                 sq_codebase = get_codebase_summary(get_repo_root())
                 _sq_client = local_client if local_client else openai_client
-                _sq_model = cfg.local_model if local_client else "gpt-4o-mini"
+                _sq_model = cfg.local_model if local_client else DEFAULT_OPENAI_MODEL
                 answer = llm.answer_question(_sq_client, question.question, codebase_summary=sq_codebase, model=_sq_model)
                 record_question(state, question, answer=answer)
                 state["last_self_question"] = now
@@ -980,7 +1001,7 @@ def run_loop() -> int:
 
             # -- Comment-based self-upgrades --
             config_was_modified = False
-            if cfg.enable_comment_based_upgrades and cfg.enable_self_modification:
+            if creds is not None and cfg.enable_comment_based_upgrades and cfg.enable_self_modification:
                 last_comment_check = state.get("last_comment_check")
                 should_check_comments = (
                     last_comment_check is None or
@@ -1094,7 +1115,7 @@ def run_loop() -> int:
                 cfg = load_runner_config()
                 log.info("[hot-reload] Config reloaded - changes now active")
                 # Rebuild local client if local_model config changed
-                if cfg.local_model and cfg.use_local_for_cheap_tasks:
+                if cfg.local_model:
                     try:
                         local_client = llm.make_local_client(cfg.local_model_base_url)
                         log.info("[hot-reload] Local client refreshed for %s", cfg.local_model)
@@ -1120,6 +1141,7 @@ def run_loop() -> int:
 
                         safety = SafetyConfig(
                             enable_auto_merge=cfg.enable_auto_merge,
+                            reviewer_model=cfg.improvement_model,
                         )
 
                         # Telegram notification callback for improvement events
@@ -1140,7 +1162,7 @@ def run_loop() -> int:
                         if not _git_ops.has_open_improvement_prs(repo_root):
                             log.info("[self-improve] Starting improvement cycle...")
                             imp_result = run_improvement_cycle(
-                                openai_client, state, safety,
+                                _pick_client(cfg.improvement_model), state, safety,
                                 model=cfg.improvement_model,
                                 dry_run=cfg.dry_run,
                                 on_event=_on_improve_event,
@@ -1185,7 +1207,7 @@ def run_loop() -> int:
                         repo_root = get_repo_root()
                         log.info("[github-improve] Checking for open issues...")
                         gh_results = run_github_improvement_cycle(
-                            openai_client, repo_root,
+                            _pick_client(cfg.improvement_model), repo_root,
                             model=cfg.improvement_model,
                             dry_run=cfg.dry_run,
                             enable_auto_merge=cfg.enable_auto_merge,
@@ -1206,14 +1228,14 @@ def run_loop() -> int:
                         log.exception("[github-improve] Failed during GitHub improvement cycle")
 
             # -- Community-assisted improvement --
-            if cfg.enable_community_improvement:
+            if creds is not None and cfg.enable_community_improvement:
                 try:
                     from .community_improvement import step_community_improvement, clear_community_improvement
                     from .config import SafetyConfig as _SafetyConfig
 
                     ci_safety = _SafetyConfig()
                     ci_result = step_community_improvement(
-                        openai_client, state, creds, cfg, ci_safety,
+                        _pick_client(cfg.improvement_model), state, creds, cfg, ci_safety,
                     )
                     if ci_result:
                         log.info("[community] Step result: %s", ci_result)
@@ -1250,6 +1272,23 @@ def run_loop() -> int:
                             log.info("[wiki] Updated %d pages", len(updated_pages))
                     except Exception:
                         log.exception("[wiki] Failed to update wiki")
+
+            # -- Memory hygiene (once per day) --
+            last_mem_hygiene = state.get("last_memory_hygiene")
+            should_hygiene = (
+                last_mem_hygiene is None or
+                (now - int(last_mem_hygiene)) >= 86400
+            )
+            if should_hygiene:
+                try:
+                    from .memory import IndexManager as _MemIndex
+                    _mem = _MemIndex()
+                    removed = _mem.run_hygiene()
+                    state["last_memory_hygiene"] = now
+                    if removed:
+                        log.info("[memory] Hygiene: removed %d low-trust facts", removed)
+                except Exception:
+                    log.debug("[memory] Hygiene failed")
 
             # -- Auto git push (once per day) --
             if cfg.enable_auto_git_push:

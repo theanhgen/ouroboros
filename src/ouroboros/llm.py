@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from openai import OpenAI
 
+from .model_defaults import DEFAULT_OPENAI_MODEL
 from . import prompts
 
 log = logging.getLogger(__name__)
@@ -21,16 +22,18 @@ def load_openai_key() -> str:
     if os.path.exists(cred_path):
         with open(cred_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        key = data.get("openai_api_key") or data.get("api_key")
-        if key: return key
-    
+        key = data.get("openai_api_key")
+        if key:
+            return key
+
     legacy_path = os.path.expanduser("~/.config/moltbook/openai.json")
     if os.path.exists(legacy_path):
         with open(legacy_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         key = data.get("api_key")
-        if key: return key
-        
+        if key:
+            return key
+
     raise RuntimeError("Missing OpenAI API key.")
 
 
@@ -85,12 +88,19 @@ def _maybe_strip_response_format(kwargs: dict, model: str) -> dict:
     return kwargs
 
 
+def _completion_token_kwargs(model: str, max_tokens: int) -> dict:
+    """Return the correct completion-token parameter for the target model."""
+    if model.startswith("gpt-5") and not _is_local_model(model):
+        return {"max_completion_tokens": max_tokens}
+    return {"max_tokens": max_tokens}
+
+
 
 def chat_completion(
     client: Any,
     system_prompt: str,
     user_prompt: str,
-    model: str = "gpt-4o-mini",
+    model: str = DEFAULT_OPENAI_MODEL,
     response_format: Optional[Dict[str, str]] = None,
     max_tokens: int = 1000,
 ) -> tuple[str, Optional[dict]]:
@@ -107,7 +117,7 @@ def chat_completion(
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                "max_tokens": max_tokens,
+                **_completion_token_kwargs(model, max_tokens),
             }
             if response_format and not _is_local_model(model):
                 kwargs["response_format"] = response_format
@@ -145,7 +155,7 @@ def identify_improvements(
     summary: str,
     test_results: str,
     history: str,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
     additional_context: str = "",
 ) -> tuple[Optional[dict], Optional[str]]:
     """Identify a single improvement task using tool-calling (if supported).
@@ -205,7 +215,7 @@ def plan_code_change(
     client: Any,
     task: dict,
     code: str,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> tuple[Optional[str], Optional[dict]]:
     system = "You are a senior Python developer. Create a step-by-step plan for the code change."
     user = (
@@ -223,7 +233,7 @@ def generate_code(
     plan: str,
     files: dict,
     constraints: str,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> tuple[Optional[list], Optional[dict]]:
     file_contents = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in files.items())
     system = (
@@ -252,7 +262,7 @@ def review_code_changes(
     client: Any,
     task: dict,
     changes: List[dict],
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> tuple[bool, str, Optional[dict]]:
     """Review proposed changes for logic errors, bugs, or security issues."""
     changes_text = "\n\n".join([
@@ -280,12 +290,14 @@ def generate_question_post(
     task_data: dict,
     code_context: dict,
     test_failures: str,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[dict]:
     code_block = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
     try:
         resp = client.chat.completions.create(
-            model=model, max_tokens=600, response_format={"type": "json_object"},
+            model=model,
+            response_format={"type": "json_object"},
+            **_completion_token_kwargs(model, 600),
             messages=[
                 {"role": "system", "content": prompts.load_question_post_prompt()},
                 {"role": "user", "content": f"## Task\n{task_data}\n\n## Code\n{code_block}\n\n## Tests\n{test_failures}"}
@@ -302,13 +314,15 @@ def analyze_code_suggestions(
     problem: str,
     code_context: dict,
     comments: list,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[dict]:
     code_block = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
     comments_text = "\n\n".join(f"Comment by {c.get('author', {}).get('name')}: {c.get('content')}" for c in comments)
     try:
         resp = client.chat.completions.create(
-            model=model, max_tokens=800, response_format={"type": "json_object"},
+            model=model,
+            response_format={"type": "json_object"},
+            **_completion_token_kwargs(model, 800),
             messages=[
                 {"role": "system", "content": prompts.load_code_suggestion_prompt()},
                 {"role": "user", "content": f"## Problem\n{problem}\n\n## Code\n{code_block}\n\n## Comments\n{comments_text}"}
@@ -326,12 +340,14 @@ def generate_code_from_suggestion(
     code_context: dict,
     plan: str,
     constraints: str,
-    model: str = "gpt-4o",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[list]:
     file_contents = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
     try:
         resp = client.chat.completions.create(
-            model=model, max_tokens=2000, response_format={"type": "json_object"},
+            model=model,
+            response_format={"type": "json_object"},
+            **_completion_token_kwargs(model, 2000),
             messages=[
                 {"role": "system", "content": prompts.load_suggestion_implementation_prompt() + f"\n\nConstraints:\n{constraints}"},
                 {"role": "user", "content": f"## Suggestion\n{suggestion}\n\n## Plan\n{plan}\n\n## Code\n{file_contents}"}
@@ -348,12 +364,14 @@ def analyze_comments_for_upgrades(
     post_title: str,
     post_content: str,
     comments: list,
-    model: str = "gpt-4o-mini",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[dict]:
     comments_text = "\n\n".join([f"Comment by {c.get('author', {}).get('name')}: {c.get('content')}" for c in comments])
     try:
         resp = client.chat.completions.create(
-            model=model, max_tokens=600, response_format={"type": "json_object"},
+            model=model,
+            response_format={"type": "json_object"},
+            **_completion_token_kwargs(model, 600),
             messages=[
                 {"role": "system", "content": prompts.load_comment_analysis_prompt()},
                 {"role": "user", "content": f"Post: {post_title}\n{post_content}\n\nComments:\n{comments_text}"}
@@ -370,11 +388,12 @@ def mine_insight_for_codebase(
     post_title: str,
     post_content: str,
     bot_comment: str,
-    model: str = "gpt-4o-mini",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[str]:
     try:
         resp = client.chat.completions.create(
-            model=model, max_tokens=150,
+            model=model,
+            **_completion_token_kwargs(model, 150),
             messages=[
                 {"role": "system", "content": prompts.load_comment_mining_prompt()},
                 {"role": "user", "content": f"Post: {post_title}\n{post_content}\n\nYour comment: {bot_comment}"}
@@ -392,12 +411,13 @@ def extract_topic_signal(
     post_title: str,
     bot_comment: str,
     replies: list,
-    model: str = "gpt-4o-mini",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[str]:
     replies_text = "\n".join([f"- {r.get('content') if isinstance(r, dict) else r}" for r in replies])
     try:
         resp = client.chat.completions.create(
-            model=model, max_tokens=80,
+            model=model,
+            **_completion_token_kwargs(model, 80),
             messages=[
                 {"role": "system", "content": prompts.load_topic_signal_prompt()},
                 {"role": "user", "content": f"Title: {post_title}\nComment: {bot_comment}\nReplies: {replies_text}"}
@@ -412,12 +432,14 @@ def extract_topic_signal(
 def extract_insights_batch(
     client: Any,
     posts: list,
-    model: str = "gpt-4o-mini",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[list]:
     posts_text = "\n\n".join([f"[{i}] {p.get('title')}: {p.get('content')}" for i, p in enumerate(posts[:5])])
     try:
         resp = client.chat.completions.create(
-            model=model, max_tokens=300, response_format={"type": "json_object"},
+            model=model,
+            response_format={"type": "json_object"},
+            **_completion_token_kwargs(model, 300),
             messages=[
                 {"role": "system", "content": prompts.load_insight_extraction_prompt()},
                 {"role": "user", "content": posts_text}
@@ -433,12 +455,13 @@ def extract_insights_batch(
 def generate_kb_summary(
     client: Any,
     entries: list,
-    model: str = "gpt-4o-mini",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[str]:
     entries_text = "\n".join([f"- {e.get('insight')}" for e in entries])
     try:
         resp = client.chat.completions.create(
-            model=model, max_tokens=200,
+            model=model,
+            **_completion_token_kwargs(model, 200),
             messages=[
                 {"role": "system", "content": prompts.load_kb_summary_prompt()},
                 {"role": "user", "content": entries_text}
@@ -453,12 +476,13 @@ def generate_kb_summary(
 def pick_oddities(
     client: Any,
     posts: list,
-    model: str = "gpt-4o-mini",
+    model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[str]:
     posts_text = "\n\n".join([f"[{i}] {p.get('title')}: {p.get('content')[:200]}" for i, p in enumerate(posts[:20])])
     try:
         resp = client.chat.completions.create(
-            model=model, max_tokens=400,
+            model=model,
+            **_completion_token_kwargs(model, 400),
             messages=[
                 {"role": "system", "content": "Curate a digest of weird AI posts. Be witty."},
                 {"role": "user", "content": posts_text}
@@ -483,20 +507,28 @@ def get_tools_definition():
 
 # --- Legacy/Helper wrappers for social features (OpenAI only for now) ---
 
-def generate_comment(client: Any, post_title: str, post_content: str, model: str = "gpt-4o-mini", codebase_context: str = "") -> Optional[str]:
+def generate_comment(client: Any, post_title: str, post_content: str, model: str = DEFAULT_OPENAI_MODEL, codebase_context: str = "") -> Optional[str]:
     user_msg = f"Post title: {post_title}\n\nPost content: {post_content}\n\nContext: {codebase_context}"
     try:
-        resp = client.chat.completions.create(model=model, max_tokens=300, messages=[{"role": "system", "content": prompts.load_comment_system_prompt()}, {"role": "user", "content": user_msg}])
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "system", "content": prompts.load_comment_system_prompt()}, {"role": "user", "content": user_msg}],
+            **_completion_token_kwargs(model, 300),
+        )
         text = resp.choices[0].message.content
         return None if text and text.strip().upper() == "SKIP" else text
     except Exception:
         log.warning("generate_comment failed", exc_info=True)
         return None
 
-def answer_question(client: Any, question: str, codebase_summary: str = "", model: str = "gpt-4o-mini") -> Optional[str]:
+def answer_question(client: Any, question: str, codebase_summary: str = "", model: str = DEFAULT_OPENAI_MODEL) -> Optional[str]:
     user_content = f"## Codebase\n{codebase_summary}\n\n## Question\n{question}"
     try:
-        resp = client.chat.completions.create(model=model, max_tokens=300, messages=[{"role": "system", "content": "You are a self-reflective agent."}, {"role": "user", "content": user_content}])
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "system", "content": "You are a self-reflective agent."}, {"role": "user", "content": user_content}],
+            **_completion_token_kwargs(model, 300),
+        )
         return resp.choices[0].message.content
     except Exception:
         log.warning("answer_question failed", exc_info=True)

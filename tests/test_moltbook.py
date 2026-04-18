@@ -1,18 +1,24 @@
 import json
 import os
 import tempfile
+import threading
+import time
+from pathlib import Path
 from unittest import mock
 
 from ouroboros.moltbook import (
     Credentials,
     MAX_SELF_QUESTION_LOG,
+    MoltbookError,
     RunnerConfig,
     _trim_self_question_log,
     load_credentials,
     load_runner_config,
     load_state,
+    run_loop,
     save_state,
 )
+from ouroboros.model_defaults import DEFAULT_OPENAI_MODEL
 
 
 def test_load_credentials_from_env():
@@ -41,6 +47,26 @@ def test_load_credentials_from_file(tmp_path):
     assert creds.agent_name == "fa"
 
 
+def test_load_credentials_without_agent_name_when_not_required(tmp_path):
+    cred_file = tmp_path / "credentials.json"
+    cred_file.write_text(json.dumps({"api_key": "fk"}))
+
+    with mock.patch.dict(os.environ, {}, clear=True):
+        with mock.patch("ouroboros.moltbook.os.path.expanduser", return_value=str(cred_file)):
+            orig_exists = os.path.exists
+
+            def fake_exists(p):
+                if p == str(cred_file):
+                    return True
+                return orig_exists(p)
+
+            with mock.patch("ouroboros.moltbook.os.path.exists", side_effect=fake_exists):
+                creds = load_credentials(require_agent_name=False)
+
+    assert creds.api_key == "fk"
+    assert creds.agent_name == ""
+
+
 def test_runner_config_defaults():
     cfg = RunnerConfig()
     assert cfg.interval_seconds == 1800
@@ -54,7 +80,7 @@ def test_runner_config_defaults():
     assert cfg.enable_auto_comment is False
     assert cfg.enable_self_improvement is False
     assert cfg.improvement_interval_hours == 48
-    assert cfg.improvement_model == "gpt-4o"
+    assert cfg.improvement_model == DEFAULT_OPENAI_MODEL
     assert cfg.enable_auto_merge is False
 
 
@@ -195,3 +221,51 @@ def test_save_state_atomic_write(tmp_path):
     assert not (tmp_path / "state.json.tmp").exists()
     loaded = json.loads(state_file.read_text())
     assert loaded["key"] == "value"
+
+
+def test_run_loop_without_moltbook_credentials_skips_feed_and_runs_github_cycle():
+    temp_event = threading.Event()
+    now = int(time.time())
+    state = {
+        "last_self_question": now,
+        "last_memory_hygiene": now,
+    }
+    cfg = RunnerConfig(
+        interval_seconds=1,
+        enable_github_improvement=True,
+        github_improvement_interval_hours=0,
+    )
+
+    with mock.patch("ouroboros.moltbook._shutdown_event", temp_event):
+        with mock.patch("ouroboros.moltbook.signal.signal"):
+            with mock.patch(
+                "ouroboros.moltbook.load_credentials",
+                side_effect=MoltbookError("Missing API key. Set MOLTBOOK_API_KEY or credentials.json"),
+            ):
+                with mock.patch("ouroboros.moltbook.load_runner_config", return_value=cfg):
+                    with mock.patch("ouroboros.moltbook.load_state", return_value=state):
+                        with mock.patch("ouroboros.llm.load_openai_key", return_value="sk-test"):
+                            with mock.patch("ouroboros.llm.make_client", return_value=mock.sentinel.client):
+                                with mock.patch("ouroboros.moltbook.get_status") as mock_status:
+                                    with mock.patch("ouroboros.moltbook.get_feed") as mock_feed:
+                                        with mock.patch("ouroboros.moltbook._notify"):
+                                            with mock.patch("ouroboros.moltbook.save_state"):
+                                                with mock.patch("ouroboros.git_ops.pull_latest", return_value=False):
+                                                    with mock.patch(
+                                                        "ouroboros.github_improvement.run_github_improvement_cycle",
+                                                        return_value=[],
+                                                    ) as mock_github_cycle:
+                                                        with mock.patch(
+                                                            "ouroboros.codebase.get_repo_root",
+                                                            return_value=Path("/tmp"),
+                                                        ):
+                                                            with mock.patch(
+                                                                "ouroboros.moltbook._interruptible_sleep",
+                                                                side_effect=lambda seconds, check_git=False: temp_event.set(),
+                                                            ):
+                                                                result = run_loop()
+
+    assert result == 0
+    mock_status.assert_not_called()
+    mock_feed.assert_not_called()
+    mock_github_cycle.assert_called_once()

@@ -21,6 +21,7 @@ from ouroboros.improvement import (
     validate_improvement,
 )
 from ouroboros.evaluation import EvaluationRecord
+from ouroboros.model_defaults import DEFAULT_OPENAI_MODEL
 from ouroboros.test_runner import RunnerOutcome
 
 
@@ -241,7 +242,7 @@ def test_run_improvement_cycle_returns_failure_when_plan_generation_fails(
     mock_client.chat.completions.create.return_value.choices = [MagicMock(message=mock_msg)]
     mock_client.chat.completions.create.return_value.usage = None
 
-    result = run_improvement_cycle(client=mock_client, state={}, config=SafetyConfig(), model="gpt-4o")
+    result = run_improvement_cycle(client=mock_client, state={}, config=SafetyConfig(), model=DEFAULT_OPENAI_MODEL)
 
     assert result is not None
     assert result.status == "failed"

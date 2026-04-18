@@ -2,8 +2,9 @@ import argparse
 import json
 import logging
 from .config import SafetyConfig
+from .model_defaults import DEFAULT_OPENAI_MODEL
+from .moltbook import MoltbookError, get_feed, get_status, load_credentials, run_loop
 from .policies import require_pr_only
-from .moltbook import run_loop, get_status, get_feed, load_credentials
 from .self_modify import get_current_config, modify_runner_config, can_self_modify
 
 
@@ -51,14 +52,28 @@ def cmd_moltbook_run(_args: argparse.Namespace) -> int:
 
 
 def cmd_moltbook_status(_args: argparse.Namespace) -> int:
-    creds = load_credentials()
+    try:
+        creds = load_credentials(require_agent_name=False)
+    except MoltbookError as exc:
+        print(
+            f"{exc} Moltbook status requires MOLTBOOK_API_KEY "
+            "or ~/.config/moltbook/credentials.json with api_key."
+        )
+        return 2
     status = get_status(creds.api_key)
     print(status)
     return 0
 
 
 def cmd_moltbook_feed(args: argparse.Namespace) -> int:
-    creds = load_credentials()
+    try:
+        creds = load_credentials(require_agent_name=False)
+    except MoltbookError as exc:
+        print(
+            f"{exc} Moltbook feed requires MOLTBOOK_API_KEY "
+            "or ~/.config/moltbook/credentials.json with api_key."
+        )
+        return 2
     feed = get_feed(creds.api_key, sort=args.sort, limit=args.limit)
     print(feed)
     return 0
@@ -114,7 +129,7 @@ def cmd_improve_run(args: argparse.Namespace) -> int:
     result = run_scheduled_self_improvement(
         force=getattr(args, "force", False),
         dry_run=getattr(args, "dry_run", False),
-        model=getattr(args, "model", "gpt-4o"),
+        model=getattr(args, "model", DEFAULT_OPENAI_MODEL),
     )
 
     print(f"Improvement result: [{result.status}] {result.message}")
@@ -221,7 +236,7 @@ def cmd_improve_community(args: argparse.Namespace) -> int:
             **{f.name: getattr(cfg, f.name) for f in cfg.__dataclass_fields__.values()},
             "enable_community_improvement": True,
             "dry_run": getattr(args, "dry_run", False),
-            "improvement_model": getattr(args, "model", "gpt-4o"),
+            "improvement_model": getattr(args, "model", DEFAULT_OPENAI_MODEL),
         }
     )
 
@@ -267,7 +282,7 @@ def cmd_improve_github(args: argparse.Namespace) -> int:
 
     results = run_github_improvement_cycle(
         client, repo_root,
-        model=getattr(args, "model", "gpt-4o"),
+        model=getattr(args, "model", DEFAULT_OPENAI_MODEL),
         dry_run=getattr(args, "dry_run", False),
     )
 
@@ -301,7 +316,7 @@ def cmd_improve_identify(args: argparse.Namespace) -> int:
 
     result = run_improvement_cycle(
         client, state, config,
-        model=getattr(args, "model", "gpt-4o"),
+        model=getattr(args, "model", DEFAULT_OPENAI_MODEL),
         dry_run=True,
     )
 
@@ -353,16 +368,25 @@ def build_parser() -> argparse.ArgumentParser:
     p_apply = sub.add_parser("apply", help="Apply proposal as a PR (gated)")
     p_apply.set_defaults(func=cmd_apply)
 
-    p_mb = sub.add_parser("moltbook", help="Moltbook tools")
+    p_mb = sub.add_parser("moltbook", help="Moltbook tools and runner controls")
     mb_sub = p_mb.add_subparsers(dest="mb_command", required=True)
 
-    p_run = mb_sub.add_parser("run", help="Run autonomous Moltbook loop")
+    p_run = mb_sub.add_parser(
+        "run",
+        help="Run the autonomous loop (OpenAI required; Moltbook creds optional)",
+    )
     p_run.set_defaults(func=cmd_moltbook_run)
 
-    p_status = mb_sub.add_parser("status", help="Check Moltbook claim status")
+    p_status = mb_sub.add_parser(
+        "status",
+        help="Check Moltbook claim status (requires Moltbook API key)",
+    )
     p_status.set_defaults(func=cmd_moltbook_status)
 
-    p_feed = mb_sub.add_parser("feed", help="Fetch Moltbook feed")
+    p_feed = mb_sub.add_parser(
+        "feed",
+        help="Fetch Moltbook feed (requires Moltbook API key)",
+    )
     p_feed.add_argument("--sort", default="new")
     p_feed.add_argument("--limit", type=int, default=10)
     p_feed.set_defaults(func=cmd_moltbook_feed)
@@ -392,7 +416,7 @@ def build_parser() -> argparse.ArgumentParser:
     imp_sub = p_improve.add_subparsers(dest="imp_command", required=True)
 
     p_imp_run = imp_sub.add_parser("run", help="Run one improvement cycle")
-    p_imp_run.add_argument("--model", default="gpt-4o", help="LLM model to use")
+    p_imp_run.add_argument("--model", default=DEFAULT_OPENAI_MODEL, help="LLM model to use")
     p_imp_run.add_argument("--dry-run", action="store_true", help="Identify only, don't act")
     p_imp_run.add_argument("--force", action="store_true", help="Ignore schedule and run immediately")
     p_imp_run.set_defaults(func=cmd_improve_run)
@@ -404,16 +428,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_imp_history.set_defaults(func=cmd_improve_history)
 
     p_imp_identify = imp_sub.add_parser("identify", help="Dry-run: identify but don't act")
-    p_imp_identify.add_argument("--model", default="gpt-4o", help="LLM model to use")
+    p_imp_identify.add_argument("--model", default=DEFAULT_OPENAI_MODEL, help="LLM model to use")
     p_imp_identify.set_defaults(func=cmd_improve_identify)
 
     p_imp_community = imp_sub.add_parser("community", help="Run community-assisted improvement step")
-    p_imp_community.add_argument("--model", default="gpt-4o", help="LLM model to use")
+    p_imp_community.add_argument("--model", default=DEFAULT_OPENAI_MODEL, help="LLM model to use")
     p_imp_community.add_argument("--dry-run", action="store_true", help="Identify and generate post, don't publish")
     p_imp_community.set_defaults(func=cmd_improve_community)
 
     p_imp_github = imp_sub.add_parser("github", help="Check for and fix GitHub issues")
-    p_imp_github.add_argument("--model", default="gpt-4o", help="LLM model to use")
+    p_imp_github.add_argument("--model", default=DEFAULT_OPENAI_MODEL, help="LLM model to use")
     p_imp_github.add_argument("--dry-run", action="store_true", help="Identify and plan only, don't act")
     p_imp_github.set_defaults(func=cmd_improve_github)
 
