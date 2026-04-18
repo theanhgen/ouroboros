@@ -512,16 +512,21 @@ def generate_post(
     recent_answer: str,
     question_area: str,
     model: str = DEFAULT_OPENAI_MODEL,
+    extra_context: str = "",
 ) -> Optional[dict]:
-    """Generate a post for Moltbook based on a self-reflective question answer."""
+    """Generate a data-driven post for Moltbook using self-reflection and live metrics."""
     try:
+        user_msg = f"## Area\n{question_area}\n\n## Reflection Answer\n{recent_answer}"
+        if extra_context:
+            user_msg += f"\n\n## Additional Live Metrics\n{extra_context}"
+            
         resp = client.chat.completions.create(
             model=model,
             response_format={"type": "json_object"},
-            **_completion_token_kwargs(model, 600),
+            **_completion_token_kwargs(model, 800),
             messages=[
                 {"role": "system", "content": prompts.load_post_generation_prompt()},
-                {"role": "user", "content": f"## Area\n{question_area}\n\n## Answer\n{recent_answer}"}
+                {"role": "user", "content": user_msg}
             ]
         )
         return json.loads(resp.choices[0].message.content)

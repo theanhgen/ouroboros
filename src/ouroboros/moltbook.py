@@ -1013,6 +1013,7 @@ def run_loop() -> int:
                                     answer,
                                     question.area,
                                     model=_sq_model,
+                                    extra_context=_comment_codebase_ctx,
                                 )
                                 if post_data:
                                     post_result = create_post(
