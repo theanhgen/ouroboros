@@ -1,11 +1,11 @@
 # Architecture
 
 Auto-generated overview of the Ouroboros codebase.
-Last updated: 2026-04-17 16:33 UTC
+Last updated: 2026-04-18 19:41 UTC
 
 ## Modules
 
-### `backlog.py` (168 lines)
+### `backlog.py` (170 lines)
 - `_backlog_path(repo_root)`
 - `load_backlog(repo_root)`
 - `save_backlog(repo_root, items)`
@@ -16,7 +16,7 @@ Last updated: 2026-04-17 16:33 UTC
 - `format_backlog_for_llm(items)`
 - `organize_backlog(repo_root, client, model)`
 
-### `cli.py` (430 lines)
+### `cli.py` (454 lines)
 - `cmd_plan(_args)`
 - `cmd_propose(_args)`
 - `cmd_apply(_args)`
@@ -46,7 +46,7 @@ Last updated: 2026-04-17 16:33 UTC
 - `get_function_signatures(path)`
 - `get_codebase_summary(repo_root)`
 
-### `community_improvement.py` (602 lines)
+### `community_improvement.py` (603 lines)
 - `step_community_improvement(client, state, creds, cfg, safety_config)`
 - `_step_identify(client, state, cfg, safety_config)`
 - `_step_post(client, state, creds, cfg)`
@@ -56,9 +56,9 @@ Last updated: 2026-04-17 16:33 UTC
 - `_build_community_pr_body(task, changes, result, ci)`
 - `clear_community_improvement(state)`
 
-### `config.py` (51 lines)
+### `config.py` (52 lines)
 
-### `evaluation.py` (186 lines)
+### `evaluation.py` (196 lines)
 - `_history_path(repo_root)`
 - `record_improvement(result, repo_root, model)`
 - `load_history(repo_root)`
@@ -68,7 +68,7 @@ Last updated: 2026-04-17 16:33 UTC
 - `to_dict(self)`
 - `from_dict(cls, data)`
 
-### `git_ops.py` (367 lines)
+### `git_ops.py` (338 lines)
 - `_safe_git_env()`
 - `_git(repo)`
 - `is_clean(repo)`
@@ -78,7 +78,6 @@ Last updated: 2026-04-17 16:33 UTC
 - `checkout_branch(repo, name)`
 - `checkout_main(repo)`
 - `delete_branch(repo, name)`
-- `delete_remote_branch(repo, branch)`
 - `commit_changes(repo, message, files)`
 - `pull_latest(repo)`
 - `push_branch(repo, branch)`
@@ -87,19 +86,31 @@ Last updated: 2026-04-17 16:33 UTC
 - `find_open_issue_by_marker(repo, marker)`
 - `has_open_improvement_prs(repo)`
 - `make_branch_name(task_type)`
-- `get_pr_status(repo, pr_ref)`
-- `get_pr_head_branch(repo, pr_ref)`
+- `get_pr_status(repo, branch)`
 - `auto_merge_pr(repo, pr_url, strategy)`
 - `get_pr_checks_status(repo, pr_url)`
 - `get_pr_feedback(repo, pr_url, max_chars)`
 
-### `github_improvement.py` (246 lines)
+### `github_improvement.py` (247 lines)
 - `get_open_issues(repo_root)`
 - `analyze_issue(client, issue, repo_root, model)`
 - `apply_github_fix(client, issue, analysis, repo_root, model, dry_run)`
 - `run_github_improvement_cycle(client, repo_root, model, dry_run, enable_auto_merge)`
 
-### `improvement.py` (1080 lines)
+### `holographic.py` (121 lines)
+- `_require_numpy()`
+- `encode_atom(word, dim)`
+- `bind(a, b)`
+- `unbind(memory, key)`
+- `bundle()`
+- `similarity(a, b)`
+- `encode_text(text, dim)`
+- `encode_fact(content, entities, dim)`
+- `phases_to_bytes(phases)`
+- `bytes_to_phases(data)`
+- `snr_estimate(dim, n_items)`
+
+### `improvement.py` (1051 lines)
 - `_is_path_allowed(file_path, config)`
 - `_validate_changes(changes, config)`
 - `_count_changed_lines(original, new)`
@@ -124,7 +135,7 @@ Last updated: 2026-04-17 16:33 UTC
 - `execute(self, name, args)`
 - `_fire(event_type, message, data)`
 
-### `improvement_runner.py` (424 lines)
+### `improvement_runner.py` (344 lines)
 - `_send_notification(cfg, message)`
 - `_scheduler_state_path()`
 - `load_scheduler_state()`
@@ -139,10 +150,7 @@ Last updated: 2026-04-17 16:33 UTC
 - `_task_issue_marker(task)`
 - `_build_followup_issue_body(task, result, marker)`
 - `_maybe_create_followup_issue(repo_root, cfg, result)`
-- `_acquire_process_lock()`
-- `_release_process_lock(fd)`
 - `run_scheduled_self_improvement()`
-- `_run_scheduled_self_improvement_locked()`
 - `_on_event(event_type, message, data)`
 
 ### `knowledge_base.py` (103 lines)
@@ -151,12 +159,16 @@ Last updated: 2026-04-17 16:33 UTC
 - `add_entries(entries, path)`
 - `get_summary(client, kb, force_refresh, path)`
 
-### `llm.py` (488 lines)
+### `llm.py` (506 lines)
 - `load_openai_key()`
 - `load_anthropic_key()`
 - `make_client(api_key, provider)`
 - `_get_provider(model)`
-- `chat_completion(client, system_prompt, user_prompt, model, response_format, max_tokens, timeout)`
+- `load_local_model_url()`
+- `make_local_client(base_url)`
+- `_is_local_model(model)`
+- `_maybe_strip_response_format(kwargs, model)`
+- `chat_completion(client, system_prompt, user_prompt, model, response_format, max_tokens)`
 - `identify_improvements(client, summary, test_results, history, model, additional_context)`
 - `plan_code_change(client, task, code, model)`
 - `generate_code(client, plan, files, constraints, model)`
@@ -174,13 +186,39 @@ Last updated: 2026-04-17 16:33 UTC
 - `generate_comment(client, post_title, post_content, model, codebase_context)`
 - `answer_question(client, question, codebase_summary, model)`
 
-### `memory.py` (77 lines)
-- `cosine_similarity(v1, v2)`
+### `memory.py` (710 lines)
+- `_clamp_trust(value)`
+- `__init__(self, db_path, hrr_dim)`
+- `_init_db(self)`
+- `add_fact(self, content, category, tags)`
+- `search_facts(self, query, category, min_trust, limit)`
+- `update_fact(self, fact_id, content, trust_delta, tags, category)`
+- `remove_fact(self, fact_id)`
+- `list_facts(self, category, min_trust, limit)`
+- `record_feedback(self, fact_id, helpful)`
+- `fact_count(self)`
+- `close(self)`
+- `_extract_entities(self, text)`
+- `_resolve_entity(self, name)`
+- `_link_fact_entity(self, fact_id, entity_id)`
+- `_compute_hrr_vector(self, fact_id, content)`
+- `_rebuild_bank(self, category)`
+- `__init__(self, store, fts_weight, jaccard_weight, hrr_weight)`
+- `search(self, query, category, min_trust, limit)`
+- `probe(self, entity, category, limit)`
+- `reason(self, entities, category, limit)`
+- `contradict(self, category, threshold, limit)`
+- `_fts_candidates(self, query, category, min_trust, limit)`
+- `_tokenize(text)`
+- `_jaccard(a, b)`
 - `__init__(self, client, storage)`
-- `get_embedding(self, text, model)`
 - `index_file(self, file_path, content)`
 - `index_failure(self, task_id, description, failure_msg)`
+- `index_success(self, task_id, description, details)`
 - `retrieve_relevant_context(self, query, limit)`
+- `record_outcome_feedback(self, description, success)`
+- `run_hygiene(self)`
+- `_add(name)`
 
 ### `metrics.py` (133 lines)
 - `_metrics_path(repo_root)`
@@ -189,7 +227,9 @@ Last updated: 2026-04-17 16:33 UTC
 - `record_snapshot(repo_root, improvement_result)`
 - `get_summary(repo_root)`
 
-### `moltbook.py` (1267 lines)
+### `model_defaults.py` (3 lines)
+
+### `moltbook.py` (1341 lines)
 - `_handle_shutdown(signum, _frame)`
 - `_read_json_file(path)`
 - `load_credentials()`
@@ -219,6 +259,7 @@ Last updated: 2026-04-17 16:33 UTC
 - `_interruptible_sleep(seconds)`
 - `_auto_git_push(state, dry_run)`
 - `run_loop()`
+- `_pick_client(model)`
 - `_is_under_repo(path, repo_root)`
 - `_on_improve_event(event_type, message, data)`
 
@@ -241,7 +282,8 @@ Last updated: 2026-04-17 16:33 UTC
 - `load_github_issue_fix_prompt()`
 - `load_suggestion_implementation_prompt()`
 
-### `self_improve.py` (156 lines)
+### `self_improve.py` (167 lines)
+- `_git_clean(repo)`
 - `_load_prompt_context(state)`
 - `_build_prompt_update_request(current_prompt, context)`
 - `_parse_prompt_update(payload)`
@@ -261,14 +303,13 @@ Last updated: 2026-04-17 16:33 UTC
 - `choose_question(state, questions)`
 - `record_question(state, question, answer)`
 
-### `storage.py` (136 lines)
+### `storage.py` (124 lines)
 - `__init__(self, db_path)`
 - `_init_db(self)`
 - `record_cycle(self, record)`
 - `record_metrics(self, metrics)`
 - `get_recent_cycles(self, limit)`
 - `get_total_cost(self)`
-- `get_monthly_cost(self)`
 - `add_embedding(self, content_type, ref_id, content, embedding)`
 - `search_embeddings(self, content_type, limit)`
 
@@ -285,7 +326,7 @@ Last updated: 2026-04-17 16:33 UTC
 - `total(self)`
 - `summary(self)`
 
-### `wiki.py` (373 lines)
+### `wiki.py` (399 lines)
 - `_wiki_path(repo_root)`
 - `_write_page(repo_root, filename, content)`
 - `generate_architecture_page(repo_root)`
