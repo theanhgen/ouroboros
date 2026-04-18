@@ -1,7 +1,7 @@
 # Architecture
 
 Auto-generated overview of the Ouroboros codebase.
-Last updated: 2026-04-18 19:41 UTC
+Last updated: 2026-04-18 20:04 UTC
 
 ## Modules
 
@@ -159,7 +159,7 @@ Last updated: 2026-04-18 19:41 UTC
 - `add_entries(entries, path)`
 - `get_summary(client, kb, force_refresh, path)`
 
-### `llm.py` (506 lines)
+### `llm.py` (535 lines)
 - `load_openai_key()`
 - `load_anthropic_key()`
 - `make_client(api_key, provider)`
@@ -168,6 +168,7 @@ Last updated: 2026-04-18 19:41 UTC
 - `make_local_client(base_url)`
 - `_is_local_model(model)`
 - `_maybe_strip_response_format(kwargs, model)`
+- `_completion_token_kwargs(model, max_tokens)`
 - `chat_completion(client, system_prompt, user_prompt, model, response_format, max_tokens)`
 - `identify_improvements(client, summary, test_results, history, model, additional_context)`
 - `plan_code_change(client, task, code, model)`
