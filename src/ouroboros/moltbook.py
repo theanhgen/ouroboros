@@ -184,6 +184,10 @@ class RunnerConfig:
     # GitHub issue resolution
     enable_github_improvement: bool = False
     github_improvement_interval_hours: int = 12
+    # GitHub issue scouting
+    enable_issue_scouting: bool = False
+    issue_scouting_interval_hours: int = 24
+    issue_scouting_model: str = DEFAULT_OPENAI_MODEL
     # Wiki self-documentation
     enable_wiki: bool = False
     wiki_update_interval_hours: int = 24
@@ -265,6 +269,9 @@ def load_runner_config() -> RunnerConfig:
         community_improvement_interval_hours=int(data.get("community_improvement_interval_hours", 72)),
         enable_github_improvement=bool(data.get("enable_github_improvement", False)),
         github_improvement_interval_hours=int(data.get("github_improvement_interval_hours", 12)),
+        enable_issue_scouting=bool(data.get("enable_issue_scouting", False)),
+        issue_scouting_interval_hours=int(data.get("issue_scouting_interval_hours", 24)),
+        issue_scouting_model=str(data.get("issue_scouting_model", data.get("improvement_model", DEFAULT_OPENAI_MODEL))),
         enable_wiki=bool(data.get("enable_wiki", False)),
         wiki_update_interval_hours=int(data.get("wiki_update_interval_hours", 24)),
         local_model=str(data.get("local_model", "")),
@@ -293,6 +300,7 @@ def load_state() -> Dict[str, Any]:
             "community_improvement": None,
             "community_improvement_history": [],
             "last_community_improvement_start": None,
+            "last_issue_scouting_attempt": None,
         }
     return _read_json_file(path)
 
@@ -1226,6 +1234,59 @@ def run_loop() -> int:
                                 log.warning("[github-improve] Failed to fix issue #%d: %s", res.issue_id, res.error)
                     except Exception:
                         log.exception("[github-improve] Failed during GitHub improvement cycle")
+
+            # -- GitHub issue scouting cycle --
+            if cfg.enable_issue_scouting:
+                last_issue_scouting = state.get("last_issue_scouting_attempt")
+                should_scout = (
+                    last_issue_scouting is None or
+                    (now - int(last_issue_scouting)) >= cfg.issue_scouting_interval_hours * 3600
+                )
+
+                if should_scout:
+                    try:
+                        from .issue_scouting import run_issue_scouting_cycle
+
+                        log.info("[issue-scout] Looking for new improvement opportunities...")
+                        scout_result = run_issue_scouting_cycle(
+                            _pick_client(cfg.issue_scouting_model),
+                            repo_root,
+                            model=cfg.issue_scouting_model,
+                            dry_run=cfg.dry_run,
+                        )
+                        state["last_issue_scouting_attempt"] = now
+
+                        if scout_result.status == "created" and scout_result.issue_url:
+                            log.info("[issue-scout] Created issue: %s", scout_result.issue_url)
+                            _notify(
+                                cfg,
+                                state,
+                                f"Issue scout opened: {scout_result.task.description[:100]}\n"
+                                f"{scout_result.issue_url}",
+                            )
+                        elif scout_result.status == "duplicate":
+                            log.info("[issue-scout] Duplicate issue already open: %s", scout_result.issue_url)
+                        elif scout_result.status == "idle":
+                            log.info("[issue-scout] No improvement opportunities identified")
+                        elif scout_result.status == "dry_run":
+                            log.info("[issue-scout] %s", scout_result.message)
+                        else:
+                            log.warning("[issue-scout] %s", scout_result.message)
+                            _notify(
+                                cfg,
+                                state,
+                                scout_result.message,
+                                is_error=True,
+                            )
+                    except Exception:
+                        log.exception("[issue-scout] Failed during issue scouting cycle")
+                        state["last_issue_scouting_attempt"] = now
+                        _notify(
+                            cfg,
+                            state,
+                            "Error during issue scouting cycle",
+                            is_error=True,
+                        )
 
             # -- Community-assisted improvement --
             if creds is not None and cfg.enable_community_improvement:

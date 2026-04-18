@@ -10,6 +10,7 @@ from ouroboros.git_ops import (
     create_issue,
     find_open_issue_by_marker,
     make_branch_name,
+    make_auto_issue_marker,
     is_clean,
     current_branch,
 )
@@ -41,6 +42,16 @@ def test_make_branch_name_types():
     for task_type in ["fix_test", "add_test", "fix_bug"]:
         name = make_branch_name(task_type)
         assert task_type in name
+
+
+def test_make_auto_issue_marker_is_stable():
+    marker_a = make_auto_issue_marker("fix_bug", "Tighten retry handling", ["src/a.py", "tests/test_a.py"])
+    marker_b = make_auto_issue_marker("fix_bug", "Tighten retry handling", ["src/a.py", "tests/test_a.py"])
+    marker_c = make_auto_issue_marker("fix_bug", "Different task", ["src/a.py", "tests/test_a.py"])
+
+    assert marker_a == marker_b
+    assert marker_a.startswith("<!-- ouroboros:auto-issue:")
+    assert marker_a != marker_c
 
 
 @patch("ouroboros.git_ops._git")

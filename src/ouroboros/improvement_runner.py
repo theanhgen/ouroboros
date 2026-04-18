@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import os
@@ -134,16 +133,11 @@ def _set_failure_state(
 
 
 def _task_issue_marker(task: ImprovementTask) -> str:
-    payload = json.dumps(
-        {
-            "description": task.description,
-            "target_files": task.target_files,
-            "task_type": task.task_type,
-        },
-        sort_keys=True,
+    return git_ops.make_auto_issue_marker(
+        task.task_type,
+        task.description,
+        task.target_files,
     )
-    digest = hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
-    return f"<!-- ouroboros:auto-issue:{digest} -->"
 
 
 def _build_followup_issue_body(task: ImprovementTask, result: ImprovementResult, marker: str) -> str:

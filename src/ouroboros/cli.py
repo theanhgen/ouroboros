@@ -159,6 +159,12 @@ def cmd_improve_status(_args: argparse.Namespace) -> int:
         next_due = int(scheduler_state["next_due_ts"])
         print(f"Next scheduled run: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(next_due))}")
 
+    from .moltbook import load_state
+    loop_state = load_state()
+    last_scout = loop_state.get("last_issue_scouting_attempt")
+    if last_scout:
+        print(f"Last issue scout: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(last_scout)))}")
+
     pending = [r for r in history if r.outcome == "pending"]
     if pending:
         print(f"\nPending PRs ({len(pending)}):")
@@ -296,6 +302,36 @@ def cmd_improve_github(args: argparse.Namespace) -> int:
             print(f"  PR: {res.pr_url}")
 
     return 0
+
+
+def cmd_improve_scout(args: argparse.Namespace) -> int:
+    """Identify an improvement opportunity and track it as a GitHub issue."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    from . import llm
+    from .codebase import get_repo_root
+    from .issue_scouting import run_issue_scouting_cycle
+
+    openai_key = llm.load_openai_key()
+    client = llm.make_client(openai_key)
+    repo_root = get_repo_root()
+
+    result = run_issue_scouting_cycle(
+        client,
+        repo_root,
+        model=getattr(args, "model", DEFAULT_OPENAI_MODEL),
+        dry_run=getattr(args, "dry_run", False),
+    )
+
+    print(f"Issue scout: [{result.status}] {result.message}")
+    if result.task:
+        print(f"Task: [{result.task.task_type}] {result.task.description}")
+    if result.issue_url:
+        print(f"Issue: {result.issue_url}")
+    return 0 if result.status in ("created", "duplicate", "idle", "dry_run") else 1
 
 
 def cmd_improve_identify(args: argparse.Namespace) -> int:
@@ -440,6 +476,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_imp_github.add_argument("--model", default=DEFAULT_OPENAI_MODEL, help="LLM model to use")
     p_imp_github.add_argument("--dry-run", action="store_true", help="Identify and plan only, don't act")
     p_imp_github.set_defaults(func=cmd_improve_github)
+
+    p_imp_scout = imp_sub.add_parser("scout", help="Identify an improvement and open a GitHub issue")
+    p_imp_scout.add_argument("--model", default=DEFAULT_OPENAI_MODEL, help="LLM model to use")
+    p_imp_scout.add_argument("--dry-run", action="store_true", help="Identify only, don't open an issue")
+    p_imp_scout.set_defaults(func=cmd_improve_scout)
 
     return parser
 

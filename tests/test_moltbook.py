@@ -82,6 +82,9 @@ def test_runner_config_defaults():
     assert cfg.improvement_interval_hours == 48
     assert cfg.improvement_model == DEFAULT_OPENAI_MODEL
     assert cfg.enable_auto_merge is False
+    assert cfg.enable_issue_scouting is False
+    assert cfg.issue_scouting_interval_hours == 24
+    assert cfg.issue_scouting_model == DEFAULT_OPENAI_MODEL
 
 
 def test_load_runner_config_from_file(tmp_path):
@@ -181,6 +184,7 @@ def test_load_state_default():
     assert state["last_comment_time"] is None
     assert state["self_question_index"] == 0
     assert state["seen_post_ids"] == []
+    assert state["last_issue_scouting_attempt"] is None
 
 
 def test_save_and_load_state(tmp_path):
@@ -269,3 +273,52 @@ def test_run_loop_without_moltbook_credentials_skips_feed_and_runs_github_cycle(
     mock_status.assert_not_called()
     mock_feed.assert_not_called()
     mock_github_cycle.assert_called_once()
+
+
+def test_run_loop_without_moltbook_credentials_runs_issue_scouting():
+    temp_event = threading.Event()
+    now = int(time.time())
+    state = {
+        "last_self_question": now,
+        "last_memory_hygiene": now,
+    }
+    cfg = RunnerConfig(
+        interval_seconds=1,
+        enable_issue_scouting=True,
+        issue_scouting_interval_hours=0,
+    )
+
+    with mock.patch("ouroboros.moltbook._shutdown_event", temp_event):
+        with mock.patch("ouroboros.moltbook.signal.signal"):
+            with mock.patch(
+                "ouroboros.moltbook.load_credentials",
+                side_effect=MoltbookError("Missing API key. Set MOLTBOOK_API_KEY or credentials.json"),
+            ):
+                with mock.patch("ouroboros.moltbook.load_runner_config", return_value=cfg):
+                    with mock.patch("ouroboros.moltbook.load_state", return_value=state):
+                        with mock.patch("ouroboros.llm.load_openai_key", return_value="sk-test"):
+                            with mock.patch("ouroboros.llm.make_client", return_value=mock.sentinel.client):
+                                with mock.patch("ouroboros.moltbook.get_status") as mock_status:
+                                    with mock.patch("ouroboros.moltbook.get_feed") as mock_feed:
+                                        with mock.patch("ouroboros.moltbook._notify"):
+                                            with mock.patch("ouroboros.moltbook.save_state"):
+                                                with mock.patch("ouroboros.git_ops.pull_latest", return_value=False):
+                                                    with mock.patch(
+                                                        "ouroboros.issue_scouting.run_issue_scouting_cycle",
+                                                        return_value=mock.MagicMock(
+                                                            status="idle",
+                                                            message="No improvements identified.",
+                                                            task=None,
+                                                            issue_url=None,
+                                                        ),
+                                                    ) as mock_issue_scout:
+                                                        with mock.patch(
+                                                            "ouroboros.moltbook._interruptible_sleep",
+                                                            side_effect=lambda seconds, check_git=False: temp_event.set(),
+                                                        ):
+                                                            result = run_loop()
+
+    assert result == 0
+    mock_status.assert_not_called()
+    mock_feed.assert_not_called()
+    mock_issue_scout.assert_called_once()

@@ -1,5 +1,6 @@
 """Git and PR operations for the self-improvement workflow."""
 
+import hashlib
 import json
 import logging
 import os
@@ -209,6 +210,20 @@ def find_open_issue_by_marker(repo: Path, marker: str) -> Optional[str]:
         if marker in issue.get("body", ""):
             return issue.get("url")
     return None
+
+
+def make_auto_issue_marker(task_type: str, description: str, target_files: List[str]) -> str:
+    """Build a stable hidden marker for a generated issue."""
+    payload = json.dumps(
+        {
+            "description": description,
+            "target_files": target_files,
+            "task_type": task_type,
+        },
+        sort_keys=True,
+    )
+    digest = hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
+    return f"<!-- ouroboros:auto-issue:{digest} -->"
 
 
 def has_open_improvement_prs(repo: Path) -> bool:

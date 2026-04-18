@@ -5,6 +5,7 @@ from ouroboros.cli import (
     cmd_plan,
     cmd_config_show,
     cmd_config_modify,
+    cmd_improve_scout,
     cmd_moltbook_feed,
     cmd_moltbook_status,
 )
@@ -67,3 +68,25 @@ def test_cmd_moltbook_feed_only_requires_api_key(mock_get_feed, mock_load, capsy
     mock_load.assert_called_once_with(require_agent_name=False)
     captured = capsys.readouterr()
     assert "{'posts': []}" in captured.out
+
+
+@patch("ouroboros.llm.make_client")
+@patch("ouroboros.llm.load_openai_key", return_value="sk-test")
+@patch("ouroboros.codebase.get_repo_root")
+@patch("ouroboros.issue_scouting.run_issue_scouting_cycle")
+def test_cmd_improve_scout_success(mock_scout, mock_repo_root, _mock_key, _mock_client, capsys):
+    mock_repo_root.return_value = MagicMock()
+    mock_scout.return_value = MagicMock(
+        status="created",
+        message="Opened issue",
+        issue_url="https://github.com/repo/issues/42",
+        task=MagicMock(task_type="fix_bug", description="Tighten retry handling"),
+    )
+    args = argparse.Namespace(model="gpt-5.4-nano-2026-03-17", dry_run=False)
+
+    ret = cmd_improve_scout(args)
+
+    assert ret == 0
+    captured = capsys.readouterr()
+    assert "Issue scout: [created] Opened issue" in captured.out
+    assert "Issue: https://github.com/repo/issues/42" in captured.out
