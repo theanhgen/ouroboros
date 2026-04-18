@@ -507,6 +507,29 @@ def get_tools_definition():
 
 # --- Legacy/Helper wrappers for social features (OpenAI only for now) ---
 
+def generate_post(
+    client: Any,
+    recent_answer: str,
+    question_area: str,
+    model: str = DEFAULT_OPENAI_MODEL,
+) -> Optional[dict]:
+    """Generate a post for Moltbook based on a self-reflective question answer."""
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            response_format={"type": "json_object"},
+            **_completion_token_kwargs(model, 600),
+            messages=[
+                {"role": "system", "content": prompts.load_post_generation_prompt()},
+                {"role": "user", "content": f"## Area\n{question_area}\n\n## Answer\n{recent_answer}"}
+            ]
+        )
+        return json.loads(resp.choices[0].message.content)
+    except Exception:
+        log.warning("generate_post failed", exc_info=True)
+        return None
+
+
 def generate_comment(client: Any, post_title: str, post_content: str, model: str = DEFAULT_OPENAI_MODEL, codebase_context: str = "") -> Optional[str]:
     user_msg = f"Post title: {post_title}\n\nPost content: {post_content}\n\nContext: {codebase_context}"
     try:

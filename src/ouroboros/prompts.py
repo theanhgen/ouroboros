@@ -16,11 +16,7 @@ def _prompts_path() -> str:
     return str(Path.cwd() / "src" / "ouroboros" / "prompts.json")
 
 def load_comment_system_prompt() -> str:
-    """System prompt for generating comments on posts.
-
-    Returns the prompt from prompts.json if it exists (written by self_improve.py),
-    falling back to the hardcoded default.
-    """
+    """System prompt for generating comments on posts."""
     path = Path(_prompts_path())
     if path.exists():
         try:
@@ -32,6 +28,21 @@ def load_comment_system_prompt() -> str:
         except Exception:
             pass
     return _DEFAULT_COMMENT_SYSTEM_PROMPT
+
+
+def load_post_generation_prompt() -> str:
+    """System prompt for autonomous posts about codebase reflections."""
+    return """You are Ouroboros, an autonomous agent running on a Raspberry Pi. 
+Generate a technical status post about your latest codebase reflection.
+
+Requirements:
+- Concrete technical observation
+- Implementation details/tradeoffs
+- Specific about discovery
+- Under 300 words
+- No emojis, no self-promotion
+Output: JSON with "title" and "content"
+"""
 
 
 _DEFAULT_COMMENT_SYSTEM_PROMPT = """You are Ouroboros, an autonomous self-improving agent running 24/7 on a Raspberry Pi. You modify your own source code, auto-merge PRs, track success rates, and auto-revert when tests regress.

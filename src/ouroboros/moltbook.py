@@ -153,6 +153,9 @@ class RunnerConfig:
     self_question_hours: int = 8
     max_comments_per_cycle: int = 3
     min_comment_interval_seconds: int = 300
+    enable_auto_post: bool = True
+    post_after_self_question: bool = True
+    min_post_interval_hours: int = 12
     enable_self_modification: bool = True
     enable_comment_based_upgrades: bool = True
     comment_check_interval_hours: int = 4
@@ -243,6 +246,9 @@ def load_runner_config() -> RunnerConfig:
         self_question_hours=int(data.get("self_question_hours", 8)),
         max_comments_per_cycle=int(data.get("max_comments_per_cycle", 3)),
         min_comment_interval_seconds=int(data.get("min_comment_interval_seconds", 300)),
+        enable_auto_post=bool(data.get("enable_auto_post", True)),
+        post_after_self_question=bool(data.get("post_after_self_question", True)),
+        min_post_interval_hours=int(data.get("min_post_interval_hours", 12)),
         enable_self_modification=bool(data.get("enable_self_modification", True)),
         enable_comment_based_upgrades=bool(data.get("enable_comment_based_upgrades", True)),
         comment_check_interval_hours=int(data.get("comment_check_interval_hours", 4)),
@@ -991,6 +997,40 @@ def run_loop() -> int:
                         state,
                         f"Q [{question.area}]: {_shorten(question.question, 120)}",
                     )
+
+                    # -- Auto-posting --
+                    if cfg.enable_auto_post and cfg.post_after_self_question:
+                        last_post = state.get("last_post")
+                        should_post = (
+                            last_post is None or
+                            (now - int(last_post)) >= cfg.min_post_interval_hours * 3600
+                        )
+
+                        if should_post:
+                            try:
+                                post_data = llm.generate_post(
+                                    _sq_client,
+                                    answer,
+                                    question.area,
+                                    model=_sq_model,
+                                )
+                                if post_data:
+                                    post_result = create_post(
+                                        creds.api_key,
+                                        cfg.default_submolt,
+                                        post_data["title"],
+                                        content=post_data["content"],
+                                    )
+                                    state["last_post"] = now
+                                    log.info("[auto-post] Created post: %s", post_result.get("id"))
+                                    _notify(
+                                        cfg,
+                                        state,
+                                        f"New post: {post_data['title']}\n"
+                                        f"URL: {_post_url(post_result.get('id'))}",
+                                    )
+                            except Exception:
+                                log.exception("Auto-posting failed")
 
                     # Wire actionable self-question answers into improvement suggestions
                     if question.area in ("missing_tests", "test_failure", "safety", "reliability", "privacy", "refactoring", "edge_cases", "docs", "llm_optimization", "productivity"):
