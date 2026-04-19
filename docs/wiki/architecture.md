@@ -1,7 +1,7 @@
 # Architecture
 
 Auto-generated overview of the Ouroboros codebase.
-Last updated: 2026-04-18 20:04 UTC
+Last updated: 2026-04-19 19:57 UTC
 
 ## Modules
 
@@ -16,7 +16,7 @@ Last updated: 2026-04-18 20:04 UTC
 - `format_backlog_for_llm(items)`
 - `organize_backlog(repo_root, client, model)`
 
-### `cli.py` (454 lines)
+### `cli.py` (495 lines)
 - `cmd_plan(_args)`
 - `cmd_propose(_args)`
 - `cmd_apply(_args)`
@@ -30,6 +30,7 @@ Last updated: 2026-04-18 20:04 UTC
 - `cmd_improve_history(_args)`
 - `cmd_improve_community(args)`
 - `cmd_improve_github(args)`
+- `cmd_improve_scout(args)`
 - `cmd_improve_identify(args)`
 - `cmd_backlog_list(_args)`
 - `cmd_backlog_clean(_args)`
@@ -68,7 +69,7 @@ Last updated: 2026-04-18 20:04 UTC
 - `to_dict(self)`
 - `from_dict(cls, data)`
 
-### `git_ops.py` (338 lines)
+### `git_ops.py` (353 lines)
 - `_safe_git_env()`
 - `_git(repo)`
 - `is_clean(repo)`
@@ -84,6 +85,7 @@ Last updated: 2026-04-18 20:04 UTC
 - `create_pr(repo, title, body, base, head)`
 - `create_issue(repo, title, body)`
 - `find_open_issue_by_marker(repo, marker)`
+- `make_auto_issue_marker(task_type, description, target_files)`
 - `has_open_improvement_prs(repo)`
 - `make_branch_name(task_type)`
 - `get_pr_status(repo, branch)`
@@ -135,7 +137,7 @@ Last updated: 2026-04-18 20:04 UTC
 - `execute(self, name, args)`
 - `_fire(event_type, message, data)`
 
-### `improvement_runner.py` (344 lines)
+### `improvement_runner.py` (338 lines)
 - `_send_notification(cfg, message)`
 - `_scheduler_state_path()`
 - `load_scheduler_state()`
@@ -153,13 +155,19 @@ Last updated: 2026-04-18 20:04 UTC
 - `run_scheduled_self_improvement()`
 - `_on_event(event_type, message, data)`
 
+### `issue_scouting.py` (129 lines)
+- `_task_issue_marker(task)`
+- `_build_issue_title(task)`
+- `_build_issue_body(task, test_summary, marker)`
+- `run_issue_scouting_cycle(client, repo_root, model, dry_run)`
+
 ### `knowledge_base.py` (103 lines)
 - `load_kb(path)`
 - `save_kb(kb, path)`
 - `add_entries(entries, path)`
 - `get_summary(client, kb, force_refresh, path)`
 
-### `llm.py` (535 lines)
+### `llm.py` (563 lines)
 - `load_openai_key()`
 - `load_anthropic_key()`
 - `make_client(api_key, provider)`
@@ -184,6 +192,7 @@ Last updated: 2026-04-18 20:04 UTC
 - `generate_kb_summary(client, entries, model)`
 - `pick_oddities(client, posts, model)`
 - `get_tools_definition()`
+- `generate_post(client, recent_answer, question_area, model, extra_context)`
 - `generate_comment(client, post_title, post_content, model, codebase_context)`
 - `answer_question(client, question, codebase_summary, model)`
 
@@ -230,7 +239,7 @@ Last updated: 2026-04-18 20:04 UTC
 
 ### `model_defaults.py` (3 lines)
 
-### `moltbook.py` (1341 lines)
+### `moltbook.py` (1443 lines)
 - `_handle_shutdown(signum, _frame)`
 - `_read_json_file(path)`
 - `load_credentials()`
@@ -269,9 +278,10 @@ Last updated: 2026-04-18 20:04 UTC
 - `validate_modification_scope(file_paths, config)`
 - `validate_change_size(num_files, num_lines, config)`
 
-### `prompts.py` (306 lines)
+### `prompts.py` (335 lines)
 - `_prompts_path()`
 - `load_comment_system_prompt()`
+- `load_post_generation_prompt()`
 - `load_comment_analysis_prompt()`
 - `load_question_post_prompt()`
 - `load_code_suggestion_prompt()`
@@ -292,7 +302,7 @@ Last updated: 2026-04-18 20:04 UTC
 - `_git_commit_and_pr(repo, message)`
 - `run_self_improve(client, state, model)`
 
-### `self_modify.py` (133 lines)
+### `self_modify.py` (136 lines)
 - `can_self_modify()`
 - `modify_config(updates, config_type)`
 - `modify_runner_config(updates)`
