@@ -1,7 +1,7 @@
 # Architecture
 
 Auto-generated overview of the Ouroboros codebase.
-Last updated: 2026-04-19 19:57 UTC
+Last updated: 2026-04-20 19:58 UTC
 
 ## Modules
 
@@ -57,7 +57,7 @@ Last updated: 2026-04-19 19:57 UTC
 - `_build_community_pr_body(task, changes, result, ci)`
 - `clear_community_improvement(state)`
 
-### `config.py` (52 lines)
+### `config.py` (61 lines)
 
 ### `evaluation.py` (196 lines)
 - `_history_path(repo_root)`

@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Last updated: 2026-04-19 19:57 UTC
+Last updated: 2026-04-20 19:58 UTC
 
 ## Safety Config (`src/ouroboros/config.py`)
 
@@ -16,6 +16,8 @@ Last updated: 2026-04-19 19:57 UTC
 | `sandbox_enabled` | `False` |  |
 | `sandbox_image` | `python:3.11-slim` |  |
 | `reviewer_model` | `gpt-5.4-nano-2026-03-17` |  |
+| `reviewer_base_url` | `None` |  |
+| `reviewer_api_key` | `None` |  |
 | `max_improvements_per_day` | `3` | Rate limit on daily improvement attempts |
 | `max_changed_files_per_pr` | `3` | Max files per autonomous PR |
 | `max_lines_changed_per_pr` | `200` | Max lines changed per autonomous PR |
