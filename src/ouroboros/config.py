@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Optional, Tuple
 
 from .model_defaults import DEFAULT_OPENAI_MODEL
 
@@ -11,9 +11,9 @@ class SafetyConfig:
     Notes on require_human_approval:
         This flag means "require a human reviewer to approve the PR before merge"
         and only makes sense when CODEOWNERS or branch protection rules are configured
-        on the repository.  In the default autonomous setup there are no such rules,
+        on the repository. In the default autonomous setup there are no such rules,
         so the field defaults to False to match the actual enable_auto_merge=True
-        behavior.  Set it to True only when you have branch protection in place.
+        behavior. Set it to True only when you have branch protection in place.
     """
 
     pr_only: bool = True
@@ -31,6 +31,15 @@ class SafetyConfig:
 
     # Multi-model review
     reviewer_model: str = DEFAULT_OPENAI_MODEL
+
+    # Reviewer-only OpenAI-compatible backend routing.
+    #
+    # If reviewer_base_url is set, the review step will use an OpenAI-compatible
+    # client pointed at reviewer_base_url (with reviewer_api_key if provided).
+    # This allows using Ollama Cloud (or any compatible gateway) for review
+    # while keeping generation on the default OpenAI backend.
+    reviewer_base_url: Optional[str] = None
+    reviewer_api_key: Optional[str] = None
 
     # Self-improvement limits
     max_improvements_per_day: int = 3
