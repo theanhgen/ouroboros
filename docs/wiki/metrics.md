@@ -1,22 +1,22 @@
 # Metrics
 
-Last updated: 2026-05-10 21:56 UTC
+Last updated: 2026-05-11 22:09 UTC
 
 ## Overall
 
-- Total improvement attempts: 22
+- Total improvement attempts: 23
 - Merged: 6
 - Success (pending merge): 0
 - Reverted: 0
-- Failed: 16
-- Success rate: 27%
+- Failed: 17
+- Success rate: 26%
 
 ## By Task Type
 
 | Type | Attempts | Succeeded | Reverted | Success Rate |
 |------|----------|-----------|----------|-------------|
 | fix_test | 14 | 6 | 0 | 42% |
-| fix_bug | 8 | 0 | 0 | 0% |
+| fix_bug | 9 | 0 | 0 | 0% |
 
 ## Latest Snapshot
 
