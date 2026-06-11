@@ -1,7 +1,7 @@
 # Architecture
 
 Auto-generated overview of the Ouroboros codebase.
-Last updated: 2026-06-10 03:46 UTC
+Last updated: 2026-06-11 03:59 UTC
 
 ## Modules
 
