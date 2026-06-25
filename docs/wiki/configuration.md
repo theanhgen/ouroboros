@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Last updated: 2026-06-24 06:38 UTC
+Last updated: 2026-06-25 06:52 UTC
 
 ## Safety Config (`src/ouroboros/config.py`)
 
