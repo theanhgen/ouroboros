@@ -194,12 +194,10 @@ class RunnerConfig:
     # Wiki self-documentation
     enable_wiki: bool = False
     wiki_update_interval_hours: int = 24
-    # Local model (Ollama) settings
-    local_model: str = ""
-    local_model_base_url: str = "http://localhost:11434/v1"
-    use_local_for_cheap_tasks: bool = True
     # Local CLI agent backends for the self-improvement engine.
-    # "openai" (default), "claude", or "codex". See backends.py.
+    # "openai" (default), "claude", "codex", or "agy". See backends.py.
+    identify_backend: str = "openai"
+    plan_backend: str = "openai"
     generator_backend: str = "openai"
     reviewer_backend: str = "openai"
     generator_model: str = ""
@@ -285,9 +283,8 @@ def load_runner_config() -> RunnerConfig:
         issue_scouting_model=str(data.get("issue_scouting_model", data.get("improvement_model", DEFAULT_OPENAI_MODEL))),
         enable_wiki=bool(data.get("enable_wiki", False)),
         wiki_update_interval_hours=int(data.get("wiki_update_interval_hours", 24)),
-        local_model=str(data.get("local_model", "")),
-        local_model_base_url=str(data.get("local_model_base_url", "http://localhost:11434/v1")),
-        use_local_for_cheap_tasks=bool(data.get("use_local_for_cheap_tasks", True)),
+        identify_backend=str(data.get("identify_backend", "openai")),
+        plan_backend=str(data.get("plan_backend", "openai")),
         generator_backend=str(data.get("generator_backend", "openai")),
         reviewer_backend=str(data.get("reviewer_backend", "openai")),
         generator_model=str(data.get("generator_model", "")),
@@ -699,22 +696,7 @@ def run_loop() -> int:
     log.info("Moltbook runner starting (dry_run=%s)", cfg.dry_run)
     _notify(cfg, state, f"Moltbook runner started (dry_run={cfg.dry_run}, PID={os.getpid()})")
 
-    local_client = None
-    if cfg.local_model:
-        try:
-            local_url = cfg.local_model_base_url
-            # health check -- quick models list call
-            urllib.request.urlopen(f"{local_url.rstrip('/v1').rstrip('/')}/api/tags", timeout=5).read()
-            local_client = llm.make_local_client(local_url)
-            log.info("Local Ollama client ready (%s at %s)", cfg.local_model, local_url)
-        except Exception:
-            log.warning("Ollama not reachable at %s -- local model disabled for this run", cfg.local_model_base_url)
-            local_client = None
-
     def _pick_client(model: str) -> Any:
-        """Return local_client when model is local and available, else openai_client."""
-        if local_client and llm._is_local_model(model):
-            return local_client
         return openai_client
 
     consecutive_errors = 0
@@ -813,12 +795,12 @@ def run_loop() -> int:
                             if not any(k.lower() in text for k in cfg.keyword_allowlist):
                                 continue
 
-                        _comment_client = local_client if local_client else openai_client
+                        _comment_client = openai_client
                         comment_text = llm.generate_comment(
                             _comment_client,
                             post.get("title", ""),
                             post.get("content", ""),
-                            model=cfg.local_model if local_client else DEFAULT_OPENAI_MODEL,
+                            model=DEFAULT_OPENAI_MODEL,
                             codebase_context=_comment_codebase_ctx,
                         )
                         if comment_text is None:
@@ -973,8 +955,8 @@ def run_loop() -> int:
                         and posts
                     ):
                         try:
-                            _odds_client = local_client if local_client else openai_client
-                            _odds_model = cfg.local_model if local_client else DEFAULT_OPENAI_MODEL
+                            _odds_client = openai_client
+                            _odds_model = DEFAULT_OPENAI_MODEL
                             digest = llm.pick_oddities(_odds_client, posts, model=_odds_model)
                             if digest:
                                 _notify(cfg, state, f"Daily Oddities Digest:\n\n{digest}")
@@ -991,8 +973,8 @@ def run_loop() -> int:
                 question, idx = choose_question(state, questions)
                 from .codebase import get_codebase_summary, get_repo_root
                 sq_codebase = get_codebase_summary(get_repo_root())
-                _sq_client = local_client if local_client else openai_client
-                _sq_model = cfg.local_model if local_client else DEFAULT_OPENAI_MODEL
+                _sq_client = openai_client
+                _sq_model = DEFAULT_OPENAI_MODEL
                 answer = llm.answer_question(_sq_client, question.question, codebase_summary=sq_codebase, model=_sq_model)
                 record_question(state, question, answer=answer)
                 state["last_self_question"] = now
@@ -1171,16 +1153,6 @@ def run_loop() -> int:
                 log.info("[hot-reload] Configuration was modified, reloading...")
                 cfg = load_runner_config()
                 log.info("[hot-reload] Config reloaded - changes now active")
-                # Rebuild local client if local_model config changed
-                if cfg.local_model:
-                    try:
-                        local_client = llm.make_local_client(cfg.local_model_base_url)
-                        log.info("[hot-reload] Local client refreshed for %s", cfg.local_model)
-                    except Exception:
-                        log.warning("[hot-reload] Failed to refresh local client")
-                        local_client = None
-                else:
-                    local_client = None
 
             # -- Self-improvement cycle --
             if cfg.enable_self_improvement and cfg.enable_self_improvement_in_loop:
@@ -1199,6 +1171,8 @@ def run_loop() -> int:
                         safety = SafetyConfig(
                             enable_auto_merge=cfg.enable_auto_merge,
                             reviewer_model=cfg.improvement_model,
+                            identify_backend=getattr(cfg, "identify_backend", "openai"),
+                            plan_backend=getattr(cfg, "plan_backend", "openai"),
                             generator_backend=getattr(cfg, "generator_backend", "openai"),
                             reviewer_backend=getattr(cfg, "reviewer_backend", "openai"),
                             generator_model=getattr(cfg, "generator_model", "") or None,

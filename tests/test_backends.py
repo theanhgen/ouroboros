@@ -16,8 +16,30 @@ from ouroboros import backends
 def test_is_cli_backend():
     assert backends.is_cli_backend("claude")
     assert backends.is_cli_backend("codex")
+    assert backends.is_cli_backend("agy")
     assert not backends.is_cli_backend("openai")
     assert not backends.is_cli_backend(None)
+
+
+def test_parse_agy_output():
+    assert backends.parse_agy_output("  OK done\n") == "OK done"
+    assert backends.parse_agy_output('```json\n{"a":1}\n```') == '```json\n{"a":1}\n```'
+
+
+def test_cliclient_agy_invoke(monkeypatch):
+    monkeypatch.setattr(backends, "resolve_binary", lambda name: "/usr/bin/" + name)
+    captured = {}
+
+    def fake_run(binary, prompt, *, model=None, timeout=600):
+        captured["binary"] = binary
+        return "agy-reply", None
+
+    monkeypatch.setattr(backends, "_run_agy", fake_run)
+    client = backends.CLIClient("agy")
+    resp = client.chat.completions.create(messages=[{"role": "user", "content": "hi"}])
+    assert resp.choices[0].message.content == "agy-reply"
+    assert resp.usage is None  # agy does not report tokens
+    assert captured["binary"] == "/usr/bin/agy"
 
 
 def test_resolve_binary_falls_back_to_known_dir(monkeypatch, tmp_path):

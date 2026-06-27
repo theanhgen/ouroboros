@@ -37,60 +37,14 @@ def load_openai_key() -> str:
     raise RuntimeError("Missing OpenAI API key.")
 
 
-def load_anthropic_key() -> str:
-    """Return Anthropic API key from env var or config file."""
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    if key:
-        return key
-    cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
-    if os.path.exists(cred_path):
-        with open(cred_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        key = data.get("anthropic_api_key")
-        if key: return key
-    return ""
-
-
-def make_client(api_key: str, provider: str = "openai") -> Any:
-    """Create a reusable client instance."""
-    if provider == "anthropic":
-        from anthropic import Anthropic
-        return Anthropic(api_key=api_key)
+def make_client(api_key: str) -> Any:
+    """Create a reusable OpenAI client instance."""
     return OpenAI(api_key=api_key)
-
-
-def _get_provider(model: str) -> str:
-    if model.startswith("claude"):
-        return "anthropic"
-    return "openai"
-
-
-def load_local_model_url() -> str:
-    """Return Ollama base URL from env var or default."""
-    return os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-
-
-def make_local_client(base_url: str) -> Any:
-    """Create an OpenAI-compatible client pointing at a local Ollama instance."""
-    return OpenAI(api_key="ollama", base_url=base_url)
-
-
-def _is_local_model(model: str) -> bool:
-    """Return True if model is expected to be served by a local Ollama instance."""
-    return model.startswith(("gemma4", "gemma3", "ollama/"))
-
-
-def _maybe_strip_response_format(kwargs: dict, model: str) -> dict:
-    """Strip response_format from kwargs copy for local models (Ollama/Gemma JSON grammar mode is unreliable)."""
-    if _is_local_model(model):
-        kwargs = dict(kwargs)
-        kwargs.pop("response_format", None)
-    return kwargs
 
 
 def _completion_token_kwargs(model: str, max_tokens: int) -> dict:
     """Return the correct completion-token parameter for the target model."""
-    if model.startswith("gpt-5") and not _is_local_model(model):
+    if model.startswith("gpt-5"):
         return {"max_completion_tokens": max_tokens}
     return {"max_tokens": max_tokens}
 
@@ -104,50 +58,29 @@ def chat_completion(
     response_format: Optional[Dict[str, str]] = None,
     max_tokens: int = 1000,
 ) -> tuple[str, Optional[dict]]:
-    """Generic wrapper for chat completion across providers.
-    Returns (content, usage_dict).
-    """
-    provider = _get_provider(model)
-    
+    """Generic wrapper for chat completion. Returns (content, usage_dict)."""
     try:
-        if provider == "openai":
-            kwargs = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                **_completion_token_kwargs(model, max_tokens),
-            }
-            if response_format and not _is_local_model(model):
-                kwargs["response_format"] = response_format
-            resp = client.chat.completions.create(**kwargs)
-            usage = None
-            if resp.usage:
-                usage = {
-                    "prompt_tokens": resp.usage.prompt_tokens,
-                    "completion_tokens": resp.usage.completion_tokens,
-                }
-            return resp.choices[0].message.content or "", usage
-        
-        elif provider == "anthropic":
-            resp = client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-            )
+        kwargs = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            **_completion_token_kwargs(model, max_tokens),
+        }
+        if response_format:
+            kwargs["response_format"] = response_format
+        resp = client.chat.completions.create(**kwargs)
+        usage = None
+        if resp.usage:
             usage = {
-                "prompt_tokens": resp.usage.input_tokens,
-                "completion_tokens": resp.usage.output_tokens,
+                "prompt_tokens": resp.usage.prompt_tokens,
+                "completion_tokens": resp.usage.completion_tokens,
             }
-            return resp.content[0].text, usage
-            
+        return resp.choices[0].message.content or "", usage
     except Exception:
-        log.exception(f"{provider} completion failed")
+        log.exception("completion failed")
         return "", None
-    
-    return "", None
 
 
 def identify_improvements(
@@ -181,45 +114,48 @@ def identify_improvements(
     )
     user_prompt = f"## Summary\n{summary}\n\n## Tests\n{test_results}\n\n## History\n{history}\n\n{additional_context}"
 
-    if _get_provider(model) == "openai":
-        try:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                tools=get_tools_definition(),
-                tool_choice="auto",
-            )
-            msg = resp.choices[0].message
-            if msg.tool_calls:
-                return {"_tool_calls": msg.tool_calls, "_usage": {
-                    "prompt_tokens": resp.usage.prompt_tokens,
-                    "completion_tokens": resp.usage.completion_tokens,
-                }}, None
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            tools=get_tools_definition(),
+            tool_choice="auto",
+        )
+        msg = resp.choices[0].message
+        # Real OpenAI tool-calls; CLI backends return tool_calls=None and fall
+        # through to JSON parsing below.
+        if msg.tool_calls:
+            return {"_tool_calls": msg.tool_calls, "_usage": {
+                "prompt_tokens": resp.usage.prompt_tokens,
+                "completion_tokens": resp.usage.completion_tokens,
+            }}, None
 
-            data = json.loads(msg.content)
-            if resp.usage:
-                data["_usage"] = {
-                    "prompt_tokens": resp.usage.prompt_tokens,
-                    "completion_tokens": resp.usage.completion_tokens,
-                }
-            return data, None
-        except Exception as e:
-            log.exception("identify_improvements failed")
-            return None, f"OpenAI API error: {e}"
-    else:
+        content = msg.content or ""
+        if "{" in content:  # tolerate markdown fences / prose around the JSON
+            content = content[content.find("{"):content.rfind("}") + 1]
+        data = json.loads(content)
+        if resp.usage:
+            data["_usage"] = {
+                "prompt_tokens": resp.usage.prompt_tokens,
+                "completion_tokens": resp.usage.completion_tokens,
+            }
+        return data, None
+    except Exception as e:
+        log.warning("identify_improvements: primary call failed (%s), retrying as plain JSON", e)
         content, usage = chat_completion(client, system_prompt, user_prompt + "\nOutput JSON.", model)
         try:
             if "{" in content:
-                content = content[content.find("{"):content.rfind("}")+1]
+                content = content[content.find("{"):content.rfind("}") + 1]
             data = json.loads(content)
-            if usage: data["_usage"] = usage
+            if usage:
+                data["_usage"] = usage
             return data, None
-        except Exception as e:
-            log.warning("identify_improvements: failed to parse response: %s", e)
-            return None, f"Failed to parse LLM response: {e}"
+        except Exception as e2:
+            log.warning("identify_improvements: failed to parse response: %s", e2)
+            return None, f"Failed to parse LLM response: {e2}"
 
 
 def plan_code_change(
@@ -255,7 +191,7 @@ def generate_code(
     
     content, usage = chat_completion(
         client, system, user, model, 
-        response_format={"type": "json_object"} if _get_provider(model) == "openai" else None,
+        response_format={"type": "json_object"},
         max_tokens=2500
     )
     

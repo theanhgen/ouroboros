@@ -39,6 +39,12 @@ class SafetyConfig:
     # generator_backend in agent mode lets the CLI edit the working tree
     # directly; reviewer_backend routes the peer-review step. generator_model
     # is an optional model override passed to the CLI (e.g. a claude model id).
+    # Per-role backend routing. Each is "openai" (default), "claude", "codex",
+    # or "agy". The self-improvement pipeline is: identify -> plan -> generate
+    # -> review. generator/reviewer run as full file-editing agents; identify
+    # and plan run as text/JSON completions.
+    identify_backend: str = "openai"
+    plan_backend: str = "openai"
     generator_backend: str = "openai"
     reviewer_backend: str = "openai"
     generator_model: Optional[str] = None

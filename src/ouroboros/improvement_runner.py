@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from . import git_ops, llm
+from . import backends, git_ops, llm
 from .codebase import get_repo_root
 from .config import SafetyConfig
 from .evaluation import check_pr_outcomes
@@ -260,13 +260,22 @@ def run_scheduled_self_improvement(
         save_scheduler_state(state)
         return ScheduledImprovementRun("skipped_open_pr", state["last_error"])
 
-    openai_key = llm.load_openai_key()
-    client = llm.make_client(openai_key)
+    # Build the base client. When the identify role uses a local CLI agent we
+    # don't need an OpenAI key at all; only fall back to the OpenAI SDK if a
+    # role still requires it (or the CLI binary is unavailable).
+    identify_backend = getattr(cfg, "identify_backend", "openai")
+    client = None
+    if backends.is_cli_backend(identify_backend):
+        client = backends.make_backend_client(identify_backend, openai_client=None)
+    if client is None:
+        client = llm.make_client(llm.load_openai_key())
     combined_state = _load_feed_context_state()
     combined_state["self_improvement_scheduler"] = dict(state)
 
     safety = SafetyConfig(
         enable_auto_merge=getattr(cfg, "enable_auto_merge", False),
+        identify_backend=getattr(cfg, "identify_backend", "openai"),
+        plan_backend=getattr(cfg, "plan_backend", "openai"),
         generator_backend=getattr(cfg, "generator_backend", "openai"),
         reviewer_backend=getattr(cfg, "reviewer_backend", "openai"),
         generator_model=getattr(cfg, "generator_model", "") or None,

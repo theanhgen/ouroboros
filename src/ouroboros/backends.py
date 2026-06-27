@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
-CLI_BACKENDS = ("claude", "codex")
+CLI_BACKENDS = ("claude", "codex", "agy")
 
 # Known install locations that are absent from the systemd service PATH.
 _EXTRA_BIN_DIRS = (
@@ -103,6 +103,16 @@ def parse_claude_output(stdout: str) -> Tuple[str, Optional[Dict[str, int]]]:
     return text, usage
 
 
+def parse_agy_output(stdout: str) -> str:
+    """Extract the response from ``agy --print`` stdout.
+
+    agy prints the model's reply as plain text in print mode (no JSON envelope,
+    no decorated transcript), so we just trim it. Callers that need JSON do
+    brace-extraction on the result, which tolerates any stray prose/fences.
+    """
+    return stdout.strip()
+
+
 def parse_codex_output(stdout: str) -> str:
     """Best-effort extraction of the final answer from ``codex exec`` stdout.
 
@@ -165,6 +175,30 @@ def _run_codex(
         raise RuntimeError(f"codex exited {proc.returncode}: {proc.stderr[:500]}")
     # codex does not expose token usage in a stable machine-readable form.
     return parse_codex_output(proc.stdout), None
+
+
+def _run_agy(
+    binary: str,
+    prompt: str,
+    *,
+    model: Optional[str] = None,
+    cwd: Optional[str] = None,
+    edit: bool = False,
+    timeout: int = _DEFAULT_TIMEOUT,
+) -> Tuple[str, Optional[Dict[str, int]]]:
+    cmd = [binary, "-p", prompt]
+    if model:
+        cmd += ["--model", model]
+    if edit:
+        # Auto-approve tool/file-edit permission requests and scope to the repo.
+        cmd += ["--dangerously-skip-permissions"]
+        if cwd:
+            cmd += ["--add-dir", cwd]
+    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    if proc.returncode != 0:
+        raise RuntimeError(f"agy exited {proc.returncode}: {proc.stderr[:500]}")
+    # agy print mode does not expose token usage.
+    return parse_agy_output(proc.stdout), None
 
 
 # --------------------------------------------------------------------------- #
@@ -246,6 +280,8 @@ class CLIClient:
             return _run_claude(self.binary, prompt, model=self.model, timeout=self.timeout)
         if self.backend == "codex":
             return _run_codex(self.binary, prompt, model=self.model, timeout=self.timeout)
+        if self.backend == "agy":
+            return _run_agy(self.binary, prompt, model=self.model, timeout=self.timeout)
         raise RuntimeError(f"Unsupported CLI backend: {self.backend}")
 
 
@@ -383,6 +419,8 @@ def agent_generate_changes(
             _text, usage = _run_claude(binary, prompt, model=model, cwd=str(repo), edit=True, timeout=timeout)
         elif backend == "codex":
             _text, usage = _run_codex(binary, prompt, model=model, cwd=str(repo), edit=True, timeout=timeout)
+        elif backend == "agy":
+            _text, usage = _run_agy(binary, prompt, model=model, cwd=str(repo), edit=True, timeout=timeout)
         else:
             return None, None
     except Exception:

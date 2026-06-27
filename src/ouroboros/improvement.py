@@ -643,6 +643,17 @@ def run_improvement_cycle(
     repo_root = get_repo_root()
     tool_runner = ToolRunner(repo_root)
 
+    # Per-role backend clients. identify/plan run as text/JSON completions; a
+    # CLI client returns tool_calls=None so identify cleanly skips the OpenAI
+    # ReAct tool-loop and uses the JSON path. generate/review route to their
+    # own backends downstream (generate_changes / make_backend_client).
+    identify_client = backends.make_backend_client(
+        getattr(config, "identify_backend", "openai"), openai_client=client
+    )
+    plan_client = backends.make_backend_client(
+        getattr(config, "plan_backend", "openai"), openai_client=client
+    )
+
     def _fire(event_type: str, message: str, data: Dict[str, Any] | None = None) -> None:
         if on_event:
             on_event(event_type, message, data or {})
@@ -737,7 +748,7 @@ def run_improvement_cycle(
         final_ctx = f"{final_ctx}\n\n{learnings_ctx}"
 
     task_data, id_err = llm.identify_improvements(
-        client, codebase_summary, test_results.summary(), history_summary,
+        identify_client, codebase_summary, test_results.summary(), history_summary,
         model=model, additional_context=final_ctx
     )
 
@@ -769,7 +780,7 @@ def run_improvement_cycle(
         _MAX_REACT_ROUNDS = 5
         for react_round in range(1, _MAX_REACT_ROUNDS + 1):
             log.info("[improve] ReAct round %d/%d", react_round, _MAX_REACT_ROUNDS)
-            resp = client.chat.completions.create(
+            resp = identify_client.chat.completions.create(
                 model=model,
                 messages=messages,
                 response_format={"type": "json_object"}
@@ -798,7 +809,7 @@ def run_improvement_cycle(
             if react_round == _MAX_REACT_ROUNDS:
                 log.info("[improve] ReAct loop hit max rounds (%d), forcing final answer", _MAX_REACT_ROUNDS)
                 # Force a final answer without tools
-                resp = client.chat.completions.create(
+                resp = identify_client.chat.completions.create(
                     model=model,
                     messages=messages,
                     response_format={"type": "json_object"}
@@ -838,7 +849,7 @@ def run_improvement_cycle(
     # Step 4: Plan the improvement
     log.info("[improve] Planning changes...")
     _fire("planning", f"Planning: {task.description[:100]}")
-    plan, plan_usage = plan_improvement(client, task, relevant_code, model=model)
+    plan, plan_usage = plan_improvement(plan_client, task, relevant_code, model=model)
     if plan_usage:
         improvement_result.total_usage["prompt_tokens"] += plan_usage.get("prompt_tokens", 0)
         improvement_result.total_usage["completion_tokens"] += plan_usage.get("completion_tokens", 0)
