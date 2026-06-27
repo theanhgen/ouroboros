@@ -11,3 +11,4 @@
 2026-05-20 | fix_bug |  | failed | reviewer rejected
 2026-05-24 | fix_bug |  | failed | reviewer rejected
 2026-05-27 | fix_bug |  | failed | reviewer rejected
+2026-06-27 | add_feature | Implement AST-based code-aware indexing in IndexManager.inde | success | tests: 0 -> 0
