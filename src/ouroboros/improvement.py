@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from . import git_ops, llm
+from . import backends, git_ops, llm
 from .codebase import get_codebase_summary, get_repo_root, read_file_raw
 from .config import SafetyConfig
 from .evaluation import (
@@ -114,9 +114,7 @@ def _validate_changes(changes: List[CodeChange], config: SafetyConfig) -> List[s
         if not _is_path_allowed(change.file_path, config):
             violations.append(f"Forbidden file modification: {change.file_path}")
 
-        orig_lines = change.original_content.count("\n")
-        new_lines = change.new_content.count("\n")
-        total_lines += abs(new_lines - orig_lines) + _count_changed_lines(
+        total_lines += _count_changed_lines(
             change.original_content, change.new_content
         )
 
@@ -129,17 +127,29 @@ def _validate_changes(changes: List[CodeChange], config: SafetyConfig) -> List[s
 
 
 def _count_changed_lines(original: str, new: str) -> int:
-    """Count the number of lines that differ between two strings."""
+    """Count added + removed lines using a real line diff.
+
+    Uses difflib so that inserting or deleting lines near the top of a file does
+    not mis-align every subsequent line (an index-by-index comparison reports
+    almost the whole file as changed for a small early insertion, which would
+    trip the line-change cap and wrongly reject correct changes). This matches
+    the semantics of ``git diff --numstat`` (insertions + deletions).
+    """
+    import difflib
+
     orig_lines = original.splitlines()
     new_lines = new.splitlines()
-    # Simple diff count: lines added + lines removed
-    max_len = max(len(orig_lines), len(new_lines))
+    matcher = difflib.SequenceMatcher(None, orig_lines, new_lines, autojunk=False)
     changed = 0
-    for i in range(max_len):
-        orig = orig_lines[i] if i < len(orig_lines) else None
-        new = new_lines[i] if i < len(new_lines) else None
-        if orig != new:
-            changed += 1
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "replace":
+            # A modified block counts once per line (max of removed/added), so a
+            # one-line edit is 1, matching the "lines that differ" semantics.
+            changed += max(i2 - i1, j2 - j1)
+        elif tag == "delete":
+            changed += i2 - i1
+        elif tag == "insert":
+            changed += j2 - j1
     return changed
 
 
@@ -203,6 +213,22 @@ def generate_changes(
     model: str = DEFAULT_OPENAI_MODEL,
 ) -> tuple[Optional[List[CodeChange]], Optional[dict]]:
     """Generate code changes from a plan. Returns (changes, usage)."""
+    # Agent-mode backend: let the CLI edit the working tree directly, then take
+    # its diff as the change set. On failure we fall through to the LLM path so
+    # the autonomous loop never wedges. agent_generate_changes resets the tree,
+    # so the LLM fallback (and the downstream validate step) start clean.
+    backend = getattr(config, "generator_backend", "openai")
+    if backends.is_cli_backend(backend):
+        repo_root = get_repo_root()
+        changes, usage = backends.agent_generate_changes(
+            task, plan, repo_root, config, backend,
+            model=getattr(config, "generator_model", None),
+        )
+        if changes:
+            log.info("[improve] agent backend '%s' produced %d change(s)", backend, len(changes))
+            return changes, usage
+        log.warning("[improve] agent backend '%s' yielded no changes; falling back to LLM", backend)
+
     constraints = (
         f"- Maximum {config.max_changed_files_per_pr} files\n"
         f"- Maximum {config.max_lines_changed_per_pr} lines changed\n"
@@ -849,8 +875,13 @@ def run_improvement_cycle(
         log.info("[improve] Requesting peer review from %s...", config.reviewer_model)
         _fire("reviewing", f"Reviewing changes with {config.reviewer_model}")
         
+        review_client = backends.make_backend_client(
+            getattr(config, "reviewer_backend", "openai"),
+            openai_client=client,
+            model=config.reviewer_model,
+        )
         approved, feedback, rev_usage = llm.review_code_changes(
-            client,
+            review_client,
             {"description": task.description},
             [{"file_path": c.file_path, "new_content": c.new_content, "description": c.description} for c in changes],
             model=config.reviewer_model

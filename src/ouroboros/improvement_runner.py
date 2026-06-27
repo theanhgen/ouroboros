@@ -267,6 +267,9 @@ def run_scheduled_self_improvement(
 
     safety = SafetyConfig(
         enable_auto_merge=getattr(cfg, "enable_auto_merge", False),
+        generator_backend=getattr(cfg, "generator_backend", "openai"),
+        reviewer_backend=getattr(cfg, "reviewer_backend", "openai"),
+        generator_model=getattr(cfg, "generator_model", "") or None,
     )
 
     # Build notification callback for Telegram

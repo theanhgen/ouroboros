@@ -90,6 +90,16 @@ def test_count_changed_lines():
     assert _count_changed_lines("a\n", "a\nb\n") == 1
 
 
+def test_count_changed_lines_early_insertion_not_overcounted():
+    # Regression: inserting a few lines near the top must not mis-align and
+    # report the whole file as changed (the old index-by-index bug counted 572
+    # for an 11-line agent refactor, tripping the line cap).
+    body = "".join(f"line{i}\n" for i in range(200))
+    original = "import os\n" + body
+    new_content = "import os\nimport sys\n\ndef helper():\n    return 1\n" + body
+    assert _count_changed_lines(original, new_content) <= 5
+
+
 def test_improvement_task_from_llm_response():
     data = {
         "task_type": "fix_test",

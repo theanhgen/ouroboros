@@ -198,6 +198,11 @@ class RunnerConfig:
     local_model: str = ""
     local_model_base_url: str = "http://localhost:11434/v1"
     use_local_for_cheap_tasks: bool = True
+    # Local CLI agent backends for the self-improvement engine.
+    # "openai" (default), "claude", or "codex". See backends.py.
+    generator_backend: str = "openai"
+    reviewer_backend: str = "openai"
+    generator_model: str = ""
 
 
 def load_runner_config() -> RunnerConfig:
@@ -283,6 +288,9 @@ def load_runner_config() -> RunnerConfig:
         local_model=str(data.get("local_model", "")),
         local_model_base_url=str(data.get("local_model_base_url", "http://localhost:11434/v1")),
         use_local_for_cheap_tasks=bool(data.get("use_local_for_cheap_tasks", True)),
+        generator_backend=str(data.get("generator_backend", "openai")),
+        reviewer_backend=str(data.get("reviewer_backend", "openai")),
+        generator_model=str(data.get("generator_model", "")),
     )
 
 
@@ -1191,6 +1199,9 @@ def run_loop() -> int:
                         safety = SafetyConfig(
                             enable_auto_merge=cfg.enable_auto_merge,
                             reviewer_model=cfg.improvement_model,
+                            generator_backend=getattr(cfg, "generator_backend", "openai"),
+                            reviewer_backend=getattr(cfg, "reviewer_backend", "openai"),
+                            generator_model=getattr(cfg, "generator_model", "") or None,
                         )
 
                         # Telegram notification callback for improvement events

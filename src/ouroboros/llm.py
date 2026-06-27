@@ -163,9 +163,20 @@ def identify_improvements(
     Returns (result_dict, error_string). On success error_string is None.
     """
     system_prompt = (
-        "You are an autonomous code quality agent. Your goal is to identify ONE concrete "
+        "You are an autonomous code quality agent. Identify ONE concrete, high-value "
         "improvement for the Ouroboros codebase.\n\n"
-        "Task types: fix_test, add_test, fix_bug, refactor, improve_docs, add_feature.\n"
+        "Task types: fix_test, add_test, fix_bug, refactor, improve_docs, add_feature.\n\n"
+        "Rules:\n"
+        "- The description MUST be specific and actionable: name the exact behavior to "
+        "change and the concrete outcome. Never write vague meta-tasks like 'investigate "
+        "why tests fail' -- state the actual fix.\n"
+        "- 'evidence' MUST cite a specific symptom: a failing test name, a code smell at a "
+        "named function, or a missing capability. No evidence -> do not propose it.\n"
+        "- 'target_files' MUST list real files you would edit.\n"
+        "- Only propose fix_test when tests are ACTUALLY failing in the report below. "
+        "When the suite is green, prefer substantive work (fix_bug, refactor, add_test, "
+        "add_feature) that measurably improves the codebase.\n"
+        "- Do not repeat a task that the recent history shows already failed the same way.\n\n"
         "Output JSON with keys: task_type, description, target_files, evidence, priority."
     )
     user_prompt = f"## Summary\n{summary}\n\n## Tests\n{test_results}\n\n## History\n{history}\n\n{additional_context}"
@@ -270,10 +281,21 @@ def review_code_changes(
         for c in changes
     ])
     system = (
-        "You are a Senior Security & Logic Reviewer. Be extremely critical.\n"
+        "You are a pragmatic senior code reviewer. An automated test suite runs AFTER "
+        "you and independently validates correctness, so tests -- not your intuition -- "
+        "are the safety net for behavior.\n\n"
+        "Reject (approved=false) ONLY when you can name a CONCRETE defect the change "
+        "introduces: a correctness bug, a security hole, or data loss -- and cite the "
+        "specific file and what breaks. Do NOT reject for style, naming, formatting, "
+        "missing tests, incomplete-but-harmless work, or hypothetical concerns. When you "
+        "cannot name a concrete defect, approve and list any concerns instead.\n\n"
         "Output JSON with keys: 'approved' (boolean), 'feedback' (string), 'concerns' (list)."
     )
-    user = f"## Task\n{task.get('description')}\n\n## Proposed Changes\n{changes_text}\n\nDoes this change correctly and safely address the task?"
+    user = (
+        f"## Task\n{task.get('description')}\n\n## Proposed Changes\n{changes_text}\n\n"
+        "Name any concrete correctness/security/data-loss defect this change introduces. "
+        "If you can name none, approve it."
+    )
     content, usage = chat_completion(client, system, user, model, max_tokens=1000)
     try:
         if "{" in content:

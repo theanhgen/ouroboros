@@ -32,6 +32,17 @@ class SafetyConfig:
     # Multi-model review
     reviewer_model: str = DEFAULT_OPENAI_MODEL
 
+    # Backend selection for the self-improvement engine.
+    #
+    # "openai" (default) uses the OpenAI/Anthropic API client. "claude" or
+    # "codex" route to the local CLI agent of that name (see backends.py).
+    # generator_backend in agent mode lets the CLI edit the working tree
+    # directly; reviewer_backend routes the peer-review step. generator_model
+    # is an optional model override passed to the CLI (e.g. a claude model id).
+    generator_backend: str = "openai"
+    reviewer_backend: str = "openai"
+    generator_model: Optional[str] = None
+
     # Reviewer-only OpenAI-compatible backend routing.
     #
     # If reviewer_base_url is set, the review step will use an OpenAI-compatible
