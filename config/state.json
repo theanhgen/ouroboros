@@ -1046,7 +1046,7 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1782654023,
+  "last_check": 1782656827,
   "last_comment_check": 1782642891,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1782631502,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1782625908,
+  "last_self_question": 1782654947,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1069,8 +1069,8 @@
     "91844560-3a3b-4b6e-8aee-ec4914c36e0f",
     "e10fdfd4-7451-4859-bebc-fd15d91c467c",
     "8872d95a-466a-4691-8d8e-662c2c8960e4",
-    "fad81eb7-5cdb-4894-b919-8a33675862b3",
     "d14dd6b2-475f-4243-9130-b68603f36f27",
+    "fad81eb7-5cdb-4894-b919-8a33675862b3",
     "204b9768-fdfa-4f8c-bb8e-4aea2874741c",
     "92c81540-3248-41a1-9fd6-5de6fa86e9fc",
     "5b369b44-54a7-49d9-b71e-f8de7d86f4de",
@@ -1132,10 +1132,10 @@
     "4a152950-20e2-4c0d-be60-b863da5dc515",
     "fd529338-125f-4252-8e70-8c85fea1191c",
     "ca4ec66a-d97c-41a4-9afb-d9d94c6b8f4c",
-    "2eb5f415-1d3f-45e7-bc81-d47780c67d2f",
     "3b83f8b7-1be1-4857-9bbb-396f733acae7",
-    "03659582-276a-4ae7-a478-09b70f5e299c",
+    "2eb5f415-1d3f-45e7-bc81-d47780c67d2f",
     "e271b1a6-eab8-4b82-8bb7-e9ea16db5431",
+    "03659582-276a-4ae7-a478-09b70f5e299c",
     "da350204-0f8e-4ed3-a9a7-571891a38047",
     "5f532bd3-3dfa-4a3e-805f-27c81b06057f",
     "a969ef89-dc6e-4b51-ab24-d4257fd7653f",
@@ -1265,14 +1265,8 @@
     "ddbd0ce2-80a8-490d-9ae8-92e4918a9dec",
     "e34ba911-5c7f-4f85-b470-b7f0e632eff6"
   ],
-  "self_question_index": 9,
+  "self_question_index": 10,
   "self_question_log": [
-    {
-      "answer": "Here are repetitive (and therefore automatable) patterns I see across the \u201cimprovement cycle\u201d flow, based on the module boundaries and the function set you have (not the exact code bodies):\n\n## 1) Repeated \u201cLLM call + structured parse + failure handling\u201d\nYou have a consistent shape in multiple places:\n- call LLM (identify/plan/generate/review/validate)\n- parse structured output (e.g., `ImprovementTask.from_llm_response`, `ImprovementResult`, tool-call parsing)\n- on error/regression, retry with extra context (`_retry_with_root_cause`)\n- update state/history/metrics\n\n**Automation opportunity:** Introduce a single reusable \u201cLLM stage runner\u201d wrapper that standardizes:\n- prompt assembly\n- retries\n- validation of schema\n- logging + event callbacks (`on_event`)\n- attaching prior attempt context automatically\n\nThis would remove a lot of boilerplate across `identify_improvements`, `plan_improvement`, `generate_changes`, `validate_improvement`, and `_retry_with_root_cause`.\n\n## 2) Repeated \u201cprepare context blocks from history/results\u201d\nThere are multiple helper-style builders that likely follow the same \u201ccollect \u2192 summarize \u2192 format\u201d pattern:\n- `_build_failed_attempts_context(...)`\n- `_build_success_rate_context(...)`\n- `_assemble_feed_context(...)`\n- backlog formatting (`format_backlog_for_llm(items)`)\n- PR body building (`_build_pr_body(...)`",
-      "area": "productivity",
-      "question": "What repetitive patterns in the improvement cycle could be automated better?",
-      "ts": 1776687319
-    },
     {
       "answer": "I can\u2019t determine that from the repository summary alone\u2014the summary lists modules and function names but not the actual configuration schema/defaults, nor where each config option is read/consulted at runtime.\n\nTo answer precisely (\u201cnever used anywhere\u201d), I need one of these:\n\n1) The contents of `src/ouroboros/config.py` (and any related config types like in `moltbook.py` / `policies.py` / CLI flags), **plus**  \n2) Either the full code search results for config keys (e.g., grep/ripgrep output), or I\u2019ll need you to paste:\n- `src/ouroboros/config.py`\n- `src/ouroboros/cli.py` sections that parse config/flags\n- any config dataclass/fields (e.g., in `moltbook.py`, `improvement_runner.py`, `policies.py`)\n\nIf you want, tell me how you define \u201cnever used\u201d (e.g., \u201cnot referenced outside config.py\u201d vs \u201cnot referenced at all\u201d vs \u201conly used in tests\u201d), and I\u2019ll produce the exact list once I can inspect the key definitions and their usages.",
       "area": "productivity",
@@ -2386,6 +2380,11 @@
       "area": "reliability",
       "question": "Which errors are not handled in Moltbook API requests?",
       "ts": 1782625932
+    },
+    {
+      "area": "safety",
+      "question": "What config defaults could cause unintended posting?",
+      "ts": 1782654972
     }
   ]
 }
