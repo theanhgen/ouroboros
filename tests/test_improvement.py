@@ -84,6 +84,21 @@ def test_validate_changes_too_many_lines():
     assert any("Too many lines" in v for v in violations)
 
 
+def test_validate_refuses_when_baseline_tests_did_not_run(tmp_path):
+    # Regression: a misconfigured runner (e.g. missing pytest-cov -> rc=4, 0
+    # collected) must NOT be treated as "no regression" and merged. The loop
+    # must refuse to proceed when it cannot actually validate.
+    task = ImprovementTask("t", "fix_bug", "x", ["src/ouroboros/x.py"], "")
+    changes = [CodeChange("src/ouroboros/x.py", "a\n", "b\n", "d")]
+    broken = RunnerOutcome(passed=0, failed=0, errors=0, returncode=4)
+    with patch("ouroboros.improvement.run_tests", return_value=broken) as rt:
+        result = validate_improvement(task, changes, tmp_path, config=SafetyConfig())
+    assert result.status == "failed"
+    assert "Cannot validate" in result.details
+    # It must bail before ever applying changes (only the baseline run happened).
+    assert rt.call_count == 1
+
+
 def test_count_changed_lines():
     assert _count_changed_lines("a\nb\nc\n", "a\nb\nc\n") == 0
     assert _count_changed_lines("a\nb\n", "a\nX\n") == 1

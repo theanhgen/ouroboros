@@ -415,6 +415,21 @@ def validate_improvement(
     result.test_before = run_tests(repo_root)
     log.info("Tests before: %s", result.test_before.summary())
 
+    # Hard safety gate: if the baseline test run did not actually execute any
+    # tests (e.g. a misconfigured runner returning a usage error), we cannot
+    # detect regressions -- so refuse to proceed rather than merge unvalidated.
+    if result.test_before.total == 0 and not result.test_before.success:
+        log.error(
+            "Baseline tests did not run (%s); refusing to validate/merge",
+            result.test_before.summary(),
+        )
+        result.details = (
+            f"Cannot validate: baseline test run produced no results "
+            f"({result.test_before.summary()})"
+        )
+        result.status = "failed"
+        return result
+
     # Validate safety constraints
     violations = _validate_changes(changes, config)
     if violations:

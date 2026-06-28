@@ -52,14 +52,14 @@ def resolve_binary(name: str) -> Optional[str]:
     Checks PATH first, then known install dirs that the systemd service PATH
     omits.
     """
-    found = shutil.which(name)
-    if found:
-        return found
+    # Prefer the user's installed binaries (the versions actually tested) over
+    # whatever is on PATH. The systemd service PATH can resolve a different,
+    # older binary (e.g. an /usr/local/bin codex) that behaves differently.
     for d in _EXTRA_BIN_DIRS:
         cand = os.path.join(d, name)
         if os.path.isfile(cand) and os.access(cand, os.X_OK):
             return cand
-    return None
+    return shutil.which(name)
 
 
 def is_cli_backend(backend: Optional[str]) -> bool:
@@ -151,7 +151,7 @@ def _run_claude(
         cmd += ["--model", model]
     if edit:
         cmd += ["--permission-mode", "acceptEdits"]
-    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     if proc.returncode != 0:
         raise RuntimeError(f"claude exited {proc.returncode}: {proc.stderr[:500]}")
     return parse_claude_output(proc.stdout)
@@ -166,11 +166,15 @@ def _run_codex(
     edit: bool = False,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> Tuple[str, Optional[Dict[str, int]]]:
-    cmd = [binary, "exec", prompt]
+    cmd = [binary, "exec"]
+    if edit:
+        # `codex exec` is read-only by default; allow it to edit the working tree.
+        cmd += ["--sandbox", "workspace-write"]
     # Only override the model when an explicit codex/openai model id is given.
     if model and str(model).startswith(("gpt", "o3", "o4", "codex")):
         cmd += ["-c", f'model="{model}"']
-    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    cmd.append(prompt)
+    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     if proc.returncode != 0:
         raise RuntimeError(f"codex exited {proc.returncode}: {proc.stderr[:500]}")
     # codex does not expose token usage in a stable machine-readable form.
@@ -194,7 +198,7 @@ def _run_agy(
         cmd += ["--dangerously-skip-permissions"]
         if cwd:
             cmd += ["--add-dir", cwd]
-    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     if proc.returncode != 0:
         raise RuntimeError(f"agy exited {proc.returncode}: {proc.stderr[:500]}")
     # agy print mode does not expose token usage.

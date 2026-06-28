@@ -134,20 +134,13 @@ def _run_tests_sandboxed(repo_root: Path, config: SafetyConfig, timeout: int) ->
         return RunnerOutcome(stdout=f"Sandbox error: {e}", returncode=-1)
 
 
-def run_tests(repo_root: Path, timeout: int = 120) -> RunnerOutcome:
-    """Run pytest with coverage in the repo and return structured results.
-    """
-    config = SafetyConfig()
-    if config.sandbox_enabled:
-        return _run_tests_sandboxed(repo_root, config, timeout)
-
+def _run_pytest(repo_root: Path, timeout: int, with_cov: bool) -> RunnerOutcome:
+    cmd = [sys.executable, "-m", "pytest", "--tb=short", "-q"]
+    if with_cov:
+        cmd.append("--cov=ouroboros")
     try:
         proc = subprocess.run(
-            [sys.executable, "-m", "pytest", "--tb=short", "-q", "--cov=ouroboros"],
-            cwd=repo_root,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+            cmd, cwd=repo_root, capture_output=True, text=True, timeout=timeout,
         )
     except subprocess.TimeoutExpired:
         return RunnerOutcome(stdout="Tests timed out", returncode=-1)
@@ -156,7 +149,6 @@ def run_tests(repo_root: Path, timeout: int = 120) -> RunnerOutcome:
 
     combined_output = proc.stdout + "\n" + proc.stderr
     parsed = _parse_pytest_output(combined_output)
-
     return RunnerOutcome(
         passed=parsed["passed"],
         failed=parsed["failed"],
@@ -166,3 +158,25 @@ def run_tests(repo_root: Path, timeout: int = 120) -> RunnerOutcome:
         returncode=proc.returncode,
         coverage_percent=parsed.get("coverage"),
     )
+
+
+def run_tests(repo_root: Path, timeout: int = 120) -> RunnerOutcome:
+    """Run pytest with coverage in the repo and return structured results."""
+    config = SafetyConfig()
+    if config.sandbox_enabled:
+        return _run_tests_sandboxed(repo_root, config, timeout)
+
+    outcome = _run_pytest(repo_root, timeout, with_cov=True)
+
+    # If the coverage plugin is missing, pytest aborts with a usage error
+    # (returncode 4, zero tests collected). That previously made the validation
+    # gate silently hollow -- it saw "0 passed" before and after a change and
+    # declared "no regression". Retry without --cov so a missing plugin can
+    # never disable the safety net again.
+    if outcome.returncode == 4 or (
+        outcome.total == 0 and "unrecognized arguments" in outcome.stdout
+    ):
+        log.warning("pytest --cov failed (pytest-cov missing?); retrying without coverage")
+        outcome = _run_pytest(repo_root, timeout, with_cov=False)
+
+    return outcome
