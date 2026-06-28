@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1782624983,
-  "last_comment_check": 1782612921,
+  "last_check": 1782628715,
+  "last_comment_check": 1782627784,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,11 +1060,11 @@
   "last_memory_hygiene": 1782544835,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1782596200,
+  "last_self_question": 1782625908,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
-    "8eb8c724-f04c-46c1-8bd8-28c7c89f5e0d",
+    "9e4ad850-b064-43a7-bc0b-40471d52e398",
     "9873e743-3192-4031-9dcd-7bebf957d80a",
     "91844560-3a3b-4b6e-8aee-ec4914c36e0f",
     "e10fdfd4-7451-4859-bebc-fd15d91c467c",
@@ -1128,8 +1128,8 @@
     "54c12177-3ad9-468f-a581-d44f9b31309e",
     "6b10ed13-73bc-45f3-bd80-82046dd61579",
     "6fb7630b-9945-410d-9115-1e7fbb0c003e",
-    "93c0611f-2035-4fcd-b185-975603f3a510",
     "4a152950-20e2-4c0d-be60-b863da5dc515",
+    "93c0611f-2035-4fcd-b185-975603f3a510",
     "fd529338-125f-4252-8e70-8c85fea1191c",
     "ca4ec66a-d97c-41a4-9afb-d9d94c6b8f4c",
     "3b83f8b7-1be1-4857-9bbb-396f733acae7",
@@ -1265,14 +1265,8 @@
     "ddbd0ce2-80a8-490d-9ae8-92e4918a9dec",
     "e34ba911-5c7f-4f85-b470-b7f0e632eff6"
   ],
-  "self_question_index": 8,
+  "self_question_index": 9,
   "self_question_log": [
-    {
-      "answer": "Based on the code layout, the most likely \u201credundant\u201d LLM call sites (i.e., repeated calls with the same/overlapping inputs that aren\u2019t obviously cached or batched) are:\n\n1. **Feed/insight mining (high repetition across posts/tasks)**\n   - `src/ouroboros/llm.py`\n     - `extract_insights_batch(client, posts, model)`\n     - `extract_topic_signal(client, post_title, bot_comment, replies, model)`\n     - `mine_insight_for_codebase(client, post_title, post_content, bot_comment, model)`\n   - `src/ouroboros/feed_intelligence` isn\u2019t a file in the summary, but functionality is clearly here. If the runner calls \u201cper post\u201d and `extract_insights_batch` isn\u2019t used everywhere, that\u2019s where redundancy happens.\n\n2. **KB summary regeneration**\n   - `src/ouroboros/knowledge_base.py`\n     - `get_summary(client, kb, force_refresh, path)`\n   - Redundancy risk: if callers pass `force_refresh=True` too often, or if staleness detection is weak, you\u2019ll repeatedly rebuild the same summary.\n\n3. **Repeated \u201cplan\u201d / \u201cidentify improvements\u201d cycles per task**\n   - `src/ouroboros/improvement.py`\n     - `identify_improvements(...)`\n     - `plan_improvement(...)`\n     - `generate_changes(...)`\n  ",
-      "area": "llm_optimization",
-      "question": "Where are we making redundant LLM calls that could be cached or batched?",
-      "ts": 1776657859
-    },
     {
       "answer": "Here are repetitive (and therefore automatable) patterns I see across the \u201cimprovement cycle\u201d flow, based on the module boundaries and the function set you have (not the exact code bodies):\n\n## 1) Repeated \u201cLLM call + structured parse + failure handling\u201d\nYou have a consistent shape in multiple places:\n- call LLM (identify/plan/generate/review/validate)\n- parse structured output (e.g., `ImprovementTask.from_llm_response`, `ImprovementResult`, tool-call parsing)\n- on error/regression, retry with extra context (`_retry_with_root_cause`)\n- update state/history/metrics\n\n**Automation opportunity:** Introduce a single reusable \u201cLLM stage runner\u201d wrapper that standardizes:\n- prompt assembly\n- retries\n- validation of schema\n- logging + event callbacks (`on_event`)\n- attaching prior attempt context automatically\n\nThis would remove a lot of boilerplate across `identify_improvements`, `plan_improvement`, `generate_changes`, `validate_improvement`, and `_retry_with_root_cause`.\n\n## 2) Repeated \u201cprepare context blocks from history/results\u201d\nThere are multiple helper-style builders that likely follow the same \u201ccollect \u2192 summarize \u2192 format\u201d pattern:\n- `_build_failed_attempts_context(...)`\n- `_build_success_rate_context(...)`\n- `_assemble_feed_context(...)`\n- backlog formatting (`format_backlog_for_llm(items)`)\n- PR body building (`_build_pr_body(...)`",
       "area": "productivity",
@@ -2387,6 +2381,11 @@
       "area": "privacy",
       "question": "What data do we store that could be sensitive?",
       "ts": 1782596226
+    },
+    {
+      "area": "reliability",
+      "question": "Which errors are not handled in Moltbook API requests?",
+      "ts": 1782625932
     }
   ]
 }
