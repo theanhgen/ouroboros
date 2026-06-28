@@ -324,6 +324,79 @@ def _untracked_files(repo: Path) -> set:
     return {line.strip() for line in proc.stdout.splitlines() if line.strip()}
 
 
+_GIT_C_ESCAPES = {
+    "a": b"\a",
+    "b": b"\b",
+    "f": b"\f",
+    "n": b"\n",
+    "r": b"\r",
+    "t": b"\t",
+    "v": b"\v",
+    "\\": b"\\",
+    '"': b'"',
+}
+
+
+def _decode_git_path(path: str) -> str:
+    """Decode a C-quoted path from git porcelain output."""
+    path = path.strip()
+    if len(path) < 2 or path[0] != '"' or path[-1] != '"':
+        return path
+
+    raw = path[1:-1]
+    decoded = bytearray()
+    i = 0
+    while i < len(raw):
+        char = raw[i]
+        if char != "\\":
+            decoded.extend(char.encode("utf-8"))
+            i += 1
+            continue
+
+        i += 1
+        if i >= len(raw):
+            decoded.append(ord("\\"))
+            break
+
+        char = raw[i]
+        if char in "01234567":
+            octal = char
+            i += 1
+            while i < len(raw) and len(octal) < 3 and raw[i] in "01234567":
+                octal += raw[i]
+                i += 1
+            decoded.append(int(octal, 8))
+            continue
+
+        decoded.extend(_GIT_C_ESCAPES.get(char, char.encode("utf-8")))
+        i += 1
+
+    return decoded.decode("utf-8", "surrogateescape")
+
+
+def _git_porcelain_target_path(line: str) -> str:
+    """Return the changed path from a git status --porcelain line."""
+    status = line[:2]
+    path = line[3:].strip()
+    if "R" in status or "C" in status:
+        in_quote = False
+        escaped = False
+        for i, char in enumerate(path):
+            if escaped:
+                escaped = False
+                continue
+            if in_quote and char == "\\":
+                escaped = True
+                continue
+            if char == '"':
+                in_quote = not in_quote
+                continue
+            if not in_quote and path.startswith(" -> ", i):
+                path = path[i + 4:].strip()
+                break
+    return _decode_git_path(path)
+
+
 def _build_agent_prompt(task: Any, plan: str, config: Any) -> str:
     forbidden = ", ".join(getattr(config, "forbidden_modification_paths", ()))
     allowed = ", ".join(getattr(config, "allowed_modification_paths", ()))
@@ -350,9 +423,7 @@ def _collect_changes(repo: Path, untracked_before: set, code_change_cls: Any) ->
         if not line.strip():
             continue
         status = line[:2]
-        path = line[3:].strip()
-        if " -> " in path:  # rename
-            path = path.split(" -> ", 1)[1]
+        path = _git_porcelain_target_path(line)
         if "D" in status:
             log.info("agent deleted %s -- deletions unsupported in agent mode, skipping", path)
             continue
