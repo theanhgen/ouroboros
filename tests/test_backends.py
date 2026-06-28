@@ -3,6 +3,7 @@
 import json
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -219,6 +220,52 @@ def test_agent_generate_changes_captures_diff_and_resets(monkeypatch, git_repo):
     assert (git_repo / "src" / "mod.py").read_text() == "x = 1\n"
     assert not (git_repo / "src" / "new.py").exists()
     assert (git_repo / "untracked.txt").read_text() == "keep me\n"
+
+
+def test_collect_changes_decodes_quoted_porcelain_paths(monkeypatch, tmp_path):
+    rel_path = 'src/space "quote" \\ \u00e9.py'
+    target = tmp_path / rel_path
+    target.parent.mkdir()
+    target.write_text("new\n", encoding="utf-8")
+    porcelain_path = r'"src/space \"quote\" \\ \303\251.py"'
+
+    def fake_git(repo, *args, timeout=30):
+        if args == ("status", "--porcelain"):
+            return subprocess.CompletedProcess(args, 0, stdout=f" M {porcelain_path}\n", stderr="")
+        if args == ("show", f"HEAD:{rel_path}"):
+            return subprocess.CompletedProcess(args, 0, stdout="old\n", stderr="")
+        raise AssertionError(args)
+
+    monkeypatch.setattr(backends, "_git", fake_git)
+
+    changes = backends._collect_changes(tmp_path, set(), SimpleNamespace)
+
+    assert len(changes) == 1
+    assert changes[0].file_path == rel_path
+    assert changes[0].original_content == "old\n"
+    assert changes[0].new_content == "new\n"
+
+
+def test_commit_auto_state_decodes_quoted_porcelain_paths(monkeypatch):
+    from ouroboros import git_ops
+
+    calls = []
+    rel_path = 'docs/wiki/state "note" \u00e9.md'
+    porcelain_path = r'"docs/wiki/state \"note\" \303\251.md"'
+
+    def fake_git(repo, *args, **kwargs):
+        calls.append(args)
+        if args == ("status", "--porcelain"):
+            return subprocess.CompletedProcess(args, 0, stdout=f" M {porcelain_path}\n", stderr="")
+        if args == ("diff", "--cached", "--name-only"):
+            return subprocess.CompletedProcess(args, 0, stdout=f"{rel_path}\n", stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(git_ops, "_git", fake_git)
+    monkeypatch.setattr(git_ops, "current_branch", lambda repo: "main")
+
+    assert git_ops.commit_auto_state(Path("/tmp/repo")) is True
+    assert calls[1] == ("add", rel_path)
 
 
 def test_agent_generate_changes_no_changes_returns_none(monkeypatch, git_repo):
