@@ -1046,7 +1046,7 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1782742746,
+  "last_check": 1782743674,
   "last_comment_check": 1782731613,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
@@ -1060,18 +1060,18 @@
   "last_memory_hygiene": 1782717921,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1782714186,
+  "last_self_question": 1782743671,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
-    "e31905f8-4af9-4909-bbc0-c7025d3b7074",
-    "58ce0371-23a4-4b6a-94fc-d381dce8d8ef",
     "0ad10b60-b021-4a78-b187-1fb31ce79161",
     "1151cd8e-4384-4aba-bc36-d18510bb8e6c",
+    "e31905f8-4af9-4909-bbc0-c7025d3b7074",
+    "58ce0371-23a4-4b6a-94fc-d381dce8d8ef",
     "267947bf-fc4e-45d9-801a-9c0626f18400",
     "d2ccc1da-249c-4ef6-a131-5066ebff21a4",
     "83a161fd-fc52-4e55-8b84-0d876b7cf9f0",
-    "79202576-10b3-4ef2-bfe9-e4eaceaee01f",
+    "f73a998c-1ed3-4654-bc99-f5c253b96156",
     "a09449bf-e87d-499a-8d3b-0e293d4c1af6",
     "54c12177-3ad9-468f-a581-d44f9b31309e",
     "ea142631-4cbe-4700-bea9-33a253e477bf",
@@ -1080,7 +1080,7 @@
     "e00b8701-6ed3-4e33-af34-16f55a17f832",
     "1f745b21-b267-418c-9ba6-45138df34f96",
     "33b8e510-a043-4080-ab28-0d0c4217b3ac",
-    "f73a998c-1ed3-4654-bc99-f5c253b96156",
+    "79202576-10b3-4ef2-bfe9-e4eaceaee01f",
     "48587d0f-9329-4eda-9004-39afe4669957",
     "9a0bba17-db95-4d9b-a8f1-b689a7523767",
     "db11280e-12e7-4aad-94c3-058c7bc07856",
@@ -1129,13 +1129,13 @@
     "4234f264-72e7-4501-b78e-097acbee33e8",
     "fd3569f8-2485-4382-b6e4-ba0f77dc35eb",
     "e497b385-a175-4722-aacb-a0f1c83bebd4",
-    "adb38122-29f5-4407-9a07-1a25956e244f",
     "6d70c913-2bfd-4137-9ef0-2a986dc6af68",
+    "adb38122-29f5-4407-9a07-1a25956e244f",
     "f0e6f6e9-a1c0-4da8-9a8d-20e4cd3da44c",
     "8c7cfb1d-b9f0-4c59-ad0c-a21c0e69ae25",
-    "bb0171d6-ca8b-44df-bc82-057fb8fe5708",
-    "87b587c9-df3e-413e-86ea-02e1f04d4f0f",
     "8029c805-3dd2-4ceb-a090-d51cb8d83c4a",
+    "87b587c9-df3e-413e-86ea-02e1f04d4f0f",
+    "bb0171d6-ca8b-44df-bc82-057fb8fe5708",
     "aaaa5109-e1f3-40ae-be19-43e9ef4f8037",
     "3e4555ba-c5c2-4c3e-b87a-67bed937652a",
     "f88e8647-9d8c-41e1-aaba-04b1a4c3e99e",
@@ -1265,14 +1265,8 @@
     "cdab0faa-a256-4c85-961c-64b2c4bbdb3c",
     "1e14f774-b87b-4d32-ba96-62ac14f84538"
   ],
-  "self_question_index": 12,
+  "self_question_index": 13,
   "self_question_log": [
-    {
-      "answer": "For `src/ouroboros/memory.py`, you want tests that cover the three main surfaces it exposes:\n\n1) **`MemoryStore`** (SQLite-backed fact storage + entity resolution + trust scoring + feedback)\n2) **`FactRetriever`** (multi-strategy retrieval scoring: FTS/jaccard/HRR + probing/reasoning/contradiction)\n3) **`IndexManager`** (compatibility wrapper that calls into `MemoryStore` for \u201cindex file / index success-failure / retrieve context / hygiene\u201d)\n\n## Tests that should exist\n\n### A. `MemoryStore` core persistence + basic behavior\n- **Init creates DB schema**  \n  - Create a `MemoryStore` with a temp db path; assert tables exist / no crash.\n- **Add fact + list_facts roundtrip**\n  - `add_fact()` then `list_facts(category, min_trust, limit)` returns the inserted item.\n- **Search facts respects category + min_trust + limit**\n  - Insert multiple facts with different categories and/or trust; verify filtering and ordering behavior.\n- **Update fact modifies content/tags/category and trust**\n  - Call `update_fact(fact_id, trust_delta=..., tags=..., category=...)`; assert fields changed.\n- **Remove fact**\n  - `remove_fact(fact_id)` makes it disappear from search/list.\n- **Record feedback changes trust (helpful true/false",
-      "area": "missing_tests",
-      "question": "What tests should exist for module memory.py? What are the key functions to test?",
-      "ts": 1776775353
-    },
     {
       "answer": "There currently aren\u2019t any listed tests for `src/ouroboros/model_defaults.py` (it\u2019s only 3 lines in the summary). So you should add tests that verify whatever defaults that module *defines* (constants / default values / fallback behavior).\n\n### What tests should exist for `model_defaults.py`?\nAt minimum, add tests that cover:\n\n1. **Exports/default presence**\n   - Importing the module succeeds.\n   - Required default identifiers/values (e.g., default model name, max tokens, response format, temperature, etc.\u2014whatever the file defines) are present and not `None`.\n\n2. **Correct default values**\n   - Assert the exact expected constant values match the spec in the codebase.\n\n3. **Type/shape expectations**\n   - If any defaults are strings/numbers/bools/dicts, assert correct types.\n   - If any defaults are structured (e.g., dict of parameters), assert keys exist and values are of expected types.\n\n4. **Backward compatibility / immutability (if relevant)**\n   - If the module is intended to be a stable API surface for other modules, add a test ensuring the same symbol names remain available.\n\n### Key functions to test\nFrom the codebase summary, `model_defaults.py` appears to contain **no functions**, only defaults/exports. So the \u201ckey functions\u201d to test are effectively **none**; instead, the key items to test are the **default constants/values",
       "area": "missing_tests",
@@ -2383,6 +2377,11 @@
       "area": "refactoring",
       "question": "Where is there duplicated logic that could be extracted into a shared helper?",
       "ts": 1782714211
+    },
+    {
+      "area": "docs",
+      "question": "Which public functions lack docstrings or have misleading ones?",
+      "ts": 1782743696
     }
   ]
 }
