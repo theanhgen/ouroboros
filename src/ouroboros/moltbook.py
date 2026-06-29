@@ -1,4 +1,3 @@
-import fcntl
 import json
 import logging
 import os
@@ -12,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .model_defaults import DEFAULT_OPENAI_MODEL
+from .storage import load_json_file, save_json_file
 
 log = logging.getLogger(__name__)
 
@@ -45,8 +45,7 @@ class Credentials:
 
 
 def _read_json_file(path: str) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return load_json_file(path)
 
 
 def load_credentials(*, require_agent_name: bool = True) -> Credentials:
@@ -295,41 +294,40 @@ def _state_path() -> str:
     return os.path.expanduser("~/.config/moltbook/state.json")
 
 
+def _default_state() -> Dict[str, Any]:
+    return {
+        "last_check": None,
+        "last_post": None,
+        "last_self_question": None,
+        "last_self_improve": None,
+        "last_comment_time": None,
+        "self_question_index": 0,
+        "self_question_log": [],
+        "comment_history": [],
+        "seen_post_ids": [],
+        "community_improvement": None,
+        "community_improvement_history": [],
+        "last_community_improvement_start": None,
+        "last_issue_scouting_attempt": None,
+    }
+
+
 def load_state() -> Dict[str, Any]:
     path = _state_path()
     if not os.path.exists(path):
-        return {
-            "last_check": None,
-            "last_post": None,
-            "last_self_question": None,
-            "last_self_improve": None,
-            "last_comment_time": None,
-            "self_question_index": 0,
-            "self_question_log": [],
-            "comment_history": [],
-            "seen_post_ids": [],
-            "community_improvement": None,
-            "community_improvement_history": [],
-            "last_community_improvement_start": None,
-            "last_issue_scouting_attempt": None,
-        }
-    return _read_json_file(path)
+        return _default_state()
+    return load_json_file(
+        path,
+        default=_default_state(),
+        error_msg=f"Corrupt state file at {path}, returning default",
+        logger=log,
+    )
 
 
 def save_state(state: Dict[str, Any]) -> None:
     path = _state_path()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
     _trim_state(state)
-    tmp_path = path + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        try:
-            json.dump(state, f, indent=2, sort_keys=True)
-            f.flush()
-            os.fsync(f.fileno())
-        finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
-    os.replace(tmp_path, path)
+    save_json_file(path, state, sort_keys=True)
 
 
 def _send_telegram_message(token: str, chat_id: str, text: str) -> None:
