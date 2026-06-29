@@ -1,13 +1,68 @@
-"""Local SQLite storage for tracking autonomous cycles and metrics."""
+"""Local storage helpers for tracking autonomous cycles and metrics."""
 
+import copy
+import fcntl
+import json
+import logging
+import os
 import sqlite3
 import time
-import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 
 from .codebase import get_repo_root
+
+log = logging.getLogger(__name__)
+_MISSING = object()
+
+
+def load_json_file(
+    path: Union[str, Path],
+    default: Any = _MISSING,
+    *,
+    error_msg: Optional[str] = None,
+    logger: Optional[logging.Logger] = None,
+) -> Any:
+    """Load a JSON file, returning a default for missing or corrupt files."""
+    json_path = Path(path).expanduser()
+    if not json_path.exists():
+        if default is _MISSING:
+            raise FileNotFoundError(json_path)
+        return copy.deepcopy(default)
+
+    try:
+        with json_path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, KeyError, OSError):
+        if default is _MISSING:
+            raise
+        if error_msg:
+            (logger or log).warning(error_msg)
+        return copy.deepcopy(default)
+
+
+def save_json_file(
+    path: Union[str, Path],
+    data: Any,
+    *,
+    sort_keys: bool = False,
+    indent: int = 2,
+) -> None:
+    """Safely write JSON via a locked temp file, fsync, and atomic replace."""
+    json_path = Path(path).expanduser()
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = json_path.with_name(f"{json_path.name}.tmp")
+
+    with tmp_path.open("w", encoding="utf-8") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            json.dump(data, f, indent=indent, sort_keys=sort_keys)
+            f.flush()
+            os.fsync(f.fileno())
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+    os.replace(tmp_path, json_path)
 
 
 @dataclass

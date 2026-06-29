@@ -1,15 +1,16 @@
 """Knowledge base -- persisted insights from community posts."""
 
-import fcntl
-import json
 import logging
 import os
 import time
 from typing import Any, Dict, List, Optional
 
+from .storage import load_json_file, save_json_file
+
 log = logging.getLogger(__name__)
 
 KB_PATH = os.path.expanduser("~/.config/moltbook/knowledge_base.json")
+KB_DEFAULT = {"entries": [], "summary_cache": "", "summary_updated_at": 0}
 MAX_ENTRIES = 200
 _SUMMARY_MAX_AGE = 86400  # 24 hours
 _SUMMARY_NEW_ENTRY_THRESHOLD = 20
@@ -18,30 +19,18 @@ _SUMMARY_NEW_ENTRY_THRESHOLD = 20
 def load_kb(path: Optional[str] = None) -> Dict[str, Any]:
     """Load the knowledge base from disk."""
     p = path or KB_PATH
-    if not os.path.exists(p):
-        return {"entries": [], "summary_cache": "", "summary_updated_at": 0}
-    try:
-        with open(p, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        log.warning("Corrupt knowledge base at %s, starting fresh", p)
-        return {"entries": [], "summary_cache": "", "summary_updated_at": 0}
+    return load_json_file(
+        p,
+        default=KB_DEFAULT,
+        error_msg=f"Corrupt knowledge base at {p}, starting fresh",
+        logger=log,
+    )
 
 
 def save_kb(kb: Dict[str, Any], path: Optional[str] = None) -> None:
     """Atomic write of the knowledge base."""
     p = path or KB_PATH
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    tmp_path = p + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        try:
-            json.dump(kb, f, indent=2, sort_keys=True)
-            f.flush()
-            os.fsync(f.fileno())
-        finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
-    os.replace(tmp_path, p)
+    save_json_file(p, kb, sort_keys=True)
 
 
 def add_entries(entries: List[Dict[str, Any]], path: Optional[str] = None) -> None:
