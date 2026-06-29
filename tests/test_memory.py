@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 import textwrap
 
-from ouroboros.memory import IndexManager, MemoryStore
+from ouroboros import holographic as hrr
+from ouroboros.memory import FactRetriever, IndexManager, MemoryStore
 
 
 @pytest.fixture
@@ -99,3 +100,138 @@ def test_index_file_fallback_empty_python(temp_store):
     facts = temp_store.list_facts(category="code")
     assert len(facts) == 1
     assert facts[0]["content"] == f"[code] src/empty.py:"
+
+
+def test_memory_store_crud_entities_search_and_feedback(temp_store):
+    fact_id = temp_store.add_fact(
+        'Ada Lovelace wrote "Analytical Engine" notes for '
+        "'Bernoulli Numbers'.",
+        category="history",
+        tags="computing math",
+    )
+
+    assert temp_store.fact_count() == 1
+    stored = temp_store.list_facts(category="history")
+    assert stored[0]["fact_id"] == fact_id
+    assert stored[0]["content"].startswith("Ada Lovelace wrote")
+    assert stored[0]["tags"] == "computing math"
+    assert stored[0]["trust_score"] == pytest.approx(0.5)
+
+    linked_entities = {
+        row["name"]
+        for row in temp_store._conn.execute(
+            "SELECT e.name FROM entities e "
+            "JOIN fact_entities fe ON fe.entity_id = e.entity_id "
+            "WHERE fe.fact_id = ?",
+            (fact_id,),
+        )
+    }
+    assert linked_entities == {
+        "Ada Lovelace",
+        "Analytical Engine",
+        "Bernoulli Numbers",
+    }
+
+    results = temp_store.search_facts("math", category="history")
+    assert [result["fact_id"] for result in results] == [fact_id]
+    assert temp_store.list_facts()[0]["retrieval_count"] == 1
+
+    helpful = temp_store.record_feedback(fact_id, helpful=True)
+    assert helpful["old_trust"] == pytest.approx(0.5)
+    assert helpful["new_trust"] == pytest.approx(0.55)
+    unhelpful = temp_store.record_feedback(fact_id, helpful=False)
+    assert unhelpful["new_trust"] == pytest.approx(0.45)
+    after_feedback = temp_store.list_facts()[0]
+    assert after_feedback["helpful_count"] == 1
+    assert after_feedback["trust_score"] == pytest.approx(0.45)
+
+    assert temp_store.update_fact(
+        fact_id,
+        content='Grace Hopper documented "FLOW MATIC" compilers.',
+        category="software",
+        tags="compiler",
+        trust_delta=0.4,
+    )
+    updated = temp_store.search_facts("compilers", category="software", min_trust=0.8)
+    assert [result["fact_id"] for result in updated] == [fact_id]
+    assert temp_store.search_facts("Bernoulli", category="software") == []
+
+    updated_entities = {
+        row["name"]
+        for row in temp_store._conn.execute(
+            "SELECT e.name FROM entities e "
+            "JOIN fact_entities fe ON fe.entity_id = e.entity_id "
+            "WHERE fe.fact_id = ?",
+            (fact_id,),
+        )
+    }
+    assert updated_entities == {"Grace Hopper", "FLOW MATIC"}
+
+    assert temp_store.remove_fact(fact_id)
+    assert temp_store.fact_count() == 0
+    assert temp_store.search_facts("compilers", category="software") == []
+    assert not temp_store.update_fact(fact_id, trust_delta=0.1)
+    assert not temp_store.remove_fact(fact_id)
+    with pytest.raises(KeyError):
+        temp_store.record_feedback(fact_id, helpful=True)
+
+
+def test_fact_retriever_hybrid_search_uses_fts_jaccard_and_hrr(tmp_path):
+    store = MemoryStore(db_path=tmp_path / "hybrid.db", hrr_dim=128)
+    try:
+        exact_id = store.add_fact("cache eviction", category="jaccard")
+        noisy_id = store.add_fact(
+            "cache eviction unrelated banana satellite calculus",
+            category="jaccard",
+        )
+        jaccard_results = FactRetriever(
+            store, fts_weight=0.0, jaccard_weight=1.0, hrr_weight=0.0
+        ).search("cache eviction", category="jaccard", limit=2)
+        assert [result["fact_id"] for result in jaccard_results] == [
+            exact_id,
+            noisy_id,
+        ]
+        assert jaccard_results[0]["score"] > jaccard_results[1]["score"]
+
+        repeated_id = store.add_fact(
+            "cache eviction cache eviction",
+            category="fts",
+        )
+        plain_id = store.add_fact("cache eviction ordinary", category="fts")
+        fts_results = FactRetriever(
+            store, fts_weight=1.0, jaccard_weight=0.0, hrr_weight=0.0
+        ).search("cache eviction", category="fts", limit=2)
+        assert [result["fact_id"] for result in fts_results] == [
+            repeated_id,
+            plain_id,
+        ]
+        assert fts_results[0]["fts_rank"] > fts_results[1]["fts_rank"]
+
+        if not hrr.HAS_NUMPY:
+            pytest.skip("NumPy is required for HRR similarity assertions")
+
+        matching_id = store.add_fact("vector probe cache", category="hrr")
+        distant_id = store.add_fact("vector probe unrelated", category="hrr")
+        query_vec = hrr.encode_text("vector probe", store.hrr_dim)
+        distant_vec = hrr.encode_text("orthogonal archive", store.hrr_dim)
+        store._conn.execute(
+            "UPDATE facts SET hrr_vector = ? WHERE fact_id = ?",
+            (hrr.phases_to_bytes(query_vec), matching_id),
+        )
+        store._conn.execute(
+            "UPDATE facts SET hrr_vector = ? WHERE fact_id = ?",
+            (hrr.phases_to_bytes(distant_vec), distant_id),
+        )
+        store._conn.commit()
+
+        hrr_results = FactRetriever(
+            store, fts_weight=0.0, jaccard_weight=0.0, hrr_weight=1.0
+        ).search("vector probe", category="hrr", limit=2)
+        assert [result["fact_id"] for result in hrr_results] == [
+            matching_id,
+            distant_id,
+        ]
+        assert hrr_results[0]["score"] == pytest.approx(0.5)
+        assert hrr_results[0]["score"] > hrr_results[1]["score"]
+    finally:
+        store.close()
