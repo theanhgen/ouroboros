@@ -16,3 +16,4 @@
 2026-06-28 | fix_bug | Fix parsing of git status --porcelain output in _collect_cha | success | tests: 215 -> 217
 2026-06-29 | add_test | Add unit tests in tests/test_memory.py to verify MemoryStore | success | tests: 217 -> 219
 2026-06-29 | refactor | Extract duplicated JSON file-based operations (loading with  | success | tests: 219 -> 219
+2026-06-30 | add_feature | Improve codebase context building in analyze_issue within sr | failed | reviewer rejected
