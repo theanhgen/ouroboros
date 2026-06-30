@@ -1046,7 +1046,7 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1782802172,
+  "last_check": 1782804050,
   "last_comment_check": 1782791038,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1782717921,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1782773392,
+  "last_self_question": 1782803097,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "8e4187b1-aa6a-4e50-a321-071f31320c3e",
     "8fc8fdae-1133-44ad-8d8c-997b633f38ef"
   ],
-  "self_question_index": 14,
+  "self_question_index": 15,
   "self_question_log": [
-    {
-      "answer": "You currently have fairly extensive tests for most modules, but **`src/ouroboros/prompts.py` is not represented in the test list**. Given what `prompts.py` does (loads prompt templates from the filesystem), the tests that \u201cshould exist\u201d are mainly correctness, failure modes, and caching/paths behavior.\n\n## Tests that should exist for `prompts.py`\n\n### 1) Path resolution / loading smoke tests\nFor each public loader function, test that it:\n- returns a **non-empty string** (or expected sentinel),\n- reads the expected template file from the prompts directory.\n\nFunctions to cover:\n- `load_comment_system_prompt()`\n- `load_post_generation_prompt()`\n- `load_comment_analysis_prompt()`\n- `load_question_post_prompt()`\n- `load_code_suggestion_prompt()`\n- `load_comment_mining_prompt()`\n- `load_topic_signal_prompt()`\n- `load_insight_extraction_prompt()`\n- `load_kb_summary_prompt()`\n- `load_github_issue_analysis_prompt()`\n- `load_github_issue_fix_prompt()`\n- `load_suggestion_implementation_prompt()`\n\nA single parameterized test can cover all of them.\n\n### 2) Missing prompt file behavior\nTest what happens if a prompt file is missing/unreadable:\n- If the implementation should raise (e.g., `FileNotFoundError`), assert the exception type.\n- If it should return `None`",
-      "area": "missing_tests",
-      "question": "What tests should exist for module prompts.py? What are the key functions to test?",
-      "ts": 1776833878
-    },
     {
       "answer": "For `src/ouroboros/storage.py`, you should have tests around **SQLite persistence**, **bounding/trimming behavior**, and **embedding search roundtrips** (if embeddings are supported by the storage layer).\n\n### Tests that should exist for `storage.py`\n\n1. **DB initialization / schema**\n   - Creating `OuroborosStorage(db_path)` on an empty temp directory creates the required tables/files without error.\n\n2. **Cycle recording roundtrip**\n   - `record_cycle(record)` persists the cycle record.\n   - `get_recent_cycles(limit)` returns the most recent records in the expected order (or at least includes the inserted records).\n\n3. **Metrics recording roundtrip**\n   - `record_metrics(metrics)` persists metrics.\n   - `get_total_cost()` reflects the cost values stored by metrics/cycles (depending on how the module defines \u201ctotal cost\u201d).\n\n4. **Embedding add + search (basic)**\n   - `add_embedding(content_type, ref_id, content, embedding)`\n   - `search_embeddings(content_type, limit)` returns an item with the same `content_type` and appropriate similarity ranking (or at minimum includes the inserted embedding in results).\n\n5. **Embedding search respects content_type**\n   - Add embeddings under two different `content_type` values.\n   - `search_embeddings` for one type should not return the other type.\n\n6. **Embedding search limit**\n   - Add more than `limit` embeddings.\n   - Ensure `",
       "area": "missing_tests",
@@ -2381,6 +2375,11 @@
       "area": "docs",
       "question": "What implicit assumptions in the codebase should be documented as comments?",
       "ts": 1782773418
+    },
+    {
+      "area": "edge_cases",
+      "question": "What happens if the Moltbook API returns unexpected data shapes (empty list, null fields)?",
+      "ts": 1782803122
     }
   ]
 }
