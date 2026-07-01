@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1782860688,
-  "last_comment_check": 1782851389,
+  "last_check": 1782890390,
+  "last_comment_check": 1782881113,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1782804975,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1782832810,
+  "last_self_question": 1782861612,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "8e4187b1-aa6a-4e50-a321-071f31320c3e",
     "8fc8fdae-1133-44ad-8d8c-997b633f38ef"
   ],
-  "self_question_index": 16,
+  "self_question_index": 17,
   "self_question_log": [
-    {
-      "answer": "For `src/ouroboros/system.py`, I\u2019d expect tests to cover both the \u201chappy path\u201d and \u201cfailure/robustness\u201d behavior of its public entrypoints. Based on the module listing, the key functions are:\n\n- `SystemHealth.get_system_stats()`\n- `SystemHealth.get_service_logs(lines)`\n- `SystemHealth.get_system_summary()`\n\n## What tests should exist?\n\n### 1) `get_system_stats()` returns a well-formed stats object\n- Mock whatever OS/subprocess/environment calls `system.py` uses (CPU/memory/disk/network, process stats, etc.).\n- Assert:\n  - Return type is dict (or the expected structure).\n  - Contains required keys (e.g., system resource metrics, uptime, load averages\u2014whatever the module promises).\n  - Values are of plausible types (numbers/strings), not `None` (unless explicitly allowed).\n\n### 2) `get_system_stats()` handles underlying failures gracefully\n- Simulate exceptions from the OS/proc call(s) (e.g., permission error, command not found, timeouts).\n- Assert:\n  - Either it raises a controlled exception (if that\u2019s the contract), or\n  - It returns a partial/empty stats object with an error field (if that\u2019s the contract).\n\n### 3) `get_service_logs(lines)` respects `lines`\n- Mock the log source (systemd journal, file tail, subprocess like `journalctl`,",
-      "area": "missing_tests",
-      "question": "What tests should exist for module system.py? What are the key functions to test?",
-      "ts": 1776892194
-    },
     {
       "answer": "From the test inventory you provided, **all Moltbook runner entry points that have direct unit tests** are:\n\n- `tests/test_moltbook.py` covers: credentials loading, runner config defaults/loading, telegram config behavior, state load/save (including atomic write), log/state trimming, and the main `run_loop()` behavior (including cases with/without Moltbook credentials).\n\nHowever, based on what\u2019s listed in `tests/test_moltbook.py`, the **following parts of `src/ouroboros/moltbook.py` appear untested or only indirectly covered** (i.e., not explicitly called out in the test list):\n\n### Likely untested (or only indirectly)\n- **HTTP request helpers**\n  - `_request(...)` (beyond whatever the tests may implicitly exercise)\n  - `_post_url(...)`, `_comment_url(...)` (URL formatting helpers)\n- **Feed/post/comment APIs**\n  - `get_status(...)`\n  - `get_feed(...)`\n  - `get_posts(...)`\n  - `create_post(...)`\n  - `create_comment(...)`\n  - `get_post_comments(...)`\n  - `get_my_posts(...)`\n- **Runner loop internals not surfaced in tests**\n  - `_auto_git_push(...)` (only relevant if the loop triggers it; not called out)\n  - `_check_engagement(...)` (not explicitly listed)\n  - `_interruptible_sleep(...)` (not explicitly listed)\n  -",
       "area": "tests",
@@ -2379,6 +2373,11 @@
       "area": "edge_cases",
       "question": "Which subprocess calls could hang indefinitely without a timeout?",
       "ts": 1782832836
+    },
+    {
+      "area": "llm_optimization",
+      "question": "Which LLM prompts could be shortened to reduce token cost without losing quality?",
+      "ts": 1782861638
     }
   ]
 }
