@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1782948909,
-  "last_comment_check": 1782940556,
+  "last_check": 1782978627,
+  "last_comment_check": 1782970270,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1782892265,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1782921033,
+  "last_self_question": 1782949834,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "8e4187b1-aa6a-4e50-a321-071f31320c3e",
     "8fc8fdae-1133-44ad-8d8c-997b633f38ef"
   ],
-  "self_question_index": 19,
+  "self_question_index": 20,
   "self_question_log": [
-    {
-      "answer": "From the codebase you shared, sensitive data is primarily anything that includes **secrets/credentials**, **private issue/PR metadata tied to your repo**, and **user/model interactions that might contain proprietary code or prompts**. Concretely:\n\n### 1) Secrets / credentials (highest sensitivity)\nStored or loaded from disk and used to call external services:\n- **OpenAI / Anthropic API keys** (`src/ouroboros/llm.py`: `load_openai_key()`, `load_anthropic_key()`)\n- **Moltbook credentials** (`src/ouroboros/moltbook.py`: `load_credentials()`, `Credentials`, `RunnerConfig`)\n- **Telegram token / chat id** used by Moltbook notifications (`src/ouroboros/moltbook.py`: `_send_telegram_message()`, `_notify()`)\n- **GitHub auth tokens / credentials** are not shown explicitly in the filenames list, but the GitHub-related code uses a `client` and likely depends on credentials provided elsewhere (e.g., in `cmd_improve_github`, `github_improvement.py`).\n\n### 2) Persistent local state / logs that may contain private content\nThese likely live under the repo root (or repo-local paths):\n- **Backlog contents** (`src/ouroboros/backlog.py`)\n  - Task descriptions, priorities, sources, and IDs.\n- **Improvement history** (`src/ouroboros",
-      "area": "privacy",
-      "question": "What data do we store that could be sensitive?",
-      "ts": 1776979829
-    },
     {
       "answer": "From the `src/ouroboros/moltbook.py` code, **errors are not handled (i.e., there is no explicit handling such as retries, structured exceptions, or returning `None` on failures) for these Moltbook API request paths**:\n\n- `get_status(api_key)`  \n- `get_feed(api_key, sort, limit)`  \n- `get_posts(api_key, sort, limit)`  \n- `create_post(api_key, submolt, title, content, url)`  \n- `create_comment(api_key, post_id, content, parent_id)`\n\nAll of these call the internal `_request(...)` helper, but **`_request` does not appear to catch/handle exceptions** (e.g., network errors, non-2xx HTTP responses, JSON decode failures). Instead, such failures would propagate as raw exceptions or unvalidated failures.\n\nIf you want, I can point to the exact lines/try-except blocks (or the lack thereof) once you share the current contents of `moltbook.py` (or I can infer it if you paste the `_request` implementation).",
       "area": "reliability",
@@ -2376,6 +2370,11 @@
       "area": "productivity",
       "question": "What repetitive patterns in the improvement cycle could be automated better?",
       "ts": 1782921059
+    },
+    {
+      "area": "productivity",
+      "question": "Which configuration options are never used and add unnecessary complexity?",
+      "ts": 1782949860
     }
   ]
 }
