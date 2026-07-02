@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1782978627,
-  "last_comment_check": 1782970270,
+  "last_check": 1783004633,
+  "last_comment_check": 1782999990,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1055,12 +1055,12 @@
   "last_git_push": 1773055881,
   "last_git_push_attempt": 1773055881,
   "last_github_improvement_attempt": 1782556330,
-  "last_improvement_attempt": 1782892265,
+  "last_improvement_attempt": 1782979552,
   "last_issue_scouting_attempt": 1782556330,
-  "last_memory_hygiene": 1782892265,
+  "last_memory_hygiene": 1782979552,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1782949834,
+  "last_self_question": 1782979552,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "8e4187b1-aa6a-4e50-a321-071f31320c3e",
     "8fc8fdae-1133-44ad-8d8c-997b633f38ef"
   ],
-  "self_question_index": 20,
+  "self_question_index": 1,
   "self_question_log": [
-    {
-      "answer": "From the `src/ouroboros/moltbook.py` code, **errors are not handled (i.e., there is no explicit handling such as retries, structured exceptions, or returning `None` on failures) for these Moltbook API request paths**:\n\n- `get_status(api_key)`  \n- `get_feed(api_key, sort, limit)`  \n- `get_posts(api_key, sort, limit)`  \n- `create_post(api_key, submolt, title, content, url)`  \n- `create_comment(api_key, post_id, content, parent_id)`\n\nAll of these call the internal `_request(...)` helper, but **`_request` does not appear to catch/handle exceptions** (e.g., network errors, non-2xx HTTP responses, JSON decode failures). Instead, such failures would propagate as raw exceptions or unvalidated failures.\n\nIf you want, I can point to the exact lines/try-except blocks (or the lack thereof) once you share the current contents of `moltbook.py` (or I can infer it if you paste the `_request` implementation).",
-      "area": "reliability",
-      "question": "Which errors are not handled in Moltbook API requests?",
-      "ts": 1777008947
-    },
     {
       "answer": "From the codebase structure and the tests, the most likely **config defaults that could lead to unintended posting** are anything that enables \u201cauto\u201d behavior for Moltbook/GitHub/community posting **without requiring an explicit user action** (e.g., `--dry-run`), and anything that defaults channels/credentials to \u201con\u201d.\n\nConcretely, the defaults to watch are:\n\n1. **Community improvement auto-posting**\n   - In `community_improvement.py` the workflow includes steps like `_step_post(...)` and `_step_implement(...)`, and it also builds PR bodies / community PR content.\n   - If the default `SafetyConfig` / runner config allows actions that *reach the posting/PR stage* (instead of blocking by policy), then a \u201csafe\u201d run could still end up posting.\n   - Tests suggest some gating exists, but if those defaults are permissive (or only mildly restrictive), unintended posting becomes possible.\n\n2. **\u201cEnable auto-merge\u201d / auto-PR enablement**\n   - `improvement.py` / `git_ops.py` include PR creation and `auto_merge_pr(...)`.\n   - `github_improvement.py` has an `enable_auto_merge` parameter.\n   - If config defaults set `enable_auto_merge=true` (or default CI/check strategy is permissive), the system can progress from \u201cpropose/implement\u201d to \u201cpost/merge\u201d more readily than expected.\n\n3. **Molt",
       "area": "safety",
@@ -2375,6 +2369,11 @@
       "area": "productivity",
       "question": "Which configuration options are never used and add unnecessary complexity?",
       "ts": 1782949860
+    },
+    {
+      "area": "missing_tests",
+      "question": "What tests should exist for module holographic.py? What are the key functions to test?",
+      "ts": 1782979577
     }
   ]
 }
