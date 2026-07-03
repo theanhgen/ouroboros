@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1783038079,
-  "last_comment_check": 1783029726,
+  "last_check": 1783067798,
+  "last_comment_check": 1783059440,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1055,12 +1055,12 @@
   "last_git_push": 1773055881,
   "last_git_push_attempt": 1773055881,
   "last_github_improvement_attempt": 1782556330,
-  "last_improvement_attempt": 1782979552,
+  "last_improvement_attempt": 1783066867,
   "last_issue_scouting_attempt": 1782556330,
-  "last_memory_hygiene": 1782979552,
+  "last_memory_hygiene": 1783066867,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1783009278,
+  "last_self_question": 1783039004,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "8e4187b1-aa6a-4e50-a321-071f31320c3e",
     "8fc8fdae-1133-44ad-8d8c-997b633f38ef"
   ],
-  "self_question_index": 2,
+  "self_question_index": 3,
   "self_question_log": [
-    {
-      "answer": "From the repository summary you provided, I can only *see* function names (not their actual bodies/line counts), and only a few files have totals\u2014but not per-function lengths. So I can\u2019t reliably determine \u201clonger than 50 lines\u201d from this information alone.\n\n**What I can infer (likely candidates)**\nThese functions are in files with large sizes and are named as the core \u201cstep/cycle\u201d orchestrators, which commonly exceed 50 lines, so they\u2019re *prime candidates* for decomposition:\n\n- `src/ouroboros/backlog.py`\n  - `organize_backlog(repo_root, client, model)`\n\n- `src/ouroboros/cli.py`\n  - Many command handlers are likely >50 lines (file is 495 lines total), especially:\n    - `cmd_plan(_args)`\n    - `cmd_propose(_args)`\n    - `cmd_apply(_args)`\n    - `cmd_moltbook_run(_args)`\n    - `cmd_moltbook_status(_args)`\n    - `cmd_moltbook_feed(args)`\n    - `cmd_config_modify(args)`\n    - `cmd_improve_run(args)`\n    - `cmd_improve_status(_args)`\n    - `cmd_improve_history(_args)`\n    - `cmd_improve_community(args)`\n    - `cmd_improve_github(args)`\n    - `cmd_improve_scout(args)`\n    - `cmd_improve_identify(args)`\n   ",
-      "area": "refactoring",
-      "question": "Which functions are longer than 50 lines and should be decomposed?",
-      "ts": 1777067360
-    },
     {
       "answer": "A few clear places where logic is duplicated (or nearly duplicated) across modules:\n\n1) **\u201cParse / interpret LLM output (JSON/text), return None on failure\u201d**\n- In **`src/ouroboros/community_improvement.py`** there are multiple steps that effectively do: call LLM \u2192 inspect response \u2192 choose next branch / fallback.\n- In **`src/ouroboros/llm.py`** there are many wrappers like `mine_insight_for_codebase`, `extract_topic_signal`, `extract_insights_batch`, `generate_comment`, `answer_question`, etc., that all follow the same pattern: call provider \u2192 parse expected shape \u2192 handle errors/empty \u2192 return `None`.\n- This is a good candidate for a shared helper like `safe_json_parse()` / `extract_from_response()` / `return_none_on_parse_error()` (or a small \u201cresponse normalizer\u201d utility).\n\n2) **\u201cBuild a task PR/issue payload + stable marker\u201d**\n- **`src/ouroboros/issue_scouting.py`** builds an issue title/body and uses an issue marker scheme for deduplication.\n- **`src/ouroboros/improvement_runner.py`** similarly builds follow-up issue bodies and markers.\n- **`src/ouroboros/git_ops.py`** contains marker and PR/issue helpers (`make_auto_issue_marker`, `find_open_issue_by_marker`, etc.).\n- The \u201cmarker \u2192 title",
       "area": "refactoring",
@@ -2373,6 +2367,11 @@
       "area": "missing_tests",
       "question": "What tests should exist for module model_defaults.py? What are the key functions to test?",
       "ts": 1783009304
+    },
+    {
+      "area": "missing_tests",
+      "question": "What tests should exist for module prompts.py? What are the key functions to test?",
+      "ts": 1783039032
     }
   ]
 }
