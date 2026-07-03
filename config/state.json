@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1783008349,
-  "last_comment_check": 1782999990,
+  "last_check": 1783038079,
+  "last_comment_check": 1783029726,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1782979552,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1782979552,
+  "last_self_question": 1783009278,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "8e4187b1-aa6a-4e50-a321-071f31320c3e",
     "8fc8fdae-1133-44ad-8d8c-997b633f38ef"
   ],
-  "self_question_index": 1,
+  "self_question_index": 2,
   "self_question_log": [
-    {
-      "answer": "From the codebase structure and the tests, the most likely **config defaults that could lead to unintended posting** are anything that enables \u201cauto\u201d behavior for Moltbook/GitHub/community posting **without requiring an explicit user action** (e.g., `--dry-run`), and anything that defaults channels/credentials to \u201con\u201d.\n\nConcretely, the defaults to watch are:\n\n1. **Community improvement auto-posting**\n   - In `community_improvement.py` the workflow includes steps like `_step_post(...)` and `_step_implement(...)`, and it also builds PR bodies / community PR content.\n   - If the default `SafetyConfig` / runner config allows actions that *reach the posting/PR stage* (instead of blocking by policy), then a \u201csafe\u201d run could still end up posting.\n   - Tests suggest some gating exists, but if those defaults are permissive (or only mildly restrictive), unintended posting becomes possible.\n\n2. **\u201cEnable auto-merge\u201d / auto-PR enablement**\n   - `improvement.py` / `git_ops.py` include PR creation and `auto_merge_pr(...)`.\n   - `github_improvement.py` has an `enable_auto_merge` parameter.\n   - If config defaults set `enable_auto_merge=true` (or default CI/check strategy is permissive), the system can progress from \u201cpropose/implement\u201d to \u201cpost/merge\u201d more readily than expected.\n\n3. **Molt",
-      "area": "safety",
-      "question": "What config defaults could cause unintended posting?",
-      "ts": 1777038081
-    },
     {
       "answer": "From the repository summary you provided, I can only *see* function names (not their actual bodies/line counts), and only a few files have totals\u2014but not per-function lengths. So I can\u2019t reliably determine \u201clonger than 50 lines\u201d from this information alone.\n\n**What I can infer (likely candidates)**\nThese functions are in files with large sizes and are named as the core \u201cstep/cycle\u201d orchestrators, which commonly exceed 50 lines, so they\u2019re *prime candidates* for decomposition:\n\n- `src/ouroboros/backlog.py`\n  - `organize_backlog(repo_root, client, model)`\n\n- `src/ouroboros/cli.py`\n  - Many command handlers are likely >50 lines (file is 495 lines total), especially:\n    - `cmd_plan(_args)`\n    - `cmd_propose(_args)`\n    - `cmd_apply(_args)`\n    - `cmd_moltbook_run(_args)`\n    - `cmd_moltbook_status(_args)`\n    - `cmd_moltbook_feed(args)`\n    - `cmd_config_modify(args)`\n    - `cmd_improve_run(args)`\n    - `cmd_improve_status(_args)`\n    - `cmd_improve_history(_args)`\n    - `cmd_improve_community(args)`\n    - `cmd_improve_github(args)`\n    - `cmd_improve_scout(args)`\n    - `cmd_improve_identify(args)`\n   ",
       "area": "refactoring",
@@ -2374,6 +2368,11 @@
       "area": "missing_tests",
       "question": "What tests should exist for module holographic.py? What are the key functions to test?",
       "ts": 1782979577
+    },
+    {
+      "area": "missing_tests",
+      "question": "What tests should exist for module model_defaults.py? What are the key functions to test?",
+      "ts": 1783009304
     }
   ]
 }
