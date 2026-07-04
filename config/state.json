@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1783127226,
-  "last_comment_check": 1783118876,
+  "last_check": 1783156934,
+  "last_comment_check": 1783148581,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1055,12 +1055,12 @@
   "last_git_push": 1773055881,
   "last_git_push_attempt": 1773055881,
   "last_github_improvement_attempt": 1782556330,
-  "last_improvement_attempt": 1783066867,
+  "last_improvement_attempt": 1783154146,
   "last_issue_scouting_attempt": 1782556330,
-  "last_memory_hygiene": 1783066867,
+  "last_memory_hygiene": 1783154146,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1783098447,
+  "last_self_question": 1783128150,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "8e4187b1-aa6a-4e50-a321-071f31320c3e",
     "8fc8fdae-1133-44ad-8d8c-997b633f38ef"
   ],
-  "self_question_index": 5,
+  "self_question_index": 6,
   "self_question_log": [
-    {
-      "answer": "Here are the main *implicit assumptions* in this codebase that are likely worth documenting inline as comments (because tests/behavior depend on them, but the contract isn\u2019t always explicit).\n\n## Repository / filesystem assumptions\n- **\u201crepo_root\u201d discovery is reliable and stable**\n  - Multiple modules assume `get_repo_root()` correctly finds the project root and that all relative paths they build from it are valid.\n- **Expected repo files/layout exist**\n  - Backlog, metrics, wiki, history, and scheduler state rely on conventions like a deterministic state/history path and writable directories.\n- **State files are JSON and read/write is atomic enough**\n  - `moltbook.save_state` is tested for atomic write; other state/history stores likely assume \u201cwrite then read\u201d consistency.\n- **Log/data files are per-repo and names won\u2019t collide**\n  - Paths are derived from repo root; implicit assumption that multiple repos aren\u2019t mixed in the same working directory.\n- **Codebase scanning ignores/handles symlinks and binary files**\n  - `list_source_files`, `read_file`, signature extraction implicitly assume the filesystem content is readable and not huge/unparseable in ways the code won\u2019t handle.\n\n## Content / parsing assumptions\n- **Python signature parsing is AST-based and safe**\n  - `get_function_signatures` assumes input is valid Python or that syntax errors are handled in a defined way (tests cover this, but it\u2019s a contract).\n-",
-      "area": "docs",
-      "question": "What implicit assumptions in the codebase should be documented as comments?",
-      "ts": 1777154793
-    },
     {
       "answer": "In this codebase, **unexpected Moltbook API response shapes are generally treated as \u201cfailure to act / wait / skip\u201d rather than being strongly validated and recovered**\u2014but the exact behavior depends on the specific Moltbook endpoint and how the caller interprets the response.\n\nFrom the implementation patterns in `src/ouroboros/moltbook.py` (and how `community_improvement.py` uses the Moltbook status/feed):\n\n- **`get_status()` / status polling path**  \n  The \u201cwait until deadline / enough comments / etc.\u201d logic in `community_improvement.py` ultimately depends on what `moltbook.get_status()` returns.  \n  If Moltbook returns **missing/null fields or an empty payload**, the status-check code typically can\u2019t infer the expected state (e.g., \u201cdeadline passed\u201d, \u201cenough comments\u201d), so the step will **stay in the waiting/inactive state** or **fall back to a safe default** (i.e., \u201cdon\u2019t proceed with implementation yet\u201d / \u201cno gating signals\u201d).\n\n- **Feed/post creation path (`get_feed()`, `get_posts()`, `create_post()`, `create_comment()`)**  \n  These functions are used to:\n  - list candidate posts\n  - find your existing posts/comments\n  - create new posts/comments when advancing the community cycle\n\n  If the API returns an **empty list**, the code generally behaves as if **no relevant posts/comments exist",
       "area": "edge_cases",
@@ -2370,6 +2364,11 @@
       "area": "missing_tests",
       "question": "What tests should exist for module system.py? What are the key functions to test?",
       "ts": 1783098473
+    },
+    {
+      "area": "tests",
+      "question": "Which parts of the Moltbook runner are untested?",
+      "ts": 1783128175
     }
   ]
 }
