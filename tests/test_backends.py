@@ -222,6 +222,17 @@ def test_agent_generate_changes_captures_diff_and_resets(monkeypatch, git_repo):
     assert (git_repo / "untracked.txt").read_text() == "keep me\n"
 
 
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        ("R  old.py -> new.py", "new.py"),
+        ('R  "old name.py" -> "new name.py"', "new name.py"),
+    ],
+)
+def test_git_porcelain_target_path_extracts_rename_destination(line, expected):
+    assert backends._git_porcelain_target_path(line) == expected
+
+
 def test_collect_changes_decodes_quoted_porcelain_paths(monkeypatch, tmp_path):
     rel_path = 'src/space "quote" \\ \u00e9.py'
     target = tmp_path / rel_path
