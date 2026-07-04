@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1783156934,
-  "last_comment_check": 1783148581,
+  "last_check": 1783179217,
+  "last_comment_check": 1783178286,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1783154146,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1783128150,
+  "last_self_question": 1783157858,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "8e4187b1-aa6a-4e50-a321-071f31320c3e",
     "8fc8fdae-1133-44ad-8d8c-997b633f38ef"
   ],
-  "self_question_index": 6,
+  "self_question_index": 7,
   "self_question_log": [
-    {
-      "answer": "In this codebase, **unexpected Moltbook API response shapes are generally treated as \u201cfailure to act / wait / skip\u201d rather than being strongly validated and recovered**\u2014but the exact behavior depends on the specific Moltbook endpoint and how the caller interprets the response.\n\nFrom the implementation patterns in `src/ouroboros/moltbook.py` (and how `community_improvement.py` uses the Moltbook status/feed):\n\n- **`get_status()` / status polling path**  \n  The \u201cwait until deadline / enough comments / etc.\u201d logic in `community_improvement.py` ultimately depends on what `moltbook.get_status()` returns.  \n  If Moltbook returns **missing/null fields or an empty payload**, the status-check code typically can\u2019t infer the expected state (e.g., \u201cdeadline passed\u201d, \u201cenough comments\u201d), so the step will **stay in the waiting/inactive state** or **fall back to a safe default** (i.e., \u201cdon\u2019t proceed with implementation yet\u201d / \u201cno gating signals\u201d).\n\n- **Feed/post creation path (`get_feed()`, `get_posts()`, `create_post()`, `create_comment()`)**  \n  These functions are used to:\n  - list candidate posts\n  - find your existing posts/comments\n  - create new posts/comments when advancing the community cycle\n\n  If the API returns an **empty list**, the code generally behaves as if **no relevant posts/comments exist",
-      "area": "edge_cases",
-      "question": "What happens if the Moltbook API returns unexpected data shapes (empty list, null fields)?",
-      "ts": 1777183960
-    },
     {
       "answer": "I can\u2019t determine that from the provided codebase summary alone. The summary lists modules/functions, but it doesn\u2019t show the actual subprocess usage (e.g., where `subprocess.run/Popen/check_output` are called, nor whether `timeout=` is passed).\n\nIf you paste (or point me to) the specific files/sections that call `subprocess.*`, I can identify which subprocess calls lack a `timeout`/other termination mechanism.\n\n**Most likely places to check in this repo:**\n- `src/ouroboros/test_runner.py` (it runs pytest/sandboxed tests)\n- `src/ouroboros/git_ops.py` (it shells out to git)\n- anything in `src/ouroboros/improvement.py` / `policies.py` that executes tools called by the LLM (if they use subprocess)\n\nSend the relevant code snippets (or search results for `subprocess.`), and I\u2019ll answer precisely.",
       "area": "edge_cases",
@@ -2369,6 +2363,11 @@
       "area": "tests",
       "question": "Which parts of the Moltbook runner are untested?",
       "ts": 1783128175
+    },
+    {
+      "area": "safety",
+      "question": "What safety policy is missing for autonomous comments?",
+      "ts": 1783157884
     }
   ]
 }
