@@ -7,7 +7,7 @@ def _patch_git_ops_porcelain_parser() -> None:
     from functools import wraps
 
     from . import git_ops
-    from .backends import _git_porcelain_target_path
+    from .backends import _git_porcelain_changes
 
     @wraps(git_ops.commit_auto_state)
     def commit_auto_state(repo):
@@ -16,8 +16,7 @@ def _patch_git_ops_porcelain_parser() -> None:
             return False
 
         to_add = []
-        for line in porcelain.splitlines():
-            path = _git_porcelain_target_path(line)
+        for _, path in _git_porcelain_changes(porcelain):
             if any(
                 path.startswith(prefix) or path == prefix.rstrip("/")
                 for prefix in git_ops._AUTO_STATE_FILES

@@ -31,7 +31,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -321,7 +321,7 @@ def _git(repo: Path, *args: str, timeout: int = 30) -> subprocess.CompletedProce
 
 def _untracked_files(repo: Path) -> set:
     proc = _git(repo, "ls-files", "--others", "--exclude-standard")
-    return {line.strip() for line in proc.stdout.splitlines() if line.strip()}
+    return {_decode_git_path(line) for line in proc.stdout.splitlines() if line.strip()}
 
 
 _GIT_C_ESCAPES = {
@@ -338,7 +338,7 @@ _GIT_C_ESCAPES = {
 
 
 def _decode_git_path(path: str) -> str:
-    """Decode a C-quoted path from git porcelain output."""
+    """Decode a C-quoted path from git output."""
     path = path.strip()
     if len(path) < 2 or path[0] != '"' or path[-1] != '"':
         return path
@@ -397,6 +397,14 @@ def _git_porcelain_target_path(line: str) -> str:
     return _decode_git_path(path)
 
 
+def _git_porcelain_changes(porcelain: str) -> Iterator[Tuple[str, str]]:
+    """Yield ``(status, decoded_path)`` entries from git status porcelain output."""
+    for line in porcelain.splitlines():
+        if not line.strip():
+            continue
+        yield line[:2], _git_porcelain_target_path(line)
+
+
 def _build_agent_prompt(task: Any, plan: str, config: Any) -> str:
     forbidden = ", ".join(getattr(config, "forbidden_modification_paths", ()))
     allowed = ", ".join(getattr(config, "allowed_modification_paths", ()))
@@ -419,11 +427,7 @@ def _build_agent_prompt(task: Any, plan: str, config: Any) -> str:
 def _collect_changes(repo: Path, untracked_before: set, code_change_cls: Any) -> List[Any]:
     proc = _git(repo, "status", "--porcelain")
     changes: List[Any] = []
-    for line in proc.stdout.splitlines():
-        if not line.strip():
-            continue
-        status = line[:2]
-        path = _git_porcelain_target_path(line)
+    for status, path in _git_porcelain_changes(proc.stdout):
         if "D" in status:
             log.info("agent deleted %s -- deletions unsupported in agent mode, skipping", path)
             continue
