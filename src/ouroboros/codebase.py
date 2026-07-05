@@ -54,7 +54,7 @@ def extract_code_metadata(content: str, path: str = "") -> FileMetadata:
                 metadata.imports.append(node.module or "")
 
     for node in tree.body:
-        if isinstance(node, ast.FunctionDef):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             metadata.functions.append(FunctionMetadata(
                 name=node.name,
                 args=[arg.arg for arg in node.args.args],
@@ -70,7 +70,7 @@ def extract_code_metadata(content: str, path: str = "") -> FileMetadata:
                 line_end=getattr(node, "end_lineno", node.lineno)
             )
             for subnode in node.body:
-                if isinstance(subnode, ast.FunctionDef):
+                if isinstance(subnode, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     cls.methods.append(FunctionMetadata(
                         name=subnode.name,
                         args=[arg.arg for arg in subnode.args.args],

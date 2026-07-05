@@ -4,6 +4,7 @@ import textwrap
 from pathlib import Path
 
 from ouroboros.codebase import (
+    extract_code_metadata,
     get_function_signatures,
     get_repo_root,
     list_source_files,
@@ -93,12 +94,64 @@ def test_get_function_signatures_syntax_error(tmp_path):
     assert sigs == [], "Syntax error should result in no signatures being returned."
 
 
+def test_extract_code_metadata_async_functions_and_methods():
+    code = textwrap.dedent('''
+        async def fetch_value(client):
+            """Fetch a value asynchronously."""
+            return await client.fetch()
+
+        class Service:
+            async def refresh(self, key):
+                """Refresh one key."""
+                return key
+
+            def sync_method(self):
+                return None
+    ''').lstrip()
+
+    metadata = extract_code_metadata(code, "service.py")
+
+    assert [func.name for func in metadata.functions] == ["fetch_value"]
+    assert metadata.functions[0].args == ["client"]
+    assert metadata.functions[0].docstring == "Fetch a value asynchronously."
+
+    assert len(metadata.classes) == 1
+    service = metadata.classes[0]
+    assert service.name == "Service"
+    assert [method.name for method in service.methods] == ["refresh", "sync_method"]
+
+    refresh = service.methods[0]
+    assert refresh.args == ["self", "key"]
+    assert refresh.docstring == "Refresh one key."
+
+
 def test_get_codebase_summary():
     summary = get_codebase_summary()
     assert '# Codebase Summary' in summary
     assert 'Source Files' in summary
     assert 'Test Files' in summary
     assert 'config.py' in summary
+
+
+def test_get_codebase_summary_includes_async_metadata(tmp_path):
+    src_dir = tmp_path / 'src' / 'ouroboros'
+    tests_dir = tmp_path / 'tests'
+    src_dir.mkdir(parents=True)
+    tests_dir.mkdir()
+    (src_dir / 'async_module.py').write_text(textwrap.dedent('''
+        async def fetch_value(client):
+            return await client.fetch()
+
+        class Service:
+            async def refresh(self, key):
+                return key
+    ''').lstrip())
+
+    summary = get_codebase_summary(tmp_path)
+
+    assert 'async_module.py' in summary
+    assert 'def fetch_value(client)' in summary
+    assert 'def refresh(self, key)' in summary
 
 
 def test_list_source_files_nonexistent(tmp_path):
