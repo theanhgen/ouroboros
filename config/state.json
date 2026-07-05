@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1783216351,
-  "last_comment_check": 1783208001,
+  "last_check": 1783240492,
+  "last_comment_check": 1783237705,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1783154146,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1783187569,
+  "last_self_question": 1783217276,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "8e4187b1-aa6a-4e50-a321-071f31320c3e",
     "8fc8fdae-1133-44ad-8d8c-997b633f38ef"
   ],
-  "self_question_index": 8,
+  "self_question_index": 9,
   "self_question_log": [
-    {
-      "answer": "From the codebase structure, the most promising candidates for shortening (i.e., trimming system/user prompt boilerplate, examples, repeated instructions, and long formatting schemas) are the prompts that are (a) invoked frequently, (b) include verbose response-format scaffolding, and/or (c) ask the model to restate large context that could be summarized.\n\n### High-impact prompts to shorten\n1. **Comment generation & analysis**\n   - `load_comment_system_prompt()`\n   - `load_comment_analysis_prompt()`\n   - `load_comment_mining_prompt()`\n   - `generate_comment(...)` / `analyze_comments_for_upgrades(...)`\n   - **Why:** comment cycles can happen many times per run; these prompts often include long style guides and structured rubric text.\n\n2. **Question-post and code-suggestion prompts**\n   - `load_question_post_prompt()`\n   - `load_code_suggestion_prompt()`\n   - `load_suggestion_implementation_prompt()`\n   - **Why:** these tend to include detailed \u201chow to write\u201d / \u201chow to implement\u201d constraints and output schemas. If you can compress instructions while keeping the required fields, token cost drops substantially.\n\n3. **Insight mining / topic signal extraction**\n   - `load_topic_signal_prompt()`\n   - `load_insight_extraction_prompt()`\n   - `mine_insight_for_codebase(...)` / `extract_topic_signal(...)` / `extract_insights_batch(...)`\n",
-      "area": "llm_optimization",
-      "question": "Which LLM prompts could be shortened to reduce token cost without losing quality?",
-      "ts": 1777242283
-    },
     {
       "answer": "Based on the file list alone, the main places where the code is very likely making redundant LLM calls (and therefore could benefit from caching and/or batching) are:\n\n1. **Knowledge-base summarization**\n   - **`src/ouroboros/knowledge_base.py`**\n     - `get_summary(client, kb, force_refresh, path)`\n   - **`src/ouroboros/llm.py`**\n     - `generate_kb_summary(client, entries, model)`\n   - Why it\u2019s a hotspot: the KB summary is deterministic for a given set of entries; if it\u2019s refreshed often without a strict cache key (or if multiple callers request the summary in the same run), that becomes redundant.\n\n2. **Feed/topic mining + insight extraction from posts**\n   - **`src/ouroboros/llm.py`**\n     - `pick_oddities(...)`\n     - `extract_topic_signal(...)`\n     - `extract_insights_batch(...)`\n     - `mine_insight_for_codebase(...)`\n   - Why it\u2019s a hotspot: these are repeated \u201canalyze this content\u201d calls. The existence of `extract_insights_batch` suggests batching is partially implemented, but other calls like `extract_topic_signal` and `mine_insight_for_codebase` may still be invoked per-post/per-thread, creating redundancy unless batched/cached by (post_id, prompt version, model).\n\n3. **Comment/post/question generation from Mol",
       "area": "llm_optimization",
@@ -2367,6 +2361,11 @@
       "area": "privacy",
       "question": "What data do we store that could be sensitive?",
       "ts": 1783187594
+    },
+    {
+      "area": "reliability",
+      "question": "Which errors are not handled in Moltbook API requests?",
+      "ts": 1783217301
     }
   ]
 }
