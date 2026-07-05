@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1783186644,
-  "last_comment_check": 1783178286,
+  "last_check": 1783216351,
+  "last_comment_check": 1783208001,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1783154146,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1783157858,
+  "last_self_question": 1783187569,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "8e4187b1-aa6a-4e50-a321-071f31320c3e",
     "8fc8fdae-1133-44ad-8d8c-997b633f38ef"
   ],
-  "self_question_index": 7,
+  "self_question_index": 8,
   "self_question_log": [
-    {
-      "answer": "I can\u2019t determine that from the provided codebase summary alone. The summary lists modules/functions, but it doesn\u2019t show the actual subprocess usage (e.g., where `subprocess.run/Popen/check_output` are called, nor whether `timeout=` is passed).\n\nIf you paste (or point me to) the specific files/sections that call `subprocess.*`, I can identify which subprocess calls lack a `timeout`/other termination mechanism.\n\n**Most likely places to check in this repo:**\n- `src/ouroboros/test_runner.py` (it runs pytest/sandboxed tests)\n- `src/ouroboros/git_ops.py` (it shells out to git)\n- anything in `src/ouroboros/improvement.py` / `policies.py` that executes tools called by the LLM (if they use subprocess)\n\nSend the relevant code snippets (or search results for `subprocess.`), and I\u2019ll answer precisely.",
-      "area": "edge_cases",
-      "question": "Which subprocess calls could hang indefinitely without a timeout?",
-      "ts": 1777213038
-    },
     {
       "answer": "From the codebase structure, the most promising candidates for shortening (i.e., trimming system/user prompt boilerplate, examples, repeated instructions, and long formatting schemas) are the prompts that are (a) invoked frequently, (b) include verbose response-format scaffolding, and/or (c) ask the model to restate large context that could be summarized.\n\n### High-impact prompts to shorten\n1. **Comment generation & analysis**\n   - `load_comment_system_prompt()`\n   - `load_comment_analysis_prompt()`\n   - `load_comment_mining_prompt()`\n   - `generate_comment(...)` / `analyze_comments_for_upgrades(...)`\n   - **Why:** comment cycles can happen many times per run; these prompts often include long style guides and structured rubric text.\n\n2. **Question-post and code-suggestion prompts**\n   - `load_question_post_prompt()`\n   - `load_code_suggestion_prompt()`\n   - `load_suggestion_implementation_prompt()`\n   - **Why:** these tend to include detailed \u201chow to write\u201d / \u201chow to implement\u201d constraints and output schemas. If you can compress instructions while keeping the required fields, token cost drops substantially.\n\n3. **Insight mining / topic signal extraction**\n   - `load_topic_signal_prompt()`\n   - `load_insight_extraction_prompt()`\n   - `mine_insight_for_codebase(...)` / `extract_topic_signal(...)` / `extract_insights_batch(...)`\n",
       "area": "llm_optimization",
@@ -2368,6 +2362,11 @@
       "area": "safety",
       "question": "What safety policy is missing for autonomous comments?",
       "ts": 1783157884
+    },
+    {
+      "area": "privacy",
+      "question": "What data do we store that could be sensitive?",
+      "ts": 1783187594
     }
   ]
 }
