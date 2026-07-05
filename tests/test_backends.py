@@ -227,10 +227,24 @@ def test_agent_generate_changes_captures_diff_and_resets(monkeypatch, git_repo):
     [
         ("R  old.py -> new.py", "new.py"),
         ('R  "old name.py" -> "new name.py"', "new name.py"),
+        (r' M "src/space \"quote\" \\ \303\251.py"', 'src/space "quote" \\ \u00e9.py'),
+        ('R  "old -> name.py" -> "new -> name.py"', "new -> name.py"),
     ],
 )
 def test_git_porcelain_target_path_extracts_rename_destination(line, expected):
     assert backends._git_porcelain_target_path(line) == expected
+
+
+def test_untracked_files_decodes_git_quoted_paths(monkeypatch, tmp_path):
+    rel_path = "src/newline\n\u00e9.py"
+
+    def fake_git(repo, *args, timeout=30):
+        assert args == ("ls-files", "--others", "--exclude-standard")
+        return subprocess.CompletedProcess(args, 0, stdout=r'"src/newline\n\303\251.py"' + "\n", stderr="")
+
+    monkeypatch.setattr(backends, "_git", fake_git)
+
+    assert backends._untracked_files(tmp_path) == {rel_path}
 
 
 def test_collect_changes_decodes_quoted_porcelain_paths(monkeypatch, tmp_path):
