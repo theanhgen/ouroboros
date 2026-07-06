@@ -235,3 +235,88 @@ def test_fact_retriever_hybrid_search_uses_fts_jaccard_and_hrr(tmp_path):
         assert hrr_results[0]["score"] > hrr_results[1]["score"]
     finally:
         store.close()
+
+
+def test_fact_retriever_probe_returns_single_entity_matches(temp_store):
+    first_id = temp_store.add_fact(
+        'Ada Lovelace designed notes for the "Analytical Engine".',
+        category="history",
+    )
+    second_id = temp_store.add_fact(
+        'Ada Lovelace corresponded with "Charles Babbage".',
+        category="history",
+    )
+    unrelated_id = temp_store.add_fact(
+        'Grace Hopper popularized "COBOL".',
+        category="history",
+    )
+
+    results = FactRetriever(temp_store).probe(
+        "Ada Lovelace",
+        category="history",
+        limit=2,
+    )
+
+    assert [result["fact_id"] for result in results] == [first_id, second_id]
+    assert unrelated_id not in {result["fact_id"] for result in results}
+    assert all(result["score"] == pytest.approx(0.5) for result in results)
+
+
+def test_fact_retriever_reason_returns_multi_entity_joint_matches(temp_store):
+    joint_id = temp_store.add_fact(
+        'Ada Lovelace documented the "Analytical Engine".',
+        category="history",
+    )
+    temp_store.add_fact(
+        'Ada Lovelace corresponded with "Charles Babbage".',
+        category="history",
+    )
+    temp_store.add_fact(
+        'Charles Babbage proposed the "Analytical Engine".',
+        category="history",
+    )
+
+    results = FactRetriever(temp_store).reason(
+        ["Ada Lovelace", "Analytical Engine"],
+        category="history",
+        limit=3,
+    )
+
+    assert [result["fact_id"] for result in results] == [joint_id]
+    assert results[0]["score"] == pytest.approx(0.5)
+
+
+def test_fact_retriever_contradict_detects_shared_entity_divergence(temp_store):
+    if not hrr.HAS_NUMPY:
+        pytest.skip("NumPy is required for HRR contradiction detection")
+
+    green_id = temp_store.add_fact(
+        'Project Atlas deployment status is "green".',
+        category="ops",
+    )
+    red_id = temp_store.add_fact(
+        'Project Atlas deployment status is "red".',
+        category="ops",
+    )
+    unrelated_id = temp_store.add_fact(
+        'Project Borealis deployment status is "stable".',
+        category="ops",
+    )
+
+    contradictions = FactRetriever(temp_store).contradict(
+        category="ops",
+        threshold=0.05,
+        limit=5,
+    )
+    matching = [
+        item for item in contradictions
+        if {item["fact_a"]["fact_id"], item["fact_b"]["fact_id"]} == {green_id, red_id}
+    ]
+
+    assert matching
+    assert matching[0]["shared_entities"] == ["project atlas"]
+    assert matching[0]["contradiction_score"] >= 0.05
+    assert all(
+        unrelated_id not in {item["fact_a"]["fact_id"], item["fact_b"]["fact_id"]}
+        for item in contradictions
+    )
