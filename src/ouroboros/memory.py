@@ -439,9 +439,57 @@ class FactRetriever:
         scored.sort(key=lambda x: x["score"], reverse=True)
         return scored[:limit]
 
+    def _entity_linked_facts(self, entities: List[str], category: Optional[str],
+                             require_all: bool, limit: int) -> List[Dict]:
+        targets = [entity.strip().lower() for entity in entities if entity.strip()]
+        if not targets:
+            return []
+
+        placeholders = ",".join("?" * len(targets))
+        category_clause = "AND f.category = ?" if category else ""
+        params: list = list(targets)
+        if category:
+            params.append(category)
+
+        having_clause = ""
+        if require_all:
+            having_clause = "HAVING COUNT(DISTINCT lower(e.name)) = ?"
+            params.append(len(set(targets)))
+        params.append(limit)
+
+        rows = self.store._conn.execute(
+            f"""
+            SELECT f.fact_id, f.content, f.category, f.tags, f.trust_score,
+                   f.retrieval_count, f.helpful_count, f.created_at, f.updated_at,
+                   COUNT(DISTINCT lower(e.name)) AS entity_matches
+            FROM facts f
+            JOIN fact_entities fe ON fe.fact_id = f.fact_id
+            JOIN entities e ON e.entity_id = fe.entity_id
+            WHERE lower(e.name) IN ({placeholders})
+              {category_clause}
+            GROUP BY f.fact_id
+            {having_clause}
+            ORDER BY entity_matches DESC, f.trust_score DESC, f.fact_id ASC
+            LIMIT ?
+            """,
+            params,
+        ).fetchall()
+
+        target_count = max(len(set(targets)), 1)
+        results = []
+        for row in rows:
+            fact = dict(row)
+            matches = fact.pop("entity_matches")
+            fact["score"] = (matches / target_count) * fact["trust_score"]
+            results.append(fact)
+        return results
+
     def probe(self, entity: str, category: Optional[str] = None,
               limit: int = 10) -> List[Dict]:
         """Compositional entity query using HRR algebra."""
+        linked = self._entity_linked_facts([entity], category, require_all=True, limit=limit)
+        if linked:
+            return linked
         if not hrr.HAS_NUMPY:
             return self.search(entity, category=category, limit=limit)
 
@@ -482,6 +530,9 @@ class FactRetriever:
     def reason(self, entities: List[str], category: Optional[str] = None,
                limit: int = 10) -> List[Dict]:
         """Multi-entity compositional query -- vector-space JOIN."""
+        linked = self._entity_linked_facts(entities, category, require_all=True, limit=limit)
+        if linked:
+            return linked
         if not hrr.HAS_NUMPY or not entities:
             return self.search(" ".join(entities), category=category, limit=limit)
 
