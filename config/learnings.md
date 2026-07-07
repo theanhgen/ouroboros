@@ -24,3 +24,4 @@
 2026-07-06 | add_test | Create unit tests in tests/test_holographic.py to verify hol | success | tests: 237 -> 237
 2026-07-07 | add_feature | Expose policy decision metrics by updating validate_change_s | success | tests: 237 -> 238
 2026-07-07 | fix_bug | Fix parsing of git status --porcelain output in _collect_cha | failed | no code generated
+2026-07-07 | add_test | Add unit tests in tests/test_backlog.py for the organize_bac | failed | reviewer rejected
