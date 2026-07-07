@@ -41,6 +41,93 @@ def save_metrics(repo_root: Path, snapshots: List[Dict[str, Any]]) -> None:
     os.replace(tmp, str(path))
 
 
+def _first_attr(obj: Any, names: List[str]) -> Any:
+    for name in names:
+        if hasattr(obj, name):
+            return getattr(obj, name)
+    return None
+
+
+def _serialize_policy_result(result: Any) -> Optional[Dict[str, Any]]:
+    if result is None:
+        return None
+
+    data = {}
+    for attr in (
+        "file_paths",
+        "allowed_prefixes",
+        "forbidden_paths",
+        "num_files",
+        "max_files",
+        "num_lines",
+        "max_lines",
+    ):
+        if hasattr(result, attr):
+            value = getattr(result, attr)
+            data[attr] = list(value) if isinstance(value, tuple) else value
+
+    violations = getattr(result, "violations", None)
+    if violations is None and isinstance(result, list):
+        violations = result
+    if violations is not None:
+        data["violations"] = list(violations)
+
+    if hasattr(result, "is_valid"):
+        data["is_valid"] = bool(getattr(result, "is_valid"))
+    elif "violations" in data:
+        data["is_valid"] = len(data["violations"]) == 0
+
+    return data or None
+
+
+def _derive_policy_results(improvement_result: Any) -> Dict[str, Any]:
+    changes = getattr(improvement_result, "changes", None)
+    if changes is None:
+        return {}
+
+    from .improvement import _count_changed_lines
+    from .policies import validate_change_size, validate_modification_scope
+
+    file_paths = [getattr(change, "file_path", "") for change in changes]
+    num_lines = sum(
+        _count_changed_lines(
+            getattr(change, "original_content", ""),
+            getattr(change, "new_content", ""),
+        )
+        for change in changes
+    )
+
+    return {
+        "policy_scope": validate_modification_scope(file_paths),
+        "policy_size": validate_change_size(len(file_paths), num_lines),
+    }
+
+
+def _policy_metrics(improvement_result: Any) -> Dict[str, Dict[str, Any]]:
+    scope = _first_attr(
+        improvement_result,
+        ["policy_scope_result", "modification_scope_result"],
+    )
+    size = _first_attr(
+        improvement_result,
+        ["policy_size_result", "change_size_result"],
+    )
+
+    if scope is None or size is None:
+        derived = _derive_policy_results(improvement_result)
+        scope = scope if scope is not None else derived.get("policy_scope")
+        size = size if size is not None else derived.get("policy_size")
+
+    metrics = {}
+    serialized_scope = _serialize_policy_result(scope)
+    serialized_size = _serialize_policy_result(size)
+    if serialized_scope is not None:
+        metrics["policy_scope"] = serialized_scope
+    if serialized_size is not None:
+        metrics["policy_size"] = serialized_size
+    return metrics
+
+
 def record_snapshot(
     repo_root: Path,
     improvement_result: Any = None,
@@ -85,14 +172,16 @@ def record_snapshot(
         "success_rate_30d": round(success_rate, 1),
     }
 
-    if improvement_result:
+    if improvement_result is not None:
         snapshot["last_task_type"] = getattr(
             getattr(improvement_result, "task", None), "task_type", "unknown"
         )
         snapshot["last_status"] = getattr(improvement_result, "status", "unknown")
-        if improvement_result.test_after:
-            snapshot["tests_passed"] = improvement_result.test_after.passed
-            snapshot["tests_failed"] = improvement_result.test_after.failed
+        test_after = getattr(improvement_result, "test_after", None)
+        if test_after:
+            snapshot["tests_passed"] = test_after.passed
+            snapshot["tests_failed"] = test_after.failed
+        snapshot.update(_policy_metrics(improvement_result))
 
     snapshots = load_metrics(repo_root)
     snapshots.append(snapshot)

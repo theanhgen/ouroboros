@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from ouroboros.metrics import (
     load_metrics,
@@ -63,6 +64,31 @@ class TestMetrics:
         assert snapshot["recent_attempts_30d"] == 2
         assert snapshot["recent_successes_30d"] == 1
         assert snapshot["success_rate_30d"] == 50.0
+
+    @patch("ouroboros.evaluation.load_history")
+    def test_record_snapshot_includes_policy_decisions(self, mock_load_history):
+        mock_load_history.return_value = []
+        result = SimpleNamespace(
+            task=SimpleNamespace(task_type="add_feature"),
+            status="failed",
+            test_after=None,
+            changes=[
+                SimpleNamespace(
+                    file_path="README.md",
+                    original_content="",
+                    new_content="line1\nline2\n",
+                )
+            ],
+        )
+
+        snapshot = record_snapshot(self.tmp_dir, result)
+
+        assert snapshot["policy_scope"]["file_paths"] == ["README.md"]
+        assert snapshot["policy_scope"]["is_valid"] is False
+        assert "Out of scope" in snapshot["policy_scope"]["violations"][0]
+        assert snapshot["policy_size"]["num_files"] == 1
+        assert snapshot["policy_size"]["num_lines"] == 2
+        assert snapshot["policy_size"]["max_lines"] == 200
 
     def test_get_summary_empty(self):
         summary = get_summary(self.tmp_dir)
