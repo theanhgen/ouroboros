@@ -22,3 +22,4 @@
 2026-07-05 | add_feature | Modify extract_code_metadata in src/ouroboros/codebase.py to | success | tests: 224 -> 226
 2026-07-06 | add_test | Add unit tests in tests/test_memory.py to verify FactRetriev | success | tests: 226 -> 229
 2026-07-06 | add_test | Create unit tests in tests/test_holographic.py to verify hol | success | tests: 237 -> 237
+2026-07-07 | add_feature | Expose policy decision metrics by updating validate_change_s | success | tests: 237 -> 238
