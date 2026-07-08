@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1783450806,
-  "last_comment_check": 1783445234,
+  "last_check": 1783480532,
+  "last_comment_check": 1783474960,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,29 +1060,29 @@
   "last_memory_hygiene": 1783414828,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1783422005,
+  "last_self_question": 1783451732,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
-    "ad07c4d1-457c-475c-b3c1-e79b9e9d5212",
+    "0324d5e2-7886-4530-bf02-8bef2182a78a",
     "2b08b7e3-818a-4007-89c5-acb423b848b2",
     "f9d8066e-425c-4e60-9b51-2bd493238fd4",
     "1501020e-d90c-426d-b47f-aa0e2dc1df4b",
     "13017ce5-d9cb-4089-a7be-72c1955d5adb",
     "64cd23d3-eb3e-417d-951f-898288fb9334",
     "92641bde-a20c-4f65-b969-e5c0ea31039a",
+    "76ee9662-4304-4041-aa73-f46db6b37d9c",
     "b076fbce-543f-4c9e-a3f5-15008aa60f9a",
     "306caeae-1c42-4c4b-9c13-c80c73b6fbad",
     "633ab026-81aa-4d11-bb50-5d186c27e2af",
+    "d646f3f0-ec79-495e-9154-92be5288dadc",
     "b4b5eb19-25e8-48d3-befd-49bb0610230d",
-    "76ee9662-4304-4041-aa73-f46db6b37d9c",
     "6a912961-f8bf-4cf4-908a-4d45a7d369c7",
     "3e63aa0e-5288-4bd7-9c81-83a809b24c90",
     "9fff57b6-26bd-4a1d-9a7e-4fdeaedcbea1",
     "a226acb3-ab67-4737-80ae-fb1d78045f1b",
     "2579edfc-0a5c-4425-96c3-172a83d4b27a",
     "e4377e86-29e1-4151-94f3-dab9820ff1cc",
-    "d646f3f0-ec79-495e-9154-92be5288dadc",
     "a1b1ebd9-d47a-4bf4-9099-4da806d90ba1",
     "a8d70a78-4e9b-454d-978d-b83e5aeb2f77",
     "ac29c49e-8477-4ba0-be61-18210f9b7f68",
@@ -1130,14 +1130,14 @@
     "76a215ae-3ad9-4198-95b7-33315f5d92b4",
     "aa3aa37e-ad13-4789-bc41-c6a722fe7760",
     "34f44f5e-b4b1-4a85-9209-93e11ff7b3a0",
-    "4d2309f2-b612-4fdd-8c12-d52aa2a6d020",
     "c1449311-6bc3-4a19-80d7-15c12305c3f1",
-    "d1770ea3-d4db-4f0b-9913-ec8aef0ef7a2",
+    "4d2309f2-b612-4fdd-8c12-d52aa2a6d020",
+    "d9e15bf4-24f0-4571-b441-82e2d7f88a68",
     "9bc740b8-7bab-4980-8696-cd7ac2e713c4",
     "8a35e2a3-b103-47e8-ad30-cc7dd41dff3a",
-    "b0102280-103c-4d3a-ac2b-b62823832237",
+    "d1770ea3-d4db-4f0b-9913-ec8aef0ef7a2",
     "0f22ba57-6884-4b55-901f-5991bc02d7e6",
-    "d9e15bf4-24f0-4571-b441-82e2d7f88a68",
+    "b0102280-103c-4d3a-ac2b-b62823832237",
     "ef8e7a39-e40d-474e-9733-40588108722a",
     "17d51909-f6ac-4620-bede-8d9278abfda7",
     "226e97e1-6e81-42bb-add3-c50031ecd67e",
@@ -1265,14 +1265,8 @@
     "bd7ff510-aa84-43ab-9490-b0f74214ef15",
     "4caa734f-21ec-44b1-a528-a1e92778687a"
   ],
-  "self_question_index": 16,
+  "self_question_index": 17,
   "self_question_log": [
-    {
-      "answer": "For `src/ouroboros/storage.py`, you already have `tests/` covering many other modules, but there are **no dedicated tests shown** for `storage.py` specifically. You should add a new `tests/test_storage.py`.\n\n## What tests should exist for `storage.py`?\n\n### 1) `OuroborosStorage` initialization / DB schema\n- Creating storage in a temp directory (`tmp_path`)\n- Ensures the DB file is created\n- Ensures tables exist after `__init__` (indirectly, by successfully using the instance)\n\n**Key checks**\n- No crash on init\n- Instance is usable immediately\n\n### 2) `record_cycle(record)`\n- Insert a cycle record\n- Confirm it doesn\u2019t crash\n- Optionally verify it is persisted by calling `get_recent_cycles()`\n\n**Key checks**\n- Basic persistence round-trip (record \u2192 stored \u2192 retrievable)\n\n### 3) `record_metrics(metrics)`\n- Insert a metrics record\n- Optionally verify via `get_total_cost()` or `get_recent_cycles()` if metrics affects it\n\n**Key checks**\n- Basic persistence and no crashes\n\n### 4) `get_recent_cycles(limit)`\n- When no cycles exist: returns empty list\n- When cycles exist: returns up to `limit`\n- Ordering (most recent first, if that\u2019s intended)\n\n**Key checks**\n- Empty DB behavior\n- Limit enforcement\n- Ordering correctness (if defined",
-      "area": "missing_tests",
-      "question": "What tests should exist for module storage.py? What are the key functions to test?",
-      "ts": 1777476023
-    },
     {
       "answer": "Based on `src/ouroboros/system.py` (which defines `SystemHealth` plus `get_system_stats()`, `get_service_logs(lines)`, `get_system_summary()`), you should add focused unit tests that validate:\n\n## Tests that should exist for `system.py`\n\n1. **`get_system_stats` returns expected shape**\n   - Verifies it returns a dict (or whatever structure the module promises).\n   - Checks presence of required keys (e.g., CPU/memory/thread info if those are included).\n\n2. **`get_system_stats` handles environment/OS variability**\n   - If the implementation reads OS/system metrics, test it doesn\u2019t crash when a metric provider fails.\n   - Use mocking to force metric-collection calls to raise exceptions and assert graceful behavior (e.g., missing key or fallback value).\n\n3. **`get_service_logs(lines)` respects the `lines` argument**\n   - For a small `lines` value (e.g., 10), ensure the returned logs contain no more than that many lines (or characters if that\u2019s what the function counts).\n   - For `lines=None` or invalid input (if allowed), ensure it either raises a clear error or uses a default.\n\n4. **`get_service_logs` returns logs even when log source is missing**\n   - Mock \u201clog retrieval\u201d (file reads, subprocess calls, journald, etc.) to simulate:\n     - log file doesn\u2019t exist\n     -",
       "area": "missing_tests",
@@ -2359,6 +2353,11 @@
       "area": "llm_optimization",
       "question": "Which LLM prompts could be shortened to reduce token cost without losing quality?",
       "ts": 1783422033
+    },
+    {
+      "area": "llm_optimization",
+      "question": "Where are we making redundant LLM calls that could be cached or batched?",
+      "ts": 1783451765
     }
   ]
 }
