@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1783743459,
-  "last_comment_check": 1783742528,
+  "last_check": 1783773177,
+  "last_comment_check": 1783772246,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1055,12 +1055,12 @@
   "last_git_push": 1773055881,
   "last_git_push_attempt": 1773055881,
   "last_github_improvement_attempt": 1782556330,
-  "last_improvement_attempt": 1783674704,
+  "last_improvement_attempt": 1783761109,
   "last_issue_scouting_attempt": 1782556330,
-  "last_memory_hygiene": 1783674704,
+  "last_memory_hygiene": 1783761109,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1783714663,
+  "last_self_question": 1783744384,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1130,14 +1130,14 @@
     "aa3aa37e-ad13-4789-bc41-c6a722fe7760",
     "76a215ae-3ad9-4198-95b7-33315f5d92b4",
     "34f44f5e-b4b1-4a85-9209-93e11ff7b3a0",
-    "4d2309f2-b612-4fdd-8c12-d52aa2a6d020",
     "c1449311-6bc3-4a19-80d7-15c12305c3f1",
-    "d1770ea3-d4db-4f0b-9913-ec8aef0ef7a2",
+    "4d2309f2-b612-4fdd-8c12-d52aa2a6d020",
+    "d9e15bf4-24f0-4571-b441-82e2d7f88a68",
     "0f22ba57-6884-4b55-901f-5991bc02d7e6",
     "8a35e2a3-b103-47e8-ad30-cc7dd41dff3a",
-    "b0102280-103c-4d3a-ac2b-b62823832237",
+    "d1770ea3-d4db-4f0b-9913-ec8aef0ef7a2",
     "9bc740b8-7bab-4980-8696-cd7ac2e713c4",
-    "d9e15bf4-24f0-4571-b441-82e2d7f88a68",
+    "b0102280-103c-4d3a-ac2b-b62823832237",
     "ef8e7a39-e40d-474e-9733-40588108722a",
     "17d51909-f6ac-4620-bede-8d9278abfda7",
     "226e97e1-6e81-42bb-add3-c50031ecd67e",
@@ -1265,14 +1265,8 @@
     "bd7ff510-aa84-43ab-9490-b0f74214ef15",
     "4caa734f-21ec-44b1-a528-a1e92778687a"
   ],
-  "self_question_index": 7,
+  "self_question_index": 8,
   "self_question_log": [
-    {
-      "answer": "Here are the main *implicit assumptions* in this codebase that are worth documenting explicitly as comments (because they\u2019re not enforced by types alone, and a reader might not infer them from the function signatures).\n\n## Repo layout / filesystem assumptions\n- **A \u201crepo root\u201d exists and is discoverable**: many modules assume `get_repo_root()` works and that all state/backlog/metrics/wiki files live under that root.\n- **State files are stored in predictable paths**:\n  - backlog persistence (`backlog.py`)\n  - metrics snapshots (`metrics.py`)\n  - history/evaluation (`evaluation.py`)\n  - scheduler state (`improvement_runner.py`)\n  - wiki content files (`wiki.py`)\n  These paths are likely assumed to be consistent across versions/tests.\n- **Atomic write expectations**: at least `moltbook.save_state_atomic_write` is tested, implying some files must be written atomically to avoid corruption.\n- **JSON serialization formats are stable**: `EvaluationRecord.from_dict`, backlog save/load, KB load/save, scheduler state load/save all implicitly rely on stable schemas.\n\n## Git workflow / branch safety assumptions\n- **The repo is expected to be a git repo** and to support:\n  - clean/dirty checks (`git_ops.is_clean`)\n  - branch creation/checkout\n  - committing/pushing\n  - PR creation\n  This should be documented as a prerequisite for improvement cycles.\n- **\u201cMain\u201d branch name is assumed",
-      "area": "docs",
-      "question": "What implicit assumptions in the codebase should be documented as comments?",
-      "ts": 1777768184
-    },
     {
       "answer": "In this codebase, the Moltbook-facing functions are fairly \u201coptimistic\u201d: they typically assume the Moltbook API returns the shape the code expects (lists for feeds/posts, dict objects with certain fields, etc.). There isn\u2019t a dedicated, central \u201cschema validation + graceful degradation\u201d layer specifically for unexpected/malformed Moltbook payloads.\n\nSo if Moltbook returns **unexpected shapes** like:\n\n- **`[]` (empty list)**  \n  The code will generally just treat it as \u201cno items\u201d (e.g., no posts/comments to work with) and proceeds without iterating anything. Where later logic expects at least one item (e.g., \u201cpick best\u201d, \u201cfind my post\u201d), you could end up with `None`-like behavior or an empty result that may cause the step to do nothing or fall back.\n\n- **`null` / missing fields inside objects** (e.g., `{\"comments\": null}` or a field like `submolt`/`title`/`url` is `None`)  \n  The most common outcome is that code later tries to index/access fields or iterate over them and hits runtime errors such as:\n  - `TypeError` (e.g., iterating over `None`)\n  - `KeyError` (field missing)\n  - `AttributeError` (calling string methods on `None`)\n  \n  Those exceptions may then either:\n  - be caught at a higher level (",
       "area": "edge_cases",
@@ -2349,6 +2343,11 @@
       "area": "privacy",
       "question": "What data do we store that could be sensitive?",
       "ts": 1783714690
+    },
+    {
+      "area": "reliability",
+      "question": "Which errors are not handled in Moltbook API requests?",
+      "ts": 1783744411
     }
   ]
 }
