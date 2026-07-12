@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1783861448,
-  "last_comment_check": 1783861445,
+  "last_check": 1783885601,
+  "last_comment_check": 1783876317,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1783847526,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1783833542,
+  "last_self_question": 1783862374,
   "last_telegram_error_ts": 1782544870,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1130,14 +1130,14 @@
     "76a215ae-3ad9-4198-95b7-33315f5d92b4",
     "aa3aa37e-ad13-4789-bc41-c6a722fe7760",
     "34f44f5e-b4b1-4a85-9209-93e11ff7b3a0",
-    "d9e15bf4-24f0-4571-b441-82e2d7f88a68",
     "4d2309f2-b612-4fdd-8c12-d52aa2a6d020",
     "c1449311-6bc3-4a19-80d7-15c12305c3f1",
-    "9bc740b8-7bab-4980-8696-cd7ac2e713c4",
-    "b0102280-103c-4d3a-ac2b-b62823832237",
     "d1770ea3-d4db-4f0b-9913-ec8aef0ef7a2",
-    "0f22ba57-6884-4b55-901f-5991bc02d7e6",
+    "9bc740b8-7bab-4980-8696-cd7ac2e713c4",
     "8a35e2a3-b103-47e8-ad30-cc7dd41dff3a",
+    "b0102280-103c-4d3a-ac2b-b62823832237",
+    "0f22ba57-6884-4b55-901f-5991bc02d7e6",
+    "d9e15bf4-24f0-4571-b441-82e2d7f88a68",
     "ef8e7a39-e40d-474e-9733-40588108722a",
     "17d51909-f6ac-4620-bede-8d9278abfda7",
     "226e97e1-6e81-42bb-add3-c50031ecd67e",
@@ -1265,14 +1265,8 @@
     "bd7ff510-aa84-43ab-9490-b0f74214ef15",
     "4caa734f-21ec-44b1-a528-a1e92778687a"
   ],
-  "self_question_index": 11,
+  "self_question_index": 12,
   "self_question_log": [
-    {
-      "answer": "Based on the codebase structure and where LLM calls are defined/used, the redundant-call risks cluster in two places:\n\n## 1) `cli.py` / \u201cfeed\u201d style workflows likely call the same analysis repeatedly\n- **`src/ouroboros/cli.py`** contains multiple subcommands/cycles that can end up doing overlapping work across runs:\n  - `cmd_improve_scout`, `cmd_improve_identify`, `cmd_improve_run`\n  - `cmd_moltbook_feed` (pulls posts and then likely triggers downstream analysis/triage)\n  - `cmd_improve_github` (issue analysis/fix cycles)\n- These commands plausibly re-run:\n  - \u201cmine insight / question post generation / topic signal extraction\u201d over the same external content (posts/comments/issues) each time the command is executed\u2014unless higher-level caching exists.\n\nWhere to look concretely:\n- Any flow that fetches posts/issues then calls into `llm.py` analysis functions (below) without a strong \u201calready processed\u201d check.\n\n## 2) `llm.py` has multiple batchable patterns that are currently likely executed one-at-a-time\nIn **`src/ouroboros/llm.py`**, these are the main candidates for redundant calls:\n- **Topic / insight mining**\n  - `extract_topic_signal(...)`\n  - `mine_insight_for_codebase(...)`\n  - `pick_oddities",
-      "area": "llm_optimization",
-      "question": "Where are we making redundant LLM calls that could be cached or batched?",
-      "ts": 1777884970
-    },
     {
       "answer": "From the codebase layout (especially `improvement.py`, `improvement_runner.py`, `github_improvement.py`, `community_improvement.py`, `issue_scouting.py`, `test_runner.py`, and the safety/policies layer), the improvement cycle likely repeats these patterns that are good candidates for further automation:\n\n1. **\u201cLLM \u2192 structured parse \u2192 validate \u2192 retry with better context\u201d loop**\n   - `improvement.py` already does this somewhat (e.g., plan/change generation and `_retry_with_root_cause`), but the same pattern appears across other cycles too (GitHub analysis/fix, issue scouting, comment/post mining, etc.).\n   - This could be unified into a generic \u201cLLMTaskRunner\u201d that:\n     - asks for JSON/typed output,\n     - validates schema,\n     - on validation/test failure regenerates with automatically assembled diagnostics (tests, diff stats, policy violations, recent learnings).\n\n2. **Repeated \u201cpolicy/scope/size checks before applying changes\u201d**\n   - `policies.py` + `improvement.py` imply multiple guardrails:\n     - immutable files / allowed scope,\n     - max number of files,\n     - max number of changed lines.\n   - The cycle repeats: generate \u2192 apply \u2192 tests \u2192 revert if regression. Automating the *pre-application* gating could be expanded so the model learns/adjusts earlier:\n     - automatically down-scope proposed diffs (or request",
       "area": "productivity",
@@ -2345,6 +2339,11 @@
       "area": "refactoring",
       "question": "Where is there duplicated logic that could be extracted into a shared helper?",
       "ts": 1783833569
+    },
+    {
+      "area": "docs",
+      "question": "Which public functions lack docstrings or have misleading ones?",
+      "ts": 1783862400
     }
   ]
 }
