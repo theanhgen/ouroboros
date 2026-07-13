@@ -25,3 +25,4 @@
 2026-07-07 | add_feature | Expose policy decision metrics by updating validate_change_s | success | tests: 237 -> 238
 2026-07-07 | fix_bug | Fix parsing of git status --porcelain output in _collect_cha | failed | no code generated
 2026-07-07 | add_test | Add unit tests in tests/test_backlog.py for the organize_bac | failed | reviewer rejected
+2026-07-13 | refactor | Remove runtime monkeypatching of git_ops from backends.py by | failed | Too many lines changed: 348 > 200
