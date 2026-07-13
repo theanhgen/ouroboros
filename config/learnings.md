@@ -26,3 +26,4 @@
 2026-07-07 | fix_bug | Fix parsing of git status --porcelain output in _collect_cha | failed | no code generated
 2026-07-07 | add_test | Add unit tests in tests/test_backlog.py for the organize_bac | failed | reviewer rejected
 2026-07-13 | refactor | Remove runtime monkeypatching of git_ops from backends.py by | failed | Too many lines changed: 348 > 200
+2026-07-13 | add_feature | Modify extract_code_metadata in src/ouroboros/codebase.py to | success | tests: 238 -> 238
