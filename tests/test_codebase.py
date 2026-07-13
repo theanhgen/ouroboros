@@ -29,7 +29,6 @@ def test_list_source_files():
     assert all(f.suffix == '.py' for f in files), "Not all listed files are Python files."
     names = [f.name for f in files]
     assert 'codebase.py' in names, "File 'codebase.py' is missing."
-    assert 'config.py' in names, "File 'config.py' is missing."
 
 
 def test_get_test_files():
@@ -40,17 +39,17 @@ def test_get_test_files():
 
 def test_read_file():
     root = get_repo_root()
-    config_path = root / 'src' / 'ouroboros' / 'config.py'
-    content = read_file(config_path)
-    assert 'SafetyConfig' in content, "Content doesn't match expectations, 'SafetyConfig' not found."
+    codebase_path = root / 'src' / 'ouroboros' / 'codebase.py'
+    content = read_file(codebase_path)
+    assert 'extract_code_metadata' in content, "Content doesn't match expectations, 'extract_code_metadata' not found."
     assert '   1 |' in content, "Line numbers are missing in file content."
 
 
 def test_read_file_raw():
     root = get_repo_root()
-    config_path = root / 'src' / 'ouroboros' / 'config.py'
-    content = read_file_raw(config_path)
-    assert 'SafetyConfig' in content, "Content doesn't match expectations, 'SafetyConfig' not found."
+    codebase_path = root / 'src' / 'ouroboros' / 'codebase.py'
+    content = read_file_raw(codebase_path)
+    assert 'extract_code_metadata' in content, "Content doesn't match expectations, 'extract_code_metadata' not found."
     assert '   1 |' not in content, "Line numbers should not be included in raw file reading."
 
 
@@ -94,6 +93,14 @@ def test_get_function_signatures_syntax_error(tmp_path):
     assert sigs == [], "Syntax error should result in no signatures being returned."
 
 
+def test_get_codebase_summary():
+    summary = get_codebase_summary()
+    assert '# Codebase Summary' in summary
+    assert 'Source Files' in summary
+    assert 'Test Files' in summary
+    assert 'codebase.py' in summary
+
+
 def test_extract_code_metadata_async_functions_and_methods():
     code = textwrap.dedent('''
         async def fetch_value(client):
@@ -123,14 +130,6 @@ def test_extract_code_metadata_async_functions_and_methods():
     refresh = service.methods[0]
     assert refresh.args == ["self", "key"]
     assert refresh.docstring == "Refresh one key."
-
-
-def test_get_codebase_summary():
-    summary = get_codebase_summary()
-    assert '# Codebase Summary' in summary
-    assert 'Source Files' in summary
-    assert 'Test Files' in summary
-    assert 'config.py' in summary
 
 
 def test_get_codebase_summary_includes_async_metadata(tmp_path):
