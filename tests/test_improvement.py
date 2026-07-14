@@ -43,6 +43,20 @@ def test_is_path_allowed():
     assert _is_path_allowed("setup.py", config) is False
 
 
+def test_is_path_allowed_forbidden_path_and_prefix():
+    config = SafetyConfig(
+        forbidden_modification_paths=(
+            "src/ouroboros/secret.py",
+            "src/ouroboros/forbidden_dir/",
+        )
+    )
+
+    assert _is_path_allowed("src/ouroboros/llm.py", config) is True
+    assert _is_path_allowed("src/ouroboros/secret.py", config) is False
+    assert _is_path_allowed("src/ouroboros/forbidden_dir/nested.py", config) is False
+    assert _is_path_allowed("src/ouroboros/forbidden_dir_not/nested.py", config) is True
+
+
 def test_validate_changes_ok():
     config = SafetyConfig()
     changes = [

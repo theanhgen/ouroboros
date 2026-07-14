@@ -32,6 +32,30 @@ def test_validate_modification_scope_forbidden():
     assert "Forbidden" in violations[0]
 
 
+def test_validate_modification_scope_forbidden_path_and_prefix():
+    config = SafetyConfig(
+        forbidden_modification_paths=(
+            "src/ouroboros/secret.py",
+            "src/ouroboros/forbidden_dir/",
+        )
+    )
+
+    violations = validate_modification_scope(["src/ouroboros/secret.py"], config)
+    assert len(violations) == 1
+    assert "Forbidden" in violations[0]
+
+    violations = validate_modification_scope(
+        ["src/ouroboros/forbidden_dir/nested.py"], config
+    )
+    assert len(violations) == 1
+    assert "Forbidden" in violations[0]
+
+    violations = validate_modification_scope(
+        ["src/ouroboros/forbidden_dir_not/nested.py"], config
+    )
+    assert violations == []
+
+
 def test_validate_modification_scope_out_of_scope():
     violations = validate_modification_scope(["README.md"])
     assert len(violations) == 1

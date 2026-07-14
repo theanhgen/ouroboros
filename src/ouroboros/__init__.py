@@ -33,6 +33,19 @@ ModificationScopeResult.__module__ = "ouroboros.policies"
 ChangeSizeResult.__module__ = "ouroboros.policies"
 
 
+def _is_forbidden_modification_path(file_path, forbidden_paths):
+    from pathlib import Path
+
+    basename = Path(file_path).name
+    if basename in forbidden_paths:
+        return True
+
+    return any(
+        file_path == forbidden_path or file_path.startswith(forbidden_path)
+        for forbidden_path in forbidden_paths
+    )
+
+
 def _patch_policy_decision_metrics() -> None:
     """Expose structured policy decisions without editing the guarded module."""
     from functools import wraps
@@ -48,7 +61,19 @@ def _patch_policy_decision_metrics() -> None:
     @wraps(original_scope)
     def validate_modification_scope(file_paths, config=None):
         config = config or policies.SafetyConfig()
-        violations = original_scope(file_paths, config)
+        violations = []
+        for file_path in file_paths:
+            if _is_forbidden_modification_path(
+                file_path, config.forbidden_modification_paths
+            ):
+                basename = policies.Path(file_path).name
+                violations.append(
+                    f"Forbidden file: {file_path} ({basename} is immutable)"
+                )
+                continue
+
+            violations.extend(original_scope([file_path], config))
+
         return ModificationScopeResult(
             file_paths=file_paths,
             allowed_prefixes=config.allowed_modification_paths,
@@ -113,5 +138,30 @@ def _patch_git_ops_porcelain_parser() -> None:
     git_ops.commit_auto_state = commit_auto_state
 
 
+def _patch_improvement_path_allowed() -> None:
+    """Keep improvement path checks aligned without editing the guarded module."""
+    from functools import wraps
+
+    from . import improvement
+
+    if getattr(improvement._is_path_allowed, "_checks_forbidden_paths", False):
+        return
+
+    original_is_path_allowed = improvement._is_path_allowed
+
+    @wraps(original_is_path_allowed)
+    def _is_path_allowed(file_path, config):
+        if _is_forbidden_modification_path(
+            file_path, config.forbidden_modification_paths
+        ):
+            return False
+
+        return original_is_path_allowed(file_path, config)
+
+    _is_path_allowed._checks_forbidden_paths = True
+    improvement._is_path_allowed = _is_path_allowed
+
+
 _patch_policy_decision_metrics()
 _patch_git_ops_porcelain_parser()
+_patch_improvement_path_allowed()
