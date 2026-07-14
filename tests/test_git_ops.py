@@ -96,6 +96,55 @@ def test_commit_auto_state_commits_state_files(mock_git, mock_branch):
     assert commit_auto_state(Path("/tmp/repo")) is True
 
 
+@patch("ouroboros.git_ops.current_branch", return_value="main")
+@patch("ouroboros.git_ops._git")
+def test_commit_auto_state_handles_renamed_state_paths(mock_git, mock_branch):
+    rel_path = 'docs/wiki/new -> state "note" \u00e9.md'
+    porcelain_path = r'"docs/wiki/old -> state.md" -> "docs/wiki/new -> state \"note\" \303\251.md"'
+    mock_git.side_effect = [
+        MagicMock(stdout=f"R  {porcelain_path}\n"),
+        MagicMock(),  # git add
+        MagicMock(stdout=f"{rel_path}\n"),  # diff --cached
+        MagicMock(),  # git commit
+        MagicMock(),  # git push
+    ]
+
+    assert commit_auto_state(Path("/tmp/repo")) is True
+    mock_git.assert_any_call(Path("/tmp/repo"), "add", rel_path)
+
+
+@patch("ouroboros.git_ops.current_branch", return_value="main")
+@patch("ouroboros.git_ops._git")
+def test_commit_auto_state_handles_copied_state_paths(mock_git, mock_branch):
+    rel_path = "docs/wiki/copied -> state.md"
+    mock_git.side_effect = [
+        MagicMock(stdout='C  "docs/wiki/original -> state.md" -> "docs/wiki/copied -> state.md"\n'),
+        MagicMock(),  # git add
+        MagicMock(stdout=f"{rel_path}\n"),  # diff --cached
+        MagicMock(),  # git commit
+        MagicMock(),  # git push
+    ]
+
+    assert commit_auto_state(Path("/tmp/repo")) is True
+    mock_git.assert_any_call(Path("/tmp/repo"), "add", rel_path)
+
+
+@patch("ouroboros.git_ops.current_branch", return_value="main")
+@patch("ouroboros.git_ops._git")
+def test_commit_auto_state_preserves_arrow_in_modified_path(mock_git, mock_branch):
+    rel_path = "docs/wiki/state -> note.md"
+    mock_git.side_effect = [
+        MagicMock(stdout=' M "docs/wiki/state -> note.md"\n'),
+        MagicMock(),  # git add
+        MagicMock(stdout=f"{rel_path}\n"),  # diff --cached
+        MagicMock(),  # git commit
+        MagicMock(),  # git push
+    ]
+
+    assert commit_auto_state(Path("/tmp/repo")) is True
+    mock_git.assert_any_call(Path("/tmp/repo"), "add", rel_path)
+
+
 @patch("ouroboros.git_ops._git")
 def test_commit_auto_state_ignores_non_state_files(mock_git):
     # Only non-state files are dirty -- should not commit
