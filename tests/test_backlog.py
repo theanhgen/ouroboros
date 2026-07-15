@@ -55,6 +55,33 @@ class TestBacklog:
         items = load_backlog(self.tmp_dir)
         assert len(items) == 1
 
+    def test_add_duplicate_item_done(self):
+        desc = "repeat completed task"
+        first = add_item(self.tmp_dir, "feat", desc)
+        mark_done(self.tmp_dir, first["id"])
+
+        second = add_item(self.tmp_dir, "feat", desc)
+
+        items = load_backlog(self.tmp_dir)
+        assert len(items) == 2
+        assert items[0]["status"] == "done"
+        assert items[1]["status"] == "pending"
+        assert second["id"] != first["id"]
+
+    def test_add_duplicate_item_abandoned(self):
+        desc = "repeat abandoned task"
+        first = add_item(self.tmp_dir, "fix", desc)
+        for _ in range(3):
+            mark_failed(self.tmp_dir, first["id"])
+
+        second = add_item(self.tmp_dir, "fix", desc)
+
+        items = load_backlog(self.tmp_dir)
+        assert len(items) == 2
+        assert items[0]["status"] == "abandoned"
+        assert items[1]["status"] == "pending"
+        assert second["id"] != first["id"]
+
     def test_mark_done(self):
         entry = add_item(self.tmp_dir, "fix", "fix bug")
         mark_done(self.tmp_dir, entry["id"])

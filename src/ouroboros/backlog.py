@@ -49,9 +49,9 @@ def add_item(
     source: str = "auto",
 ) -> Dict[str, Any]:
     items = load_backlog(repo_root)
-    # Dedup by description similarity
+    # Dedup pending items by description similarity
     for item in items:
-        if item.get("description") == description:
+        if item.get("description") == description and item.get("status") == "pending":
             return item
 
     entry = {
