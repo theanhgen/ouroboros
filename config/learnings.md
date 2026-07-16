@@ -31,3 +31,4 @@
 2026-07-14 | fix_bug | Fix parsing of git status --porcelain output in commit_auto_ | success | tests: 240 -> 243
 2026-07-15 | fix_bug | Fix backlog duplicate checking in add_item within src/ourobo | success | tests: 243 -> 245
 2026-07-15 | refactor | Refactor backlog and evaluation modules to use the centraliz | failed | reviewer rejected
+2026-07-16 | add_test | Add unit tests in tests/test_cli.py to verify subcommands cm | failed | reviewer rejected
