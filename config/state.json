@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1784269320,
-  "last_comment_check": 1784263746,
+  "last_check": 1784281411,
+  "last_comment_check": 1784278624,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,18 +1060,18 @@
   "last_memory_hygiene": 1784195477,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1784241327,
+  "last_self_question": 1784270246,
   "last_telegram_error_ts": 1784195598,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
-    "61588442-e428-4208-a7f0-5d7d373b1981",
     "d1d0f9f5-e7e6-4574-9ff4-ae6aa9499d97",
+    "61588442-e428-4208-a7f0-5d7d373b1981",
     "87da7ada-5f3a-49a5-9800-210dc39a1c7e",
     "913a5aca-c26c-4958-9d72-9c5934a0fcd8",
     "88daa6c9-f5ce-47a3-968f-eeae9b0e9f20",
     "18c3bf5d-962d-4ab6-b460-6e158f4d414b",
-    "dd217495-a54d-4f67-8753-430b4301f320",
     "257244c1-9818-46c9-92b6-f671e878f8af",
+    "dd217495-a54d-4f67-8753-430b4301f320",
     "22ce7e3e-db20-431c-aff0-531fe2fe653b",
     "2ca321d4-ccd8-4523-9645-4ad90f412049",
     "7f8c31c6-2b0a-4510-afb1-96c1ba1ec92d",
@@ -1130,17 +1130,17 @@
     "7e2d177f-ddba-45b9-9aff-cbe8d38f0405",
     "e93d9115-e747-4c71-a3cd-41a8980c8a9b",
     "fa6dde70-b03d-4b5f-a358-152bda331c92",
-    "0f2ae44b-6c52-4441-a016-1c217e68a1b8",
-    "aa3aa37e-ad13-4789-bc41-c6a722fe7760",
     "9f1c2e5a-703a-4d0c-9c7e-ea9b02417b7f",
+    "aa3aa37e-ad13-4789-bc41-c6a722fe7760",
+    "0f2ae44b-6c52-4441-a016-1c217e68a1b8",
     "a0ee73f1-c601-445f-b507-eca695ce0cae",
     "d721385d-4229-4e75-910e-e9bed05fc6a0",
-    "c6024a91-83e3-41f0-8fdf-3574112f8e83",
+    "64b9eb19-6054-4ef6-b9ad-bd0acfc64860",
     "0473568c-e82b-4986-b152-60fab8cb2759",
     "b0f45906-fc91-4cdc-974f-bb2f671f1f5f",
     "2b1770e8-0f98-4239-b389-9c62a1a14d0d",
     "bcb3c733-dcdb-4346-a1d4-d9b6c49b05f4",
-    "64b9eb19-6054-4ef6-b9ad-bd0acfc64860",
+    "c6024a91-83e3-41f0-8fdf-3574112f8e83",
     "13557aee-50fb-43dc-a284-54e97382e281",
     "97db2ace-c111-4409-8116-76d1a9b0b6f7",
     "1a6814cc-3f79-44d0-b6f4-97a5da4863d5",
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 6,
+  "self_question_index": 7,
   "self_question_log": [
-    {
-      "answer": "From the codebase summary you provided, the only file/function that is explicitly described with more than 50 lines is:\n\n- **`src/ouroboros/cli.py`**: multiple functions, with the whole module at **495 lines**. (The summary lists many `cmd_*` functions, each presumably non-trivial, and they are the most likely candidates for decomposition, but the summary does **not** provide per-function line counts.)\n\nAll other files shown have no per-function line counts\u2014only total file line counts (e.g., `backlog.py` is 170 lines, `community_improvement.py` is 603 lines, `improvement.py` is 1051 lines, etc.). Without per-function metrics, I can\u2019t reliably identify *which specific functions* exceed 50 lines other than what\u2019s implied by the very large files and the large `cli.py`.\n\nIf you want, I can list likely decomposition targets based on *which functions exist in the largest modules* (e.g., `improvement.py`, `community_improvement.py`, `moltbook.py`, `cli.py`), but that would be heuristic rather than confirmed \u201c> 50 lines.\u201d",
-      "area": "refactoring",
-      "question": "Which functions are longer than 50 lines and should be decomposed?",
-      "ts": 1778294393
-    },
     {
       "answer": "A few clear duplication opportunities jump out from the file list/structure and the way tests are organized:\n\n### 1) \u201cMarker\u201d construction + \u201cissue body\u201d building\n- **`git_ops.py`** has:\n  - `make_auto_issue_marker(task_type, description, target_files)`\n  - `find_open_issue_by_marker(repo, marker)`\n  - `make_branch_name(task_type)` and PR helpers\n- **`issue_scouting.py`** has its own:\n  - `_task_issue_marker(task)`\n  - `_build_issue_title(task)`\n  - `_build_issue_body(task, test_summary, marker)`\n- **`improvement_runner.py`** also has:\n  - `_task_issue_marker(task)`\n  - `_build_followup_issue_body(task, result, marker)`\n\n**Why this is duplicated:** multiple modules each implement \u201cbuild marker + build issue title/body\u201d patterns for similar GitHub/Jira-ish workflows (issue scouting vs scheduled improvement follow-ups). This is ideal for a shared helper like `issue_helpers.py` (e.g., `build_issue_marker`, `build_issue_title`, `build_issue_body`).\n\n---\n\n### 2) \u201cLoad state / feed context / history\u201d orchestration patterns\n- **`improvement_runner.py`**:\n  - `_load_feed_context_state()`\n  - `load_scheduler_state()` / `save_scheduler_state()`\n  - uses scheduling/due logic and then triggers cycles\n-",
       "area": "refactoring",
@@ -2331,6 +2325,11 @@
       "area": "safety",
       "question": "What safety policy is missing for autonomous comments?",
       "ts": 1784241355
+    },
+    {
+      "area": "privacy",
+      "question": "What data do we store that could be sensitive?",
+      "ts": 1784270272
     }
   ]
 }
