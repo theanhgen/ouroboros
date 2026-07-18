@@ -1046,7 +1046,7 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1784327033,
+  "last_check": 1784334487,
   "last_comment_check": 1784323300,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1784282336,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1784299128,
+  "last_self_question": 1784327959,
   "last_telegram_error_ts": 1784282417,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 8,
+  "self_question_index": 9,
   "self_question_log": [
-    {
-      "answer": "I can\u2019t reliably answer this from the codebase summary alone. The summary lists function names and file sizes but does **not** include the actual function bodies or docstring contents, so I can\u2019t determine which are missing docstrings or which ones are misleading.\n\nIf you paste (or upload) the relevant source, I can:\n- scan every **public** function (e.g., not starting with `_`) in `src/ouroboros/`\n- detect whether it has a docstring\n- flag docstrings that appear misleading (e.g., wrong return type/behavior, stale wording vs implementation)\n\n**What I need from you**\n- Option A: paste the contents of `src/ouroboros/*.py` (or at least the public APIs you care about).\n- Option B: tell me to focus on a subset (e.g., `backlog.py`, `cli.py`, `improvement.py`).\n- Option C: run a docstring scan locally and paste results (I can interpret them).\n\nWhich option do you prefer?",
-      "area": "docs",
-      "question": "Which public functions lack docstrings or have misleading ones?",
-      "ts": 1778352678
-    },
     {
       "answer": "Here are the main **implicit assumptions** in this codebase that would be worth calling out explicitly with comments (i.e., assumptions about behavior, invariants, ordering, safety constraints, file locations, and API contracts).\n\n## 1) Repo layout / filesystem invariants\n- **\u201crepo_root\u201d resolution is reliable and stable**: many modules assume `get_repo_root()` points to the correct project root and that all relative paths are computed from it consistently.\n- **State/backlog/metrics history files live in expected locations** under the repo root (e.g., backlog + history + metrics). Tests likely pass because the test harness creates that structure.\n- **Atomic write behavior is expected** for state files (e.g., moltbook state). The code likely assumes a specific atomic-write pattern to prevent corruption.\n- **Repo paths and file allowlists are correct**: the improvement tool assumes \u201callowed/immutable\u201d file paths are correctly defined (policies + immutable file list) and that the codebase doesn\u2019t move/rename these paths without updating the policy.\n\n## 2) Data model & serialization contracts\n- **Backlog item schema stability**: `backlog.py` implicitly assumes each item has stable fields (task_type, description, priority, source, done/failed + timestamps/ids).\n- **Deterministic item IDs**: duplicate detection and id-based marking assume how IDs are generated (and their uniqueness) won\u2019t change.\n- **History/",
       "area": "docs",
@@ -2329,6 +2323,11 @@
       "area": "reliability",
       "question": "Which errors are not handled in Moltbook API requests?",
       "ts": 1784299156
+    },
+    {
+      "area": "safety",
+      "question": "What config defaults could cause unintended posting?",
+      "ts": 1784327986
     }
   ]
 }
