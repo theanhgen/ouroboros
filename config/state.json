@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1784442417,
-  "last_comment_check": 1784442414,
+  "last_check": 1784471337,
+  "last_comment_check": 1784457369,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1055,13 +1055,13 @@
   "last_git_push": 1773055881,
   "last_git_push_attempt": 1773055881,
   "last_github_improvement_attempt": 1782556330,
-  "last_improvement_attempt": 1784368865,
+  "last_improvement_attempt": 1784455493,
   "last_issue_scouting_attempt": 1782556330,
-  "last_memory_hygiene": 1784368865,
+  "last_memory_hygiene": 1784455493,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1784414440,
-  "last_telegram_error_ts": 1784282417,
+  "last_self_question": 1784443343,
+  "last_telegram_error_ts": 1784469506,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
     "61588442-e428-4208-a7f0-5d7d373b1981",
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 12,
+  "self_question_index": 13,
   "self_question_log": [
-    {
-      "answer": "From the repo structure, the highest token-cost prompts are the ones that (a) include large code/test context, and/or (b) ask for long multi-step outputs. Likely candidates to shorten (without materially degrading quality) are:\n\n### 1) Code-edit / change generation prompts (high token inputs + large outputs)\nThese are almost certainly the most expensive because they include file contents and require detailed patch plans/edits:\n- `load_code_suggestion_prompt()` (used to propose modifications)\n- `load_suggestion_implementation_prompt()` (used to generate/implement the changes)\n- `load_comment_mining_prompt()` (often ingests lots of comment text)\n- `load_github_issue_fix_prompt()` (often includes issue + context and expects code changes)\n\n**Where shortening helps most:** reduce repeated instructions / verbosity, tighten output schema, and cut \u201crestating the task\u201d boilerplate.\n\n### 2) LLM \u201cidentify improvements\u201d / \u201cplan code change\u201d style prompts\nThese can be shortened by constraining format + limiting the number of items to produce:\n- `load_kb_summary_prompt()` (if it asks for long summaries; can be a fixed-length summary)\n- `load_codebase_context`-type prompts embedded around improvement planning (in `prompts.py` and used by `llm.py`\u2019s `identify_improvements()`, `plan_code_change()`)\n\n**Where shortening helps:** enforce \u201creturn top N only\u201d",
-      "area": "llm_optimization",
-      "question": "Which LLM prompts could be shortened to reduce token cost without losing quality?",
-      "ts": 1778469051
-    },
     {
       "answer": "From the codebase structure you provided, the most likely places where the system is making **repeated / redundant LLM calls** (i.e., opportunities for **caching** results or **batching** multiple requests into one call) are these modules/functions:\n\n## 1) `src/ouroboros/community_improvement.py`\n- `_step_identify(...)` (LLM identifies which community issue/task to pursue)\n- `_step_analyze(...)` (LLM analyzes options; may re-run similar analysis over the same text/comments)\n- `_step_implement(...)` (LLM generates PR/patch details)\nThese steps often depend on overlapping inputs (same history/tests/summary slices). If the same \u201ccontext bundle\u201d is seen again across cycles, results could be cached keyed by (task + relevant context hash).\n\n## 2) `src/ouroboros/github_improvement.py`\n- `analyze_issue(...)`\n- `apply_github_fix(...)`\nIn particular, if you revisit the same GitHub issue content (or similar PR attempt history), `analyze_issue` is a prime candidate for caching.\n\n## 3) `src/ouroboros/issue_scouting.py`\n- `run_issue_scouting_cycle(...)`\nThis likely loops over many tasks/issues and for each one may call an LLM to generate issue titles/bodies. If the same post/task patterns repeat, this could be cached; if multiple issues are generated in",
       "area": "llm_optimization",
@@ -2325,6 +2319,11 @@
       "area": "docs",
       "question": "Which public functions lack docstrings or have misleading ones?",
       "ts": 1784414467
+    },
+    {
+      "area": "docs",
+      "question": "What implicit assumptions in the codebase should be documented as comments?",
+      "ts": 1784443369
     }
   ]
 }
