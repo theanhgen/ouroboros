@@ -1046,7 +1046,7 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1784413515,
+  "last_check": 1784421902,
   "last_comment_check": 1784412583,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
@@ -1060,18 +1060,18 @@
   "last_memory_hygiene": 1784368865,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1784385609,
+  "last_self_question": 1784414440,
   "last_telegram_error_ts": 1784282417,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
-    "d1d0f9f5-e7e6-4574-9ff4-ae6aa9499d97",
     "61588442-e428-4208-a7f0-5d7d373b1981",
+    "d1d0f9f5-e7e6-4574-9ff4-ae6aa9499d97",
     "87da7ada-5f3a-49a5-9800-210dc39a1c7e",
     "913a5aca-c26c-4958-9d72-9c5934a0fcd8",
     "88daa6c9-f5ce-47a3-968f-eeae9b0e9f20",
     "18c3bf5d-962d-4ab6-b460-6e158f4d414b",
-    "257244c1-9818-46c9-92b6-f671e878f8af",
     "dd217495-a54d-4f67-8753-430b4301f320",
+    "257244c1-9818-46c9-92b6-f671e878f8af",
     "22ce7e3e-db20-431c-aff0-531fe2fe653b",
     "2ca321d4-ccd8-4523-9645-4ad90f412049",
     "7f8c31c6-2b0a-4510-afb1-96c1ba1ec92d",
@@ -1130,17 +1130,17 @@
     "7e2d177f-ddba-45b9-9aff-cbe8d38f0405",
     "e93d9115-e747-4c71-a3cd-41a8980c8a9b",
     "fa6dde70-b03d-4b5f-a358-152bda331c92",
-    "9f1c2e5a-703a-4d0c-9c7e-ea9b02417b7f",
-    "aa3aa37e-ad13-4789-bc41-c6a722fe7760",
     "0f2ae44b-6c52-4441-a016-1c217e68a1b8",
+    "aa3aa37e-ad13-4789-bc41-c6a722fe7760",
+    "9f1c2e5a-703a-4d0c-9c7e-ea9b02417b7f",
     "a0ee73f1-c601-445f-b507-eca695ce0cae",
     "d721385d-4229-4e75-910e-e9bed05fc6a0",
-    "64b9eb19-6054-4ef6-b9ad-bd0acfc64860",
+    "c6024a91-83e3-41f0-8fdf-3574112f8e83",
     "0473568c-e82b-4986-b152-60fab8cb2759",
     "b0f45906-fc91-4cdc-974f-bb2f671f1f5f",
     "2b1770e8-0f98-4239-b389-9c62a1a14d0d",
     "bcb3c733-dcdb-4346-a1d4-d9b6c49b05f4",
-    "c6024a91-83e3-41f0-8fdf-3574112f8e83",
+    "64b9eb19-6054-4ef6-b9ad-bd0acfc64860",
     "13557aee-50fb-43dc-a284-54e97382e281",
     "97db2ace-c111-4409-8116-76d1a9b0b6f7",
     "1a6814cc-3f79-44d0-b6f4-97a5da4863d5",
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 11,
+  "self_question_index": 12,
   "self_question_log": [
-    {
-      "answer": "I can\u2019t determine that precisely from the codebase summary alone\u2014the actual subprocess invocations (e.g., `subprocess.run/Popen/check_output` calls) aren\u2019t shown. In your repo, the likely places to inspect for hangs are:\n\n- `src/ouroboros/test_runner.py`  \n  (typically runs pytest via subprocess; usually the one that can hang without a timeout)\n- `src/ouroboros/git_ops.py`  \n  (git commands can hang if waiting on credentials/TTY or due to hooks)\n- Any code that runs external tools/commands invoked by the LLM tool runner:\n  - `src/ouroboros/improvement.py` (`ToolRunner.execute(...)`)\n  - `src/ouroboros/cli.py` (commands like plan/apply may call test runners or git operations)\n\nTo answer exactly, I would need the contents of those files (or at least the lines where `subprocess.*` is called) to check whether every call passes a `timeout=` (or otherwise ensures termination, e.g., `communicate(timeout=...)`). If you paste the `subprocess` call sites from those files, I\u2019ll list the specific ones that can hang indefinitely.",
-      "area": "edge_cases",
-      "question": "Which subprocess calls could hang indefinitely without a timeout?",
-      "ts": 1778439817
-    },
     {
       "answer": "From the repo structure, the highest token-cost prompts are the ones that (a) include large code/test context, and/or (b) ask for long multi-step outputs. Likely candidates to shorten (without materially degrading quality) are:\n\n### 1) Code-edit / change generation prompts (high token inputs + large outputs)\nThese are almost certainly the most expensive because they include file contents and require detailed patch plans/edits:\n- `load_code_suggestion_prompt()` (used to propose modifications)\n- `load_suggestion_implementation_prompt()` (used to generate/implement the changes)\n- `load_comment_mining_prompt()` (often ingests lots of comment text)\n- `load_github_issue_fix_prompt()` (often includes issue + context and expects code changes)\n\n**Where shortening helps most:** reduce repeated instructions / verbosity, tighten output schema, and cut \u201crestating the task\u201d boilerplate.\n\n### 2) LLM \u201cidentify improvements\u201d / \u201cplan code change\u201d style prompts\nThese can be shortened by constraining format + limiting the number of items to produce:\n- `load_kb_summary_prompt()` (if it asks for long summaries; can be a fixed-length summary)\n- `load_codebase_context`-type prompts embedded around improvement planning (in `prompts.py` and used by `llm.py`\u2019s `identify_improvements()`, `plan_code_change()`)\n\n**Where shortening helps:** enforce \u201creturn top N only\u201d",
       "area": "llm_optimization",
@@ -2326,6 +2320,11 @@
       "area": "refactoring",
       "question": "Where is there duplicated logic that could be extracted into a shared helper?",
       "ts": 1784385638
+    },
+    {
+      "area": "docs",
+      "question": "Which public functions lack docstrings or have misleading ones?",
+      "ts": 1784414467
     }
   ]
 }
