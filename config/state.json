@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1784529283,
-  "last_comment_check": 1784517098,
+  "last_check": 1784558087,
+  "last_comment_check": 1784546944,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1055,23 +1055,23 @@
   "last_git_push": 1773055881,
   "last_git_push_attempt": 1773055881,
   "last_github_improvement_attempt": 1782556330,
-  "last_improvement_attempt": 1784455493,
+  "last_improvement_attempt": 1784542302,
   "last_issue_scouting_attempt": 1782556330,
-  "last_memory_hygiene": 1784455493,
+  "last_memory_hygiene": 1784542302,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1784501185,
+  "last_self_question": 1784530209,
   "last_telegram_error_ts": 1784469506,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
-    "61588442-e428-4208-a7f0-5d7d373b1981",
     "d1d0f9f5-e7e6-4574-9ff4-ae6aa9499d97",
+    "61588442-e428-4208-a7f0-5d7d373b1981",
     "87da7ada-5f3a-49a5-9800-210dc39a1c7e",
     "913a5aca-c26c-4958-9d72-9c5934a0fcd8",
     "88daa6c9-f5ce-47a3-968f-eeae9b0e9f20",
     "18c3bf5d-962d-4ab6-b460-6e158f4d414b",
-    "dd217495-a54d-4f67-8753-430b4301f320",
     "257244c1-9818-46c9-92b6-f671e878f8af",
+    "dd217495-a54d-4f67-8753-430b4301f320",
     "22ce7e3e-db20-431c-aff0-531fe2fe653b",
     "2ca321d4-ccd8-4523-9645-4ad90f412049",
     "7f8c31c6-2b0a-4510-afb1-96c1ba1ec92d",
@@ -1130,17 +1130,17 @@
     "7e2d177f-ddba-45b9-9aff-cbe8d38f0405",
     "e93d9115-e747-4c71-a3cd-41a8980c8a9b",
     "fa6dde70-b03d-4b5f-a358-152bda331c92",
-    "0f2ae44b-6c52-4441-a016-1c217e68a1b8",
-    "aa3aa37e-ad13-4789-bc41-c6a722fe7760",
     "9f1c2e5a-703a-4d0c-9c7e-ea9b02417b7f",
+    "aa3aa37e-ad13-4789-bc41-c6a722fe7760",
+    "0f2ae44b-6c52-4441-a016-1c217e68a1b8",
     "a0ee73f1-c601-445f-b507-eca695ce0cae",
     "d721385d-4229-4e75-910e-e9bed05fc6a0",
-    "c6024a91-83e3-41f0-8fdf-3574112f8e83",
+    "64b9eb19-6054-4ef6-b9ad-bd0acfc64860",
     "0473568c-e82b-4986-b152-60fab8cb2759",
     "b0f45906-fc91-4cdc-974f-bb2f671f1f5f",
     "2b1770e8-0f98-4239-b389-9c62a1a14d0d",
     "bcb3c733-dcdb-4346-a1d4-d9b6c49b05f4",
-    "64b9eb19-6054-4ef6-b9ad-bd0acfc64860",
+    "c6024a91-83e3-41f0-8fdf-3574112f8e83",
     "13557aee-50fb-43dc-a284-54e97382e281",
     "97db2ace-c111-4409-8116-76d1a9b0b6f7",
     "1a6814cc-3f79-44d0-b6f4-97a5da4863d5",
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 15,
+  "self_question_index": 16,
   "self_question_log": [
-    {
-      "answer": "I can\u2019t determine that from the codebase summary you provided, because it doesn\u2019t include the actual contents of the configuration objects or their usage sites (i.e., where each option is referenced vs. never referenced).\n\n**What I would need to answer precisely:**\n- The contents of `src/ouroboros/config.py` (especially the full `SafetyConfig` defaults and any runner/config fields).\n- Any config loading/validation code in `cli.py`, `moltbook.py`, `improvement.py`, `policies.py`, `improvement_runner.py`, etc.\n- Or alternatively: the full text of `config.py` plus a repo-wide list of config keys (or grep results) showing which keys are actually read.\n\n**If you want to do it quickly yourself:** run something like:\n- `rg -n \"cfg\\.|config\\.|SafetyConfig|safety_config|runner_config|cfg\\[\" src/ouroboros`\n- `rg -n \"option_name_here\" src/ouroboros tests`\n\n\u2026and then compare that to the keys defined in `config.py` / config schema.\n\nReply with the contents of `src/ouroboros/config.py` (and any runner config struct), and I\u2019ll identify **which specific options are never referenced** and call out the dead/unnecessary ones.",
-      "area": "productivity",
-      "question": "Which configuration options are never used and add unnecessary complexity?",
-      "ts": 1778556170
-    },
     {
       "answer": "Given `src/ouroboros/holographic.py` is a standalone math/encoding utility (no network, no git, no filesystem), you mainly want **deterministic, property-based unit tests** around its vector operations and encoding/serialization.\n\n## What tests should exist for `holographic.py`?\n\n### 1) NumPy dependency behavior\n- **`_require_numpy`**\n  - Test that it raises a clear error when NumPy is unavailable (if your test environment can simulate NumPy missing).\n  - Otherwise, test it successfully imports and returns.\n\n### 2) Encoding functions produce correctly shaped outputs\n- **`encode_atom(word, dim)`**\n  - Returns a vector-like object of length `dim`.\n  - Deterministic: same `word` + `dim` \u21d2 same output.\n  - Output is \u201cnumeric\u201d and not all zeros (or at least not degenerate).\n- **`encode_text(text, dim)`**\n  - Shape is `dim`.\n  - Deterministic for same input.\n  - Reasonable invariants: empty string should return a valid vector (define expected behavior from code).\n- **`encode_fact(content, entities, dim)`**\n  - Shape is `dim`.\n  - Deterministic for same `(content, entities, dim)`.\n  - Varying `entities` changes the result (not strictly required, but good to assert \u201cdifferent inputs lead to different vectors\u201d when",
       "area": "missing_tests",
@@ -2322,6 +2316,11 @@
       "area": "edge_cases",
       "question": "Which subprocess calls could hang indefinitely without a timeout?",
       "ts": 1784501229
+    },
+    {
+      "area": "llm_optimization",
+      "question": "Which LLM prompts could be shortened to reduce token cost without losing quality?",
+      "ts": 1784530238
     }
   ]
 }
