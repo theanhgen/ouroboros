@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1784794933,
-  "last_comment_check": 1784784729,
+  "last_check": 1784824639,
+  "last_comment_check": 1784814431,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1055,12 +1055,12 @@
   "last_git_push": 1773055881,
   "last_git_push_attempt": 1773055881,
   "last_github_improvement_attempt": 1782556330,
-  "last_improvement_attempt": 1784716028,
+  "last_improvement_attempt": 1784803300,
   "last_issue_scouting_attempt": 1782556330,
-  "last_memory_hygiene": 1784716028,
+  "last_memory_hygiene": 1784803300,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1784766152,
+  "last_self_question": 1784795857,
   "last_telegram_error_ts": 1784469506,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 5,
+  "self_question_index": 6,
   "self_question_log": [
-    {
-      "answer": "Potentially sensitive data the codebase appears to store (or persist) includes:\n\n- **Backlog tasks**\n  - `src/ouroboros/backlog.py` stores pending tasks with fields like `task_type`, `description`, `priority`, `source`, and status flags (done/failed).\n  - Sensitivity: task descriptions may include private repo details, error messages, or internal prompts.\n\n- **Self-improvement / evaluation history**\n  - `src/ouroboros/evaluation.py` stores improvement outcomes and PR-related evaluation records (via `record_improvement`, `load_history`, `summarize_history`).\n  - Sensitivity: may include PR URLs/refs, test results, failure reasons, and model identifiers.\n\n- **Metrics snapshots**\n  - `src/ouroboros/metrics.py` records snapshots of improvement/test metrics and related summaries.\n  - Sensitivity: primarily operational data, but may include test failures and other diagnostic details.\n\n- **Scheduler state**\n  - `src/ouroboros/improvement_runner.py` persists scheduler state (due timestamps, deferred/failure statuses, error messages, follow-up issue markers).\n  - Sensitivity: error strings and operational status can leak internal details.\n\n- **Test runner outcomes**\n  - `src/ouroboros/test_runner.py` parses and returns pytest output; results may be recorded by other layers (evaluation/metrics/history).\n  - Sensitivity: stack traces, assertion messages,",
-      "area": "privacy",
-      "question": "What data do we store that could be sensitive?",
-      "ts": 1778834314
-    },
     {
       "answer": "From the code structure shown, **there are no explicit \u201cAPI request errors\u201d (network/HTTP) being handled in Moltbook API calls**\u2014i.e., Moltbook request failures are not caught/translated into custom exceptions per request.\n\nConcretely, in `src/ouroboros/moltbook.py` the API request helper is:\n\n- **`_request(method, path, api_key, body)`** \u2014 this is the central place where HTTP errors would normally be handled. The code listing does not indicate any try/except handling for request/HTTP failures inside this function.\n- Other API functions (e.g., `get_status`, `get_feed`, `get_posts`, `create_post`, `create_comment`) call `_request` and likewise have no dedicated error handling indicated.\n\nSo the errors that are **not handled** (not explicitly caught) in Moltbook API requests are typically:\n\n- **HTTP/network failures** (connection errors, timeouts)\n- **Non-2xx HTTP status responses** (bad auth, rate limits, server errors)\n- **JSON parsing / malformed response bodies** (if `_request` parses JSON)\n- **Missing/invalid credentials leading to request failures** (would surface as request errors rather than being handled)\n\nIf you want, I can point to the exact lines once you share the contents of `_request` (or the full `moltbook.py`, since the summary alone doesn\u2019t show the actual exception",
       "area": "reliability",
@@ -2313,6 +2307,11 @@
       "area": "tests",
       "question": "Which parts of the Moltbook runner are untested?",
       "ts": 1784766179
+    },
+    {
+      "area": "safety",
+      "question": "What safety policy is missing for autonomous comments?",
+      "ts": 1784795884
     }
   ]
 }
