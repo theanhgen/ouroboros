@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1784824639,
-  "last_comment_check": 1784814431,
+  "last_check": 1784854347,
+  "last_comment_check": 1784844139,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1784803300,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1784795857,
+  "last_self_question": 1784825563,
   "last_telegram_error_ts": 1784469506,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 6,
+  "self_question_index": 7,
   "self_question_log": [
-    {
-      "answer": "From the code structure shown, **there are no explicit \u201cAPI request errors\u201d (network/HTTP) being handled in Moltbook API calls**\u2014i.e., Moltbook request failures are not caught/translated into custom exceptions per request.\n\nConcretely, in `src/ouroboros/moltbook.py` the API request helper is:\n\n- **`_request(method, path, api_key, body)`** \u2014 this is the central place where HTTP errors would normally be handled. The code listing does not indicate any try/except handling for request/HTTP failures inside this function.\n- Other API functions (e.g., `get_status`, `get_feed`, `get_posts`, `create_post`, `create_comment`) call `_request` and likewise have no dedicated error handling indicated.\n\nSo the errors that are **not handled** (not explicitly caught) in Moltbook API requests are typically:\n\n- **HTTP/network failures** (connection errors, timeouts)\n- **Non-2xx HTTP status responses** (bad auth, rate limits, server errors)\n- **JSON parsing / malformed response bodies** (if `_request` parses JSON)\n- **Missing/invalid credentials leading to request failures** (would surface as request errors rather than being handled)\n\nIf you want, I can point to the exact lines once you share the contents of `_request` (or the full `moltbook.py`, since the summary alone doesn\u2019t show the actual exception",
-      "area": "reliability",
-      "question": "Which errors are not handled in Moltbook API requests?",
-      "ts": 1778868777
-    },
     {
       "answer": "I can\u2019t see the actual values in the repo from your summary alone (e.g., what the default `moltbook` runner config / safety config / post-frequency settings are set to), so I can\u2019t name *specific* defaults with certainty.\n\nThat said, in this codebase the most common **config defaults that can lead to unintended posting** are:\n\n1. **Auto-post / enablement flags defaulting to \u201con\u201d**\n   - Any default like `enable_feed`, `post_to_forum`, `enable_moltbook`, `community_auto_post`, `telegram_notifications_enabled`, etc.\n   - In your structure, posting happens in `community_improvement.py` (`_step_post`) and the feed/loop behavior is in `moltbook.py` (`run_loop`, `get_feed`, `_check_engagement`, `_trim_*`).\n\n2. **\u201cAuto-implement / auto-merge\u201d style flags defaulting to \u201con\u201d**\n   - Even though that\u2019s not \u201cposting\u201d to a forum directly, it can still create externally visible actions (PRs/issues).\n   - Relevant modules: `improvement_runner.py` and `git_ops.py` (`create_pr`, `create_issue`, `auto_merge_pr`), and policy/safety gating in `policies.py` + `config.SafetyConfig`.\n\n3. **Scheduling / frequency defaults that are too aggressive**\n   - If the default \u201cinterval\u201d or \u201cdue\u201d policy is",
       "area": "safety",
@@ -2312,6 +2306,11 @@
       "area": "safety",
       "question": "What safety policy is missing for autonomous comments?",
       "ts": 1784795884
+    },
+    {
+      "area": "privacy",
+      "question": "What data do we store that could be sensitive?",
+      "ts": 1784825589
     }
   ]
 }
