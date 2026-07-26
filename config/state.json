@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785031811,
-  "last_comment_check": 1785022532,
+  "last_check": 1785041112,
+  "last_comment_check": 1785037399,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1784977051,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785003027,
+  "last_self_question": 1785032736,
   "last_telegram_error_ts": 1784469506,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 13,
+  "self_question_index": 14,
   "self_question_log": [
-    {
-      "answer": "From the codebase summary alone, the only place that is explicitly designed to run subprocesses is `src/ouroboros/test_runner.py`. That file\u2019s `_run_tests_sandboxed(...)` and `run_tests(...)` take a `timeout` and therefore should not hang indefinitely.\n\nThat said, the summary does **not** list any other subprocess-invoking functions (e.g., `subprocess.run/Popen` wrappers) elsewhere. So, based on what\u2019s provided, there are **no clearly identified subprocess calls that could hang indefinitely** without a timeout.\n\nIf you want a definitive answer, I\u2019d need the actual implementation(s) that call `subprocess` (search for `subprocess.` or `Popen(` / `run(` / `check_output(` across `src/`).",
-      "area": "edge_cases",
-      "question": "Which subprocess calls could hang indefinitely without a timeout?",
-      "ts": 1779077327
-    },
     {
       "answer": "Based on the repo structure (especially `src/ouroboros/llm.py` and `src/ouroboros/prompts.py`), the best candidates to shorten\u2014typically by trimming repeated instructions, verbose exemplars, and unused sections\u2014are the prompts that (a) run most frequently in loops/cycles and/or (b) appear to be \u201cover-specified\u201d by design.\n\n## High-impact prompt candidates (likely most token-expensive / looped)\n\n1. **Code suggestion / change generation**\n   - `load_suggestion_implementation_prompt()` (used for implementing a plan into patch-ready changes)\n   - `load_code_suggestion_prompt()` (used when turning a task/plan into concrete code edits)\n   Why: these are usually the longest prompts and are used every improvement cycle. Even small reductions here save a lot.\n\n2. **Improvement planning**\n   - `load_suggestion_implementation_prompt()` and/or `load_code_suggestion_prompt()` (if they include both planning + generation, split-like behavior)\n   - `load_code_suggestion_prompt()` / `load_comment_system_prompt()` depending on how prompts are composed\n   Why: planning steps can often be made more compact by removing \u201chow to think\u201d / meta-instructions and keeping only the required output format.\n\n3. **Comment/post generation for community tooling**\n   - `load_post_generation_prompt()`\n   - `load_comment_mining_prompt()`\n   - `load_comment",
       "area": "llm_optimization",
@@ -2305,6 +2299,11 @@
       "area": "docs",
       "question": "What implicit assumptions in the codebase should be documented as comments?",
       "ts": 1785003054
+    },
+    {
+      "area": "edge_cases",
+      "question": "What happens if the Moltbook API returns unexpected data shapes (empty list, null fields)?",
+      "ts": 1785032762
     }
   ]
 }
