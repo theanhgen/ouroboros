@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785061521,
-  "last_comment_check": 1785052241,
+  "last_check": 1785091233,
+  "last_comment_check": 1785081954,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1055,12 +1055,12 @@
   "last_git_push": 1773055881,
   "last_git_push_attempt": 1773055881,
   "last_github_improvement_attempt": 1782556330,
-  "last_improvement_attempt": 1784977051,
+  "last_improvement_attempt": 1785064325,
   "last_issue_scouting_attempt": 1782556330,
-  "last_memory_hygiene": 1784977051,
+  "last_memory_hygiene": 1785064325,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785032736,
+  "last_self_question": 1785062445,
   "last_telegram_error_ts": 1784469506,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 14,
+  "self_question_index": 15,
   "self_question_log": [
-    {
-      "answer": "Based on the repo structure (especially `src/ouroboros/llm.py` and `src/ouroboros/prompts.py`), the best candidates to shorten\u2014typically by trimming repeated instructions, verbose exemplars, and unused sections\u2014are the prompts that (a) run most frequently in loops/cycles and/or (b) appear to be \u201cover-specified\u201d by design.\n\n## High-impact prompt candidates (likely most token-expensive / looped)\n\n1. **Code suggestion / change generation**\n   - `load_suggestion_implementation_prompt()` (used for implementing a plan into patch-ready changes)\n   - `load_code_suggestion_prompt()` (used when turning a task/plan into concrete code edits)\n   Why: these are usually the longest prompts and are used every improvement cycle. Even small reductions here save a lot.\n\n2. **Improvement planning**\n   - `load_suggestion_implementation_prompt()` and/or `load_code_suggestion_prompt()` (if they include both planning + generation, split-like behavior)\n   - `load_code_suggestion_prompt()` / `load_comment_system_prompt()` depending on how prompts are composed\n   Why: planning steps can often be made more compact by removing \u201chow to think\u201d / meta-instructions and keeping only the required output format.\n\n3. **Comment/post generation for community tooling**\n   - `load_post_generation_prompt()`\n   - `load_comment_mining_prompt()`\n   - `load_comment",
-      "area": "llm_optimization",
-      "question": "Which LLM prompts could be shortened to reduce token cost without losing quality?",
-      "ts": 1779144588
-    },
     {
       "answer": "Based on the file layout and the kinds of loops these modules implement, the most likely places where you\u2019re doing **redundant LLM calls** (and could either **cache** repeated outputs or **batch** multiple prompts) are:\n\n## 1) `src/ouroboros/improvement.py` (big one)\nThis file drives the end-to-end \u201cidentify \u2192 plan \u2192 generate changes \u2192 review/validate\u201d flow. Redundancy/batching opportunities:\n\n- **`identify_improvements(...)`**: often re-prompts from the same inputs (codebase summary + test results + history + additional context). If that summary/history is unchanged between runs (or within retries), caching could avoid repeat calls.\n- **`plan_improvement(...)`**: can be called repeatedly for the same task/relevant_code during:\n  - retries (`_retry_with_root_cause`)\n  - multi-attempt cycles\n- **`generate_changes(...)`** and **`ToolRunner`-driven tool-calling loops**: if the LLM asks for tool outputs and then restarts/continues, you can see repeated partial prompts.\n- **`validate_improvement(...)` + possible re-LLM review steps**: if you ever re-request similar review text for the same diff, caching helps.\n\n## 2) `src/ouroboros/community_improvement.py`\nThis implements a multi-step state machine for community-facing PRs/issues. Likely redundant",
       "area": "llm_optimization",
@@ -2304,6 +2298,11 @@
       "area": "edge_cases",
       "question": "What happens if the Moltbook API returns unexpected data shapes (empty list, null fields)?",
       "ts": 1785032762
+    },
+    {
+      "area": "edge_cases",
+      "question": "Which subprocess calls could hang indefinitely without a timeout?",
+      "ts": 1785062472
     }
   ]
 }
