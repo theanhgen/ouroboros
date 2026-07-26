@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785002102,
-  "last_comment_check": 1784992823,
+  "last_check": 1785031811,
+  "last_comment_check": 1785022532,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1784977051,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1784973315,
+  "last_self_question": 1785003027,
   "last_telegram_error_ts": 1784469506,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 12,
+  "self_question_index": 13,
   "self_question_log": [
-    {
-      "answer": "In this codebase, Moltbook API responses are handled defensively in a few key places, but the behavior depends on *which* Moltbook endpoint is used.\n\n### 1) Most \u201cAPI wrapper\u201d methods assume a JSON shape\nFunctions in `src/ouroboros/moltbook.py` (e.g., `get_feed`, `get_posts`, `get_post_comments`, `get_my_posts`, `get_status`) call `_request(...)` and then expect to be able to iterate/parse the returned JSON into lists/objects.  \n\nIf the API returns an **unexpected shape** such as:\n- an **empty list** where the code expects items,\n- or **null fields** inside returned objects,\n\nthen typical outcomes are:\n- **Empty results**: the caller may just process \u201cnothing\u201d (e.g., no posts/comments), which often leads to the loop doing less work rather than crashing.\n- **Null fields**: code that later dereferences expected fields (e.g., `post[\"id\"]`, `comment[\"content\"]`, etc.) can raise exceptions like `KeyError` or `TypeError` when it tries to subscript/iterate over `None`.\n\nWhether those exceptions are caught varies by method.\n\n### 2) The runner usually degrades by skipping certain steps\nThe tests suggest the system is designed to continue operating even when Moltbook isn\u2019t fully usable (e.g., missing credentials). In the actual implementation,",
-      "area": "edge_cases",
-      "question": "What happens if the Moltbook API returns unexpected data shapes (empty list, null fields)?",
-      "ts": 1779046188
-    },
     {
       "answer": "From the codebase summary alone, the only place that is explicitly designed to run subprocesses is `src/ouroboros/test_runner.py`. That file\u2019s `_run_tests_sandboxed(...)` and `run_tests(...)` take a `timeout` and therefore should not hang indefinitely.\n\nThat said, the summary does **not** list any other subprocess-invoking functions (e.g., `subprocess.run/Popen` wrappers) elsewhere. So, based on what\u2019s provided, there are **no clearly identified subprocess calls that could hang indefinitely** without a timeout.\n\nIf you want a definitive answer, I\u2019d need the actual implementation(s) that call `subprocess` (search for `subprocess.` or `Popen(` / `run(` / `check_output(` across `src/`).",
       "area": "edge_cases",
@@ -2306,6 +2300,11 @@
       "area": "docs",
       "question": "Which public functions lack docstrings or have misleading ones?",
       "ts": 1784973342
+    },
+    {
+      "area": "docs",
+      "question": "What implicit assumptions in the codebase should be documented as comments?",
+      "ts": 1785003054
     }
   ]
 }
