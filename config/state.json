@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785091233,
-  "last_comment_check": 1785081954,
+  "last_check": 1785120942,
+  "last_comment_check": 1785111663,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1785064325,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785062445,
+  "last_self_question": 1785092158,
   "last_telegram_error_ts": 1784469506,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 15,
+  "self_question_index": 16,
   "self_question_log": [
-    {
-      "answer": "Based on the file layout and the kinds of loops these modules implement, the most likely places where you\u2019re doing **redundant LLM calls** (and could either **cache** repeated outputs or **batch** multiple prompts) are:\n\n## 1) `src/ouroboros/improvement.py` (big one)\nThis file drives the end-to-end \u201cidentify \u2192 plan \u2192 generate changes \u2192 review/validate\u201d flow. Redundancy/batching opportunities:\n\n- **`identify_improvements(...)`**: often re-prompts from the same inputs (codebase summary + test results + history + additional context). If that summary/history is unchanged between runs (or within retries), caching could avoid repeat calls.\n- **`plan_improvement(...)`**: can be called repeatedly for the same task/relevant_code during:\n  - retries (`_retry_with_root_cause`)\n  - multi-attempt cycles\n- **`generate_changes(...)`** and **`ToolRunner`-driven tool-calling loops**: if the LLM asks for tool outputs and then restarts/continues, you can see repeated partial prompts.\n- **`validate_improvement(...)` + possible re-LLM review steps**: if you ever re-request similar review text for the same diff, caching helps.\n\n## 2) `src/ouroboros/community_improvement.py`\nThis implements a multi-step state machine for community-facing PRs/issues. Likely redundant",
-      "area": "llm_optimization",
-      "question": "Where are we making redundant LLM calls that could be cached or batched?",
-      "ts": 1779185235
-    },
     {
       "answer": "A lot of the \u201cself-improvement\u201d flow repeats the same orchestration patterns across modules (improvement vs GitHub vs community vs issue scouting). Here are the biggest repetitive patterns that look automatable.\n\n### 1) Multi-step \u201cLLM \u2192 parse \u2192 validate \u2192 apply \u2192 test \u2192 record\u201d\nIn `improvement.py` / `improvement_runner.py` (and mirrored in `community_improvement.py`, `github_improvement.py`, `issue_scouting.py`), the cycle repeatedly does:\n- build a prompt/context from current state (history, tests, code summary)\n- call an LLM method\n- parse the response into a structured object\n- validate scope/size/policy constraints\n- apply changes (or create a PR/issue)\n- run tests (sometimes revert on regression)\n- record metrics/history/outcomes and decide next step\n\n**Automation opportunity:** introduce a generic \u201cpipeline runner\u201d that takes a declarative step graph (and common artifacts: code snapshot, test results, history context, config/policy). Each task type supplies only step-specific functions.\n\n---\n\n### 2) \u201cOn failure, retry with root-cause context\u201d pattern\n`improvement.py` has `_retry_with_root_cause(...)` and logic around test_before/test_after and failure details. Similar retry/error-handling behavior is often repeated in other improvement flows (e.g., waiting/analysis selection in community improvement; PR checks feedback in GitHub improvement).\n\n**",
       "area": "productivity",
@@ -2303,6 +2297,11 @@
       "area": "edge_cases",
       "question": "Which subprocess calls could hang indefinitely without a timeout?",
       "ts": 1785062472
+    },
+    {
+      "area": "llm_optimization",
+      "question": "Which LLM prompts could be shortened to reduce token cost without losing quality?",
+      "ts": 1785092185
     }
   ]
 }
