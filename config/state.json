@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785120942,
-  "last_comment_check": 1785111663,
+  "last_check": 1785128388,
+  "last_comment_check": 1785126530,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1785064325,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785092158,
+  "last_self_question": 1785121867,
   "last_telegram_error_ts": 1784469506,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 16,
+  "self_question_index": 17,
   "self_question_log": [
-    {
-      "answer": "A lot of the \u201cself-improvement\u201d flow repeats the same orchestration patterns across modules (improvement vs GitHub vs community vs issue scouting). Here are the biggest repetitive patterns that look automatable.\n\n### 1) Multi-step \u201cLLM \u2192 parse \u2192 validate \u2192 apply \u2192 test \u2192 record\u201d\nIn `improvement.py` / `improvement_runner.py` (and mirrored in `community_improvement.py`, `github_improvement.py`, `issue_scouting.py`), the cycle repeatedly does:\n- build a prompt/context from current state (history, tests, code summary)\n- call an LLM method\n- parse the response into a structured object\n- validate scope/size/policy constraints\n- apply changes (or create a PR/issue)\n- run tests (sometimes revert on regression)\n- record metrics/history/outcomes and decide next step\n\n**Automation opportunity:** introduce a generic \u201cpipeline runner\u201d that takes a declarative step graph (and common artifacts: code snapshot, test results, history context, config/policy). Each task type supplies only step-specific functions.\n\n---\n\n### 2) \u201cOn failure, retry with root-cause context\u201d pattern\n`improvement.py` has `_retry_with_root_cause(...)` and logic around test_before/test_after and failure details. Similar retry/error-handling behavior is often repeated in other improvement flows (e.g., waiting/analysis selection in community improvement; PR checks feedback in GitHub improvement).\n\n**",
-      "area": "productivity",
-      "question": "What repetitive patterns in the improvement cycle could be automated better?",
-      "ts": 1779214391
-    },
     {
       "answer": "I can\u2019t reliably answer that from the summary alone. To determine which configuration options are **never used**, I\u2019d need to inspect the actual `config` schema/defaults (e.g., `src/ouroboros/config.py`) and then confirm usage via search across the codebase (e.g., grep for each field).\n\nIf you want, I can do this precisely if you provide either:\n1) the contents of `src/ouroboros/config.py` (and any other config definitions like `moltbook.py` runner config), **or**\n2) permission to run a repo-wide \u201cfind references\u201d style scan (e.g., you paste results of `rg -n \"config\\.\"` / `rg -n \"<option_name>\"`).\n\n**Quick guess (not a proven \u201cnever used\u201d):** I noticed `SafetyConfig` has fields described in docstrings (and there\u2019s also safety/policy logic), but without seeing the field list and where they\u2019re referenced, I can\u2019t label any as unused.\n\nSend the config file(s) (or the config option names), and I\u2019ll map each option \u2192 whether it\u2019s referenced anywhere, and flag the ones that truly have zero references.",
       "area": "productivity",
@@ -2302,6 +2296,11 @@
       "area": "llm_optimization",
       "question": "Which LLM prompts could be shortened to reduce token cost without losing quality?",
       "ts": 1785092185
+    },
+    {
+      "area": "llm_optimization",
+      "question": "Where are we making redundant LLM calls that could be cached or batched?",
+      "ts": 1785121894
     }
   ]
 }
