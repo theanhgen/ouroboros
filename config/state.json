@@ -1046,7 +1046,7 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785297131,
+  "last_check": 1785302836,
   "last_comment_check": 1785290526,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1785238883,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785268821,
+  "last_self_question": 1785298071,
   "last_telegram_error_ts": 1784469506,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "ed97d987-e44a-4c47-a669-dc5249d90686",
     "93b428ca-d83c-49bb-8bae-635a88eb6fd5"
   ],
-  "self_question_index": 3,
+  "self_question_index": 4,
   "self_question_log": [
-    {
-      "answer": "For `src/ouroboros/storage.py`, you should add tests that cover both the \u201chappy path\u201d CRUD-like behavior and the important invariants implied by how the module is used elsewhere (bounded snapshots, correct serialization, embedding persistence/search, and SQLite initialization).\n\n## What tests should exist\n\n### 1) Storage initialization / schema\n- **test_init_creates_db_and_tables(tmp_path)**  \n  Create an `OuroborosStorage(db_path)` in a temp dir and assert the DB file is created (and optionally that core tables exist).\n\n### 2) Cycle records\n- **test_record_cycle_persists_and_is_retrievable(tmp_path)**  \n  Call `record_cycle(CycleRecord(...))`, then `get_recent_cycles(limit)` returns that item.\n\n- **test_get_recent_cycles_bounded(tmp_path)**  \n  Insert more than the limit and assert only the most recent `limit` items are returned.\n\n### 3) Metrics snapshots\n- **test_record_metrics_and_get_summary(tmp_path)**  \n  Insert metrics via `record_metrics([...])`, then call `get_summary()` and assert it reflects the recorded snapshots.\n\n- **test_save_metrics_bounded_behavior(tmp_path)** (if `OuroborosStorage` enforces bounds)  \n  Ensure only the last *N* snapshots remain.\n\n### 4) Total cost aggregation\n- **test_get_total_cost_sums_snapshots(tmp_path)**  \n  Populate metrics snapshots with known cost",
-      "area": "missing_tests",
-      "question": "What tests should exist for module storage.py? What are the key functions to test?",
-      "ts": 1779413660
-    },
     {
       "answer": "Based on `src/ouroboros/system.py` exposing:\n\n- `class SystemHealth`\n- `get_system_stats()`\n- `get_service_logs(lines)`\n- `get_system_summary()`\n\nyou should add tests that cover:\n\n## 1) `SystemHealth.get_system_stats()`\n**Key cases**\n- Returns a dict/object with the expected keys (shape contract).\n- Uses reasonable defaults when optional system info is missing/unavailable.\n- Does not raise when the underlying OS/psutil/system-call layer behaves unexpectedly (mock failures).\n\n**What to assert**\n- Output type (e.g., dict)\n- Required fields exist (whatever the module defines as \u201cstats\u201d)\n- Values are plausibly well-formed (e.g., numbers or strings), without relying on real environment.\n\n## 2) `SystemHealth.get_service_logs(lines)`\n**Key cases**\n- `lines` is a positive integer: returns log text/list with at most that many lines (or exactly that many, depending on implementation).\n- `lines` at boundary values:\n  - `lines=0` (empty result) if supported\n  - `lines<0` should raise or clamp (assert expected behavior).\n- No logs available (empty output).\n- Underlying log-fetch mechanism failure (e.g., command not found, permission error) should be handled (raise vs return empty\u2014assert actual design).\n\n**What to assert**\n- Output type\n- Length/line count constraint\n",
       "area": "missing_tests",
@@ -2296,6 +2290,11 @@
       "area": "missing_tests",
       "question": "What tests should exist for module storage.py? What are the key functions to test?",
       "ts": 1785268855
+    },
+    {
+      "area": "missing_tests",
+      "question": "What tests should exist for module system.py? What are the key functions to test?",
+      "ts": 1785298115
     }
   ]
 }
