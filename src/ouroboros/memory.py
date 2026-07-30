@@ -109,6 +109,59 @@ def _clamp_trust(value: float) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Code indexing
+# ---------------------------------------------------------------------------
+
+class CodeASTVisitor(ast.NodeVisitor):
+    """AST visitor to extract classes, methods, functions and docstrings from Python files."""
+
+    def __init__(self, file_path: str) -> None:
+        self.file_path = file_path
+        self.facts: List[str] = []
+        self.class_stack: List[str] = []
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        class_name = node.name
+        if self.class_stack:
+            class_name = ".".join(self.class_stack) + "." + class_name
+
+        self.facts.append(f"[code] {self.file_path}: class {class_name}")
+        docstring = ast.get_docstring(node)
+        if docstring:
+            self.facts.append(f"[code] {self.file_path}: class {class_name} docstring: {docstring.strip()}")
+
+        self.class_stack.append(node.name)
+        self.generic_visit(node)
+        self.class_stack.pop()
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self._visit_func(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self._visit_func(node)
+
+    def _visit_func(self, node: Any) -> None:
+        func_name = node.name
+        if self.class_stack:
+            func_name = ".".join(self.class_stack) + "." + func_name
+
+        dummy = copy.copy(node)
+        dummy.body = [ast.Pass()]
+        dummy.decorator_list = []
+        dummy.name = func_name
+
+        try:
+            sig = ast.unparse(dummy).strip().removesuffix(":\n    pass")
+            self.facts.append(f"[code] {self.file_path}: {sig}")
+        except Exception:
+            self.facts.append(f"[code] {self.file_path}: def {func_name}")
+
+        docstring = ast.get_docstring(node)
+        if docstring:
+            self.facts.append(f"[code] {self.file_path}: def {func_name} docstring: {docstring.strip()}")
+
+
+# ---------------------------------------------------------------------------
 # MemoryStore
 # ---------------------------------------------------------------------------
 
@@ -160,6 +213,31 @@ class MemoryStore:
             self._compute_hrr_vector(fact_id, content)
             self._rebuild_bank(category)
             return fact_id
+
+    def index_code(self, file_path: str, content: str) -> List[int]:
+        """Parse code into code facts and persist them."""
+        facts: List[str] = []
+
+        if file_path.lower().endswith(".py"):
+            try:
+                tree = ast.parse(content)
+                module_doc = ast.get_docstring(tree)
+                if module_doc:
+                    facts.append(f"[code] {file_path}: module docstring: {module_doc.strip()}")
+
+                visitor = CodeASTVisitor(file_path)
+                visitor.visit(tree)
+                facts.extend(visitor.facts)
+            except Exception as e:
+                log.warning("Failed to parse Python file %s with AST: %s", file_path, e)
+
+        if not facts:
+            facts.append(f"[code] {file_path}: {content[:500]}")
+
+        fact_ids: List[int] = []
+        for fact_content in facts:
+            fact_ids.append(self.add_fact(fact_content, category="code", tags=file_path))
+        return fact_ids
 
     def search_facts(self, query: str, category: Optional[str] = None,
                      min_trust: float = 0.3, limit: int = 10) -> List[Dict]:
@@ -697,55 +775,6 @@ class FactRetriever:
 # Convenience: backward-compatible IndexManager wrapper
 # ---------------------------------------------------------------------------
 
-class CodeASTVisitor(ast.NodeVisitor):
-    """AST visitor to extract classes, methods, functions and docstrings from Python files."""
-
-    def __init__(self, file_path: str) -> None:
-        self.file_path = file_path
-        self.facts: List[str] = []
-        self.class_stack: List[str] = []
-
-    def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        class_name = node.name
-        if self.class_stack:
-            class_name = ".".join(self.class_stack) + "." + class_name
-            
-        self.facts.append(f"[code] {self.file_path}: class {class_name}")
-        docstring = ast.get_docstring(node)
-        if docstring:
-            self.facts.append(f"[code] {self.file_path}: class {class_name} docstring: {docstring.strip()}")
-            
-        self.class_stack.append(node.name)
-        self.generic_visit(node)
-        self.class_stack.pop()
-
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-        self._visit_func(node)
-
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-        self._visit_func(node)
-
-    def _visit_func(self, node: Any) -> None:
-        func_name = node.name
-        if self.class_stack:
-            func_name = ".".join(self.class_stack) + "." + func_name
-            
-        dummy = copy.copy(node)
-        dummy.body = [ast.Pass()]
-        dummy.decorator_list = []
-        dummy.name = func_name
-        
-        try:
-            sig = ast.unparse(dummy).strip().removesuffix(":\n    pass")
-            self.facts.append(f"[code] {self.file_path}: {sig}")
-        except Exception:
-            self.facts.append(f"[code] {self.file_path}: def {func_name}")
-            
-        docstring = ast.get_docstring(node)
-        if docstring:
-            self.facts.append(f"[code] {self.file_path}: def {func_name} docstring: {docstring.strip()}")
-
-
 class IndexManager:
     """Backward-compatible wrapper around MemoryStore for existing callers."""
 
@@ -758,38 +787,8 @@ class IndexManager:
         self._retriever = FactRetriever(self._store)
 
     def index_file(self, file_path: str, content: str) -> None:
-        """Index a code file as a fact, using AST-based parsing for Python files."""
-        facts = []
-        is_python = file_path.lower().endswith(".py")
-        
-        if is_python:
-            try:
-                tree = ast.parse(content)
-                # Extract module-level docstring
-                module_doc = ast.get_docstring(tree)
-                if module_doc:
-                    facts.append(f"[code] {file_path}: module docstring: {module_doc.strip()}")
-                
-                visitor = CodeASTVisitor(file_path)
-                visitor.visit(tree)
-                facts.extend(visitor.facts)
-            except Exception as e:
-                log.warning("Failed to parse Python file %s with AST, falling back: %s", file_path, e)
-
-        if not facts:
-            summary = content[:500]
-            self._store.add_fact(
-                f"[code] {file_path}: {summary}",
-                category="code",
-                tags=file_path,
-            )
-        else:
-            for fact_content in facts:
-                self._store.add_fact(
-                    fact_content,
-                    category="code",
-                    tags=file_path,
-                )
+        """Index a code file as a fact, delegating parsing and storage to MemoryStore."""
+        self._store.index_code(file_path, content)
 
     def index_failure(self, task_id: str, description: str, failure_msg: str) -> None:
         """Index a failed improvement attempt."""
