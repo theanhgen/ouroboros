@@ -62,6 +62,8 @@ def unbind(memory: "np.ndarray", key: "np.ndarray") -> "np.ndarray":
 def bundle(*vectors: "np.ndarray") -> "np.ndarray":
     """Superposition via circular mean of complex exponentials."""
     _require_numpy()
+    if not vectors:
+        raise ValueError("At least one vector must be provided to bundle")
     complex_sum = np.sum([np.exp(1j * v) for v in vectors], axis=0)
     return np.angle(complex_sum) % _TWO_PI
 
