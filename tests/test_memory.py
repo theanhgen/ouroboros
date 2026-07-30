@@ -17,6 +17,26 @@ def temp_store(tmp_path):
     store.close()
 
 
+def test_memory_store_index_code_returns_fact_ids(temp_store):
+    code_content = textwrap.dedent('''
+        """Module docs."""
+
+        def helper(value: int) -> str:
+            """Helper docs."""
+            return str(value)
+    ''').strip()
+
+    fact_ids = temp_store.index_code("src/helper.py", code_content)
+    facts = temp_store.list_facts(category="code")
+    fact_contents = {fact["content"] for fact in facts}
+
+    assert {fact["fact_id"] for fact in facts} == set(fact_ids)
+    assert {fact["tags"] for fact in facts} == {"src/helper.py"}
+    assert "[code] src/helper.py: module docstring: Module docs." in fact_contents
+    assert "[code] src/helper.py: def helper(value: int) -> str" in fact_contents
+    assert "[code] src/helper.py: def helper docstring: Helper docs." in fact_contents
+
+
 def test_index_file_python_ast(temp_store):
     manager = IndexManager(storage=temp_store)
 
