@@ -57,6 +57,10 @@ def test_bundle():
     d = encode_atom("dog", dim=128)
     assert similarity(bundled, d) < similarity(bundled, a)
 
+def test_bundle_empty():
+    with pytest.raises(ValueError, match="At least one vector must be provided to bundle"):
+        bundle()
+
 def test_similarity():
     a = encode_atom("cat", dim=64)
     b = encode_atom("cat", dim=64)
