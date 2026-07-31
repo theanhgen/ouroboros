@@ -45,6 +45,36 @@ FAILED tests/test_foo.py::test_bar - AssertionError: expected 1 got 2
     assert fail.file == "tests/test_foo.py"
     assert "AssertionError" in fail.message
 
+def test_parse_pytest_output_error_details():
+    output = """
+ERROR tests/test_foo.py::test_setup - RuntimeError: fixture failed
+3 passed, 1 error in 0.52s
+"""
+    result = _parse_pytest_output(output)
+    assert result["errors"] == 1
+    assert len(result["failures"]) == 1
+    fail = result["failures"][0]
+    assert fail.test_name == "test_setup"
+    assert fail.file == "tests/test_foo.py"
+    assert fail.message == "RuntimeError: fixture failed"
+
+def test_parse_pytest_output_mixed_failures_and_errors():
+    output = """
+FAILED tests/test_foo.py::test_bar - AssertionError: expected 1 got 2
+ERROR tests/test_bar.py::test_setup - RuntimeError: fixture failed
+2 passed, 1 failed, 1 error in 0.52s
+"""
+    result = _parse_pytest_output(output)
+    assert result["failed"] == 1
+    assert result["errors"] == 1
+    assert len(result["failures"]) == 2
+    assert [fail.test_name for fail in result["failures"]] == ["test_bar", "test_setup"]
+    assert [fail.file for fail in result["failures"]] == ["tests/test_foo.py", "tests/test_bar.py"]
+    assert [fail.message for fail in result["failures"]] == [
+        "AssertionError: expected 1 got 2",
+        "RuntimeError: fixture failed",
+    ]
+
 def test_parse_pytest_output_no_tests():
     output = "no tests ran in 0.01s"
     result = _parse_pytest_output(output)

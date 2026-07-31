@@ -72,8 +72,8 @@ def _parse_pytest_output(output: str) -> dict:
     if cov_match:
         result["coverage"] = float(cov_match.group(1))
 
-    # Parse FAILED lines like "FAILED tests/test_foo.py::test_bar - AssertionError: ..."
-    for match in re.finditer(r"FAILED\s+([\w/._-]+)::(\S+)\s*(?:-\s*(.*))?", output):
+    # Parse FAILED/ERROR lines like "FAILED tests/test_foo.py::test_bar - AssertionError: ..."
+    for match in re.finditer(r"(?:FAILED|ERROR)\s+([\w/._-]+)::(\S+)\s*(?:-\s*(.*))?", output):
         file_path = match.group(1)
         test_name = match.group(2)
         message = match.group(3) or ""
