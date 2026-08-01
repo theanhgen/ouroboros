@@ -1046,7 +1046,7 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785589430,
+  "last_check": 1785592377,
   "last_comment_check": 1785588481,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
@@ -1060,14 +1060,14 @@
   "last_memory_hygiene": 1785586550,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785561336,
+  "last_self_question": 1785590424,
   "last_telegram_error_ts": 1785556588,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
     "92f7a1b5-ac13-4667-b803-eba6d0685bd2",
-    "54783446-dec1-4662-8a1d-6833ba862c3f",
-    "fbdd1081-ee07-48ec-852f-827e07c6160e",
     "9263226b-c975-4018-a7b7-4477401d4931",
+    "fbdd1081-ee07-48ec-852f-827e07c6160e",
+    "54783446-dec1-4662-8a1d-6833ba862c3f",
     "7cfb8815-5d22-44dd-bc29-f727cfd9cc1f",
     "fcd7cd71-2107-4c86-a2a2-59e97882b22a",
     "ed711c77-a46a-4b6d-adfd-7b81a1b38a70",
@@ -1132,15 +1132,15 @@
     "fcaf3835-ea6d-42f0-a642-e928c663f724",
     "efc20087-48fc-48cd-b2cf-2c9e74aaf37f",
     "f216a4c5-f620-4c49-86f9-ccf4af74cb99",
-    "4ea13c12-a8d6-4cd5-b5bf-07a2d234a7f4",
     "d01fd509-c1b4-45cd-853c-b5b30000b3cd",
+    "4ea13c12-a8d6-4cd5-b5bf-07a2d234a7f4",
     "fd05712f-733d-478f-b3d8-ce7bf7c6dcd6",
-    "1157360b-c0e4-4fa6-b2fd-6610ae0b1c74",
+    "c1a4063a-c68e-4ec7-915d-91a01aaa4028",
     "5d0325e0-4d0d-4bd8-86ae-76cfa8cdf5f3",
     "1331bee9-2af5-4e8a-b2a2-4bef52626706",
     "1b050626-b2de-429a-9815-279aa413244c",
     "5002afe6-2ec0-4beb-9216-594babf1b155",
-    "c1a4063a-c68e-4ec7-915d-91a01aaa4028",
+    "1157360b-c0e4-4fa6-b2fd-6610ae0b1c74",
     "08dc37fa-7f06-40d6-953f-6c6ae0ec26a8",
     "32097fac-04c9-487f-bcc0-274eb74fa9fb",
     "06a928fb-88f4-4851-b747-fa6ecab77491",
@@ -1265,14 +1265,8 @@
     "61b38af6-efe1-4459-aca1-c4c45c15f7d3",
     "7fedc0c7-8abe-4639-80f0-dd25ff680827"
   ],
-  "self_question_index": 13,
+  "self_question_index": 14,
   "self_question_log": [
-    {
-      "answer": "Here are the main *implicit assumptions* in this codebase that are worth documenting explicitly as comments (because they\u2019re relied on by multiple modules/tests, but aren\u2019t always obvious from function signatures).\n\n## Repo layout & filesystem assumptions\n- **\u201crepo_root\u201d concept is stable and always resolves correctly**\n  - Many functions take `repo_root` and build paths relative to it (backlog, history, metrics, wiki, etc.). Document that the code assumes a consistent repository root and that it\u2019s derived the same way everywhere (see `codebase.get_repo_root()` + path helpers like `_history_path`, `_metrics_path`, etc.).\n- **Expected directory/file naming conventions**\n  - Backlog/history/metrics/wiki are persisted under specific filenames/paths (e.g., `.ouroboros/*`-like structure\u2014whatever the project uses). Document what those files are and where they live.\n- **State writes are atomic or \u201csafe enough\u201d**\n  - Some modules test atomic write behavior (e.g., moltbook state). Document which state files are written atomically vs. plain write, and what \u201catomic\u201d means in this project.\n- **Tests assume a clean temp repo state**\n  - Many tests stub git/time/FS but assume there are no pre-existing files except the ones created in fixtures. Add comments near storage/backlog init behavior explaining what happens if files already exist.\n\n## Git workflow assumptions\n- **Git operations assume a particular workflow**\n  -",
-      "area": "docs",
-      "question": "What implicit assumptions in the codebase should be documented as comments?",
-      "ts": 1779705743
-    },
     {
       "answer": "From the codebase structure, the Moltbook integration is driven through `src/ouroboros/moltbook.py`, and its callers (notably `community_improvement.py`) expect certain fields to exist in the returned JSON.\n\n**If the Moltbook API returns unexpected shapes (e.g., empty lists or `null` fields), the behavior will be \u201cbest-effort\u201d at the boundary, but may degrade to \u201cwait/do nothing\u201d or to runtime exceptions depending on where the missing data is used.**\n\nConcretely:\n\n- **Empty arrays**\n  - For endpoints like \u201cfeed\u201d/\u201cposts\u201d, `moltbook.py` likely returns whatever the API returns (i.e., an empty list).\n  - Downstream logic that tries to select \u201cbest comment\u201d, \u201clatest comment\u201d, or similar will then have no candidates. That typically results in:\n    - staying in a **waiting/deferred state** (no suitable data to proceed), or\n    - falling back to a **default path** (e.g., \u201cfallback no comments\u201d behavior is explicitly tested in `tests/test_community_improvement.py`).\n\n- **Null fields inside objects**\n  - If code later assumes a field is a string/number (e.g., timestamps, body/content, comment text), `None` can cause:\n    - safe comparisons / parsing to fail, or\n    - selection logic to treat the entry as missing and skip it (if checks like `",
       "area": "edge_cases",
@@ -2286,6 +2280,11 @@
       "area": "docs",
       "question": "What implicit assumptions in the codebase should be documented as comments?",
       "ts": 1785561399
+    },
+    {
+      "area": "edge_cases",
+      "question": "What happens if the Moltbook API returns unexpected data shapes (empty list, null fields)?",
+      "ts": 1785590451
     }
   ]
 }
