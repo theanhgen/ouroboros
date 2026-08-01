@@ -41,3 +41,4 @@
 2026-07-31 | fix_bug | Fix _parse_pytest_output in src/ouroboros/test_runner.py to  | success | tests: 247 -> 249
 2026-08-01 | refactor | Refactor get_function_signatures in src/ouroboros/codebase.p | failed | no plan generated
 2026-08-01 | add_feature | Add a validate_import_policy function in src/ouroboros/polic | failed | no plan generated
+2026-08-01 | fix_bug | Add dimension validation to encode_atom in src/ouroboros/hol | failed | no plan generated
