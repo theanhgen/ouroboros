@@ -1046,7 +1046,7 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785677213,
+  "last_check": 1785679152,
   "last_comment_check": 1785676225,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
@@ -1060,16 +1060,16 @@
   "last_memory_hygiene": 1785673277,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785649073,
+  "last_self_question": 1785678159,
   "last_telegram_error_ts": 1785673359,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
     "92f7a1b5-ac13-4667-b803-eba6d0685bd2",
     "9263226b-c975-4018-a7b7-4477401d4931",
-    "54783446-dec1-4662-8a1d-6833ba862c3f",
     "fbdd1081-ee07-48ec-852f-827e07c6160e",
-    "fcd7cd71-2107-4c86-a2a2-59e97882b22a",
+    "54783446-dec1-4662-8a1d-6833ba862c3f",
     "7cfb8815-5d22-44dd-bc29-f727cfd9cc1f",
+    "fcd7cd71-2107-4c86-a2a2-59e97882b22a",
     "ed711c77-a46a-4b6d-adfd-7b81a1b38a70",
     "ff76e7d6-55c3-4779-a776-c2867e184147",
     "5b673c6f-9d99-46a8-a838-8a76314d450c",
@@ -1265,14 +1265,8 @@
     "61b38af6-efe1-4459-aca1-c4c45c15f7d3",
     "7fedc0c7-8abe-4639-80f0-dd25ff680827"
   ],
-  "self_question_index": 16,
+  "self_question_index": 17,
   "self_question_log": [
-    {
-      "answer": "From a cost perspective, the biggest wins usually come from shortening **(a)** long \u201ccontext dump\u201d prompts and **(b)** prompts that ask for large, structured outputs repeatedly. In this codebase, the most likely candidates are the prompts in `src/ouroboros/prompts.py` that are used as *templates* for iterative cycles (comment mining, code suggestion, issue analysis/fix, KB summarization, etc.).\n\n### Best candidates to shorten (highest probability of savings)\nThese prompts likely include substantial instruction text plus optional examples; trimming can usually be done without reducing answer quality:\n\n1. **Code/comment generation prompts**\n   - `load_comment_system_prompt()`\n   - `load_post_generation_prompt()`\n   - `load_comment_analysis_prompt()`\n   - `load_code_suggestion_prompt()`\n   - `load_suggestion_implementation_prompt()`\n   - Why: these often contain detailed formatting rules and repetition that can be condensed (e.g., tighten \u201crespond with JSON\u201d guidance, remove redundant \u201cdo not\u2026\u201d text, shorten schema descriptions).\n\n2. **\u201cMining\u201d / \u201canalysis\u201d prompts that run often**\n   - `load_comment_mining_prompt()`\n   - `load_github_issue_analysis_prompt()`\n   - `load_github_issue_fix_prompt()`\n   - `load_question_post_prompt()`\n   - `load_topic_signal_prompt()`\n   - `load_insight_extraction_prompt()`\n   - Why: these",
-      "area": "llm_optimization",
-      "question": "Which LLM prompts could be shortened to reduce token cost without losing quality?",
-      "ts": 1779793334
-    },
     {
       "answer": "From the file-level structure and the way the test suite targets LLM entrypoints, the biggest sources of redundant (repeat) LLM calls you could likely cache or batch are:\n\n1. **`community_improvement.step_analyze` / `improvement.step_implement` calling review/analysis LLM stages repeatedly**\n   - Code areas:\n     - `src/ouroboros/community_improvement.py`: `_step_analyze`, `_step_implement`\n     - `src/ouroboros/improvement.py`: `identify_improvements`, `plan_improvement`, `generate_changes`, `validate_improvement`, plus retry/root-cause flow `_retry_with_root_cause`\n   - Why redundant:\n     - If the pipeline is run multiple times (or retries), you often re-run similar \u201canalyze these same suggestions / changes\u201d prompts, or re-run \u201creview\u201d prompts even when inputs haven\u2019t materially changed.\n\n2. **LLM \u201cplan / generate / review\u201d stages are per-task and per-file, but could be batched across tasks**\n   - Code areas:\n     - `src/ouroboros/improvement.py`: `plan_improvement`, `generate_changes`, `validate_improvement`\n     - `src/ouroboros/github_improvement.py`: `analyze_issue`, `apply_github_fix`\n     - `src/ouroboros/issue_scouting.py`: `run_issue_scouting_cycle` (calls identify-like logic)\n",
       "area": "llm_optimization",
@@ -2283,6 +2277,11 @@
       "area": "llm_optimization",
       "question": "Which LLM prompts could be shortened to reduce token cost without losing quality?",
       "ts": 1785649122
+    },
+    {
+      "area": "llm_optimization",
+      "question": "Where are we making redundant LLM calls that could be cached or batched?",
+      "ts": 1785678200
     }
   ]
 }
