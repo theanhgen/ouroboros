@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785619186,
-  "last_comment_check": 1785618216,
+  "last_check": 1785648114,
+  "last_comment_check": 1785647138,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1785586550,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785590424,
+  "last_self_question": 1785620124,
   "last_telegram_error_ts": 1785556588,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "61b38af6-efe1-4459-aca1-c4c45c15f7d3",
     "7fedc0c7-8abe-4639-80f0-dd25ff680827"
   ],
-  "self_question_index": 14,
+  "self_question_index": 15,
   "self_question_log": [
-    {
-      "answer": "From the codebase structure, the Moltbook integration is driven through `src/ouroboros/moltbook.py`, and its callers (notably `community_improvement.py`) expect certain fields to exist in the returned JSON.\n\n**If the Moltbook API returns unexpected shapes (e.g., empty lists or `null` fields), the behavior will be \u201cbest-effort\u201d at the boundary, but may degrade to \u201cwait/do nothing\u201d or to runtime exceptions depending on where the missing data is used.**\n\nConcretely:\n\n- **Empty arrays**\n  - For endpoints like \u201cfeed\u201d/\u201cposts\u201d, `moltbook.py` likely returns whatever the API returns (i.e., an empty list).\n  - Downstream logic that tries to select \u201cbest comment\u201d, \u201clatest comment\u201d, or similar will then have no candidates. That typically results in:\n    - staying in a **waiting/deferred state** (no suitable data to proceed), or\n    - falling back to a **default path** (e.g., \u201cfallback no comments\u201d behavior is explicitly tested in `tests/test_community_improvement.py`).\n\n- **Null fields inside objects**\n  - If code later assumes a field is a string/number (e.g., timestamps, body/content, comment text), `None` can cause:\n    - safe comparisons / parsing to fail, or\n    - selection logic to treat the entry as missing and skip it (if checks like `",
-      "area": "edge_cases",
-      "question": "What happens if the Moltbook API returns unexpected data shapes (empty list, null fields)?",
-      "ts": 1779734948
-    },
     {
       "answer": "From the codebase summary provided, I **can\u2019t determine this reliably** because the only files whose contents aren\u2019t shown are exactly where subprocess usage would be (notably `src/ouroboros/test_runner.py`, and likely `src/ouroboros/git_ops.py`).\n\nHowever, based on typical patterns in this repo:\n\n- **`tests/test_runner.py`** indicates `test_runner._run_tests_sandboxed()` likely runs a `pytest` subprocess (e.g., via `subprocess.run/Popen`).  \n- **`src/ouroboros/git_ops.py`** likely shells out to `git` commands (e.g., `git status`, `git diff`, `git push`, `git pr` equivalent via `gh`, etc.). Those can hang (authentication prompts, network waits, credential helpers, stalled pushes) if subprocess calls don\u2019t enforce a timeout.\n\n### What I\u2019d check in the actual code\nSearch for subprocess/spawn calls like:\n- `subprocess.run(`, `subprocess.check_output(`, `subprocess.Popen(`\n- `os.system(` / `commands.getoutput(` (less likely)\n- any wrapper that calls `Popen(...).communicate()` without a timeout\n\nThen specifically look for subprocess calls that **do not pass a `timeout=` argument** (for `subprocess.run`) and/or **do not use `communicate(timeout=...)`** (for `Popen`).\n\n### Most likely",
       "area": "edge_cases",
@@ -2285,6 +2279,11 @@
       "area": "edge_cases",
       "question": "What happens if the Moltbook API returns unexpected data shapes (empty list, null fields)?",
       "ts": 1785590451
+    },
+    {
+      "area": "edge_cases",
+      "question": "Which subprocess calls could hang indefinitely without a timeout?",
+      "ts": 1785620182
     }
   ]
 }
