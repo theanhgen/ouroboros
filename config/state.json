@@ -1046,7 +1046,7 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785765548,
+  "last_check": 1785766504,
   "last_comment_check": 1785765545,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
@@ -1060,15 +1060,15 @@
   "last_memory_hygiene": 1785759825,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785736767,
+  "last_self_question": 1785766501,
   "last_telegram_error_ts": 1785726290,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
     "92f7a1b5-ac13-4667-b803-eba6d0685bd2",
-    "54783446-dec1-4662-8a1d-6833ba862c3f",
-    "7cfb8815-5d22-44dd-bc29-f727cfd9cc1f",
     "9263226b-c975-4018-a7b7-4477401d4931",
     "fbdd1081-ee07-48ec-852f-827e07c6160e",
+    "54783446-dec1-4662-8a1d-6833ba862c3f",
+    "7cfb8815-5d22-44dd-bc29-f727cfd9cc1f",
     "fcd7cd71-2107-4c86-a2a2-59e97882b22a",
     "ed711c77-a46a-4b6d-adfd-7b81a1b38a70",
     "ff76e7d6-55c3-4779-a776-c2867e184147",
@@ -1132,15 +1132,15 @@
     "fcaf3835-ea6d-42f0-a642-e928c663f724",
     "efc20087-48fc-48cd-b2cf-2c9e74aaf37f",
     "f216a4c5-f620-4c49-86f9-ccf4af74cb99",
-    "4ea13c12-a8d6-4cd5-b5bf-07a2d234a7f4",
     "d01fd509-c1b4-45cd-853c-b5b30000b3cd",
+    "4ea13c12-a8d6-4cd5-b5bf-07a2d234a7f4",
     "fd05712f-733d-478f-b3d8-ce7bf7c6dcd6",
-    "1157360b-c0e4-4fa6-b2fd-6610ae0b1c74",
+    "c1a4063a-c68e-4ec7-915d-91a01aaa4028",
     "5d0325e0-4d0d-4bd8-86ae-76cfa8cdf5f3",
     "1331bee9-2af5-4e8a-b2a2-4bef52626706",
     "1b050626-b2de-429a-9815-279aa413244c",
     "5002afe6-2ec0-4beb-9216-594babf1b155",
-    "c1a4063a-c68e-4ec7-915d-91a01aaa4028",
+    "1157360b-c0e4-4fa6-b2fd-6610ae0b1c74",
     "08dc37fa-7f06-40d6-953f-6c6ae0ec26a8",
     "32097fac-04c9-487f-bcc0-274eb74fa9fb",
     "06a928fb-88f4-4851-b747-fa6ecab77491",
@@ -1265,14 +1265,8 @@
     "61b38af6-efe1-4459-aca1-c4c45c15f7d3",
     "7fedc0c7-8abe-4639-80f0-dd25ff680827"
   ],
-  "self_question_index": 19,
+  "self_question_index": 1,
   "self_question_log": [
-    {
-      "answer": "I can\u2019t determine that from the codebase summary alone.\n\nTo answer \u201cwhich configuration options are never used,\u201d I would need to (at minimum) scan the actual source for:\n1) where config keys are defined (e.g., `config.py`, default configs, CLI config schema),\n2) where they are read (e.g., `cfg.<field>` / `cfg[\"field\"]` / `get(\"field\")`),\n3) and confirm there are **zero** references for a given option across `src/ouroboros/**` (excluding definition sites, docs/tests).\n\nIf you want, I can do it precisely if you provide either:\n- the repository files (or a zip), or\n- permission to ask for a grep-style dump of config definitions and all `cfg.` / `config[...]` usage lines.\n\nQuick partial note (possible but not confirmable): the summary shows `SafetyConfig` exists and `policies.py` references \u201cconfig\u201d for scope/size checks, but without the actual field list and call sites, we can\u2019t identify unused fields confidently.\n\nUpload the config schema(s) and the files where config is consumed, and I\u2019ll produce a concrete list of unused options.",
-      "area": "productivity",
-      "question": "Which configuration options are never used and add unnecessary complexity?",
-      "ts": 1779880874
-    },
     {
       "answer": "Given `src/ouroboros/holographic.py` (about 121 lines), you\u2019ll want tests that validate (1) numeric correctness where it\u2019s deterministic, (2) round-trip encoding/decoding, and (3) basic behavior/ordering guarantees for similarity (rather than exact float matches).\n\n### What tests should exist for `holographic.py`?\n\n#### 1) Module import / numpy availability\n- **Test** that `_require_numpy()` succeeds when numpy is installed.\n- (Optional) **Test** that it raises a helpful error when numpy is missing (would require monkeypatching import failure).\n\n#### 2) Encoding functions produce correct shapes/types\n- **`encode_atom(word, dim)`**\n  - Returns a vector of length `dim`.\n  - Deterministic for the same inputs (same `word`, same `dim` \u21d2 same output).\n  - Values are finite (no NaNs/Infs).\n- **`encode_text(text, dim)`**\n  - Same shape/determinism/finite checks as above.\n- **`encode_fact(content, entities, dim)`**\n  - Shape/determinism/finite checks.\n  - Optionally verify that changing `entities` changes the embedding in some measurable way (e.g., similarity differs).\n\n#### 3) Bind / unbind algebraic sanity\n- **`bind(a, b)`** and **`unbind(memory, key)`**\n  - Shape preservation: output vector",
       "area": "missing_tests",
@@ -2280,6 +2274,11 @@
       "area": "productivity",
       "question": "Which configuration options are never used and add unnecessary complexity?",
       "ts": 1785736815
+    },
+    {
+      "area": "missing_tests",
+      "question": "What tests should exist for module model_defaults.py? What are the key functions to test?",
+      "ts": 1785766528
     }
   ]
 }
