@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785706265,
-  "last_comment_check": 1785705286,
+  "last_check": 1785735811,
+  "last_comment_check": 1785735809,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,8 +1060,8 @@
   "last_memory_hygiene": 1785673277,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785678159,
-  "last_telegram_error_ts": 1785673359,
+  "last_self_question": 1785707221,
+  "last_telegram_error_ts": 1785726290,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
     "92f7a1b5-ac13-4667-b803-eba6d0685bd2",
@@ -1265,14 +1265,8 @@
     "61b38af6-efe1-4459-aca1-c4c45c15f7d3",
     "7fedc0c7-8abe-4639-80f0-dd25ff680827"
   ],
-  "self_question_index": 17,
+  "self_question_index": 18,
   "self_question_log": [
-    {
-      "answer": "From the file-level structure and the way the test suite targets LLM entrypoints, the biggest sources of redundant (repeat) LLM calls you could likely cache or batch are:\n\n1. **`community_improvement.step_analyze` / `improvement.step_implement` calling review/analysis LLM stages repeatedly**\n   - Code areas:\n     - `src/ouroboros/community_improvement.py`: `_step_analyze`, `_step_implement`\n     - `src/ouroboros/improvement.py`: `identify_improvements`, `plan_improvement`, `generate_changes`, `validate_improvement`, plus retry/root-cause flow `_retry_with_root_cause`\n   - Why redundant:\n     - If the pipeline is run multiple times (or retries), you often re-run similar \u201canalyze these same suggestions / changes\u201d prompts, or re-run \u201creview\u201d prompts even when inputs haven\u2019t materially changed.\n\n2. **LLM \u201cplan / generate / review\u201d stages are per-task and per-file, but could be batched across tasks**\n   - Code areas:\n     - `src/ouroboros/improvement.py`: `plan_improvement`, `generate_changes`, `validate_improvement`\n     - `src/ouroboros/github_improvement.py`: `analyze_issue`, `apply_github_fix`\n     - `src/ouroboros/issue_scouting.py`: `run_issue_scouting_cycle` (calls identify-like logic)\n",
-      "area": "llm_optimization",
-      "question": "Where are we making redundant LLM calls that could be cached or batched?",
-      "ts": 1779822518
-    },
     {
       "answer": "A few repetitive (and fairly \u201cmechanical\u201d) patterns in the improvement cycle are prime candidates for automation/refactoring into shared utilities or templates:\n\n1) **LLM call \u2192 parse structured result \u2192 fallback/error handling**\n- Pattern appears across the cycle: *identify_improvements*, *plan_improvement*, *generate_changes*, *review_code_changes*, *question/insight extraction*, *issue analysis/fix*.\n- Common boilerplate: prompt assembly, calling `llm.chat_completion(...)`, then parsing/validating JSON-ish output, then returning `None`/a failure path.\n- Better automation: a single \u201cLLMStructuredCall\u201d wrapper that:\n  - enforces response_format,\n  - validates schema,\n  - normalizes failures into a consistent error object,\n  - optionally retries with \u201crepair\u201d prompts.\n\n2) **\u201cBuild context from history/tests\u201d repeated in multiple places**\n- In `improvement.py` there are multiple context builders:\n  - `_build_failed_attempts_context(...)`\n  - `_build_success_rate_context(...)`\n  - `_assemble_feed_context(...)`\n- Similar \u201chistory + outcomes summary\u201d patterns also exist in `evaluation.py` and PR/body construction.\n- Better automation: a dedicated `ContextComposer` with named strategies (e.g., *success_rate*, *recent_failures_only*, *feed_context*) so both improvement and issue-scouting/evaluation reuse the same logic.\n\n3) **Change application lifecycle: apply \u2192",
       "area": "productivity",
@@ -2282,6 +2276,11 @@
       "area": "llm_optimization",
       "question": "Where are we making redundant LLM calls that could be cached or batched?",
       "ts": 1785678200
+    },
+    {
+      "area": "productivity",
+      "question": "What repetitive patterns in the improvement cycle could be automated better?",
+      "ts": 1785707253
     }
   ]
 }
