@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785795237,
-  "last_comment_check": 1785780873,
+  "last_check": 1785824068,
+  "last_comment_check": 1785810606,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1785759825,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785766501,
+  "last_self_question": 1785796171,
   "last_telegram_error_ts": 1785726290,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "61b38af6-efe1-4459-aca1-c4c45c15f7d3",
     "7fedc0c7-8abe-4639-80f0-dd25ff680827"
   ],
-  "self_question_index": 1,
+  "self_question_index": 2,
   "self_question_log": [
-    {
-      "answer": "Given `src/ouroboros/holographic.py` (about 121 lines), you\u2019ll want tests that validate (1) numeric correctness where it\u2019s deterministic, (2) round-trip encoding/decoding, and (3) basic behavior/ordering guarantees for similarity (rather than exact float matches).\n\n### What tests should exist for `holographic.py`?\n\n#### 1) Module import / numpy availability\n- **Test** that `_require_numpy()` succeeds when numpy is installed.\n- (Optional) **Test** that it raises a helpful error when numpy is missing (would require monkeypatching import failure).\n\n#### 2) Encoding functions produce correct shapes/types\n- **`encode_atom(word, dim)`**\n  - Returns a vector of length `dim`.\n  - Deterministic for the same inputs (same `word`, same `dim` \u21d2 same output).\n  - Values are finite (no NaNs/Infs).\n- **`encode_text(text, dim)`**\n  - Same shape/determinism/finite checks as above.\n- **`encode_fact(content, entities, dim)`**\n  - Shape/determinism/finite checks.\n  - Optionally verify that changing `entities` changes the embedding in some measurable way (e.g., similarity differs).\n\n#### 3) Bind / unbind algebraic sanity\n- **`bind(a, b)`** and **`unbind(memory, key)`**\n  - Shape preservation: output vector",
-      "area": "missing_tests",
-      "question": "What tests should exist for module holographic.py? What are the key functions to test?",
-      "ts": 1779909943
-    },
     {
       "answer": "From the codebase overview, `src/ouroboros/memory.py` is the most test-incomplete area (there\u2019s no `tests/test_memory.py` listed). Based on how `memory.py` is structured (and what public behaviors the rest of the system would rely on), you should add tests that cover **fact storage/retrieval**, **entity linking**, **trust scoring**, and the **compatibility wrapper** (`IndexManager`).\n\nBelow are the key tests that *should exist*, and the key functions to test.\n\n## 1) `MemoryStore` tests (SQLite-backed fact store)\n\n### A. Basic lifecycle + persistence\n- **Test: init creates DB schema**\n  - Covers: `MemoryStore.__init__`, `_init_db`\n- **Test: add_fact stores and list_facts returns it**\n  - Covers: `add_fact`, `list_facts`\n- **Test: search_facts returns expected matches**\n  - Covers: `search_facts`\n\n### B. Update/remove correctness\n- **Test: update_fact changes content and trust delta**\n  - Covers: `update_fact`\n- **Test: remove_fact deletes**\n  - Covers: `remove_fact`, plus follow-up `list_facts` / `search_facts`\n\n### C. Entity extraction + resolution + linking\n- **Test: add_fact links extracted entities**\n  - Covers: `_extract_entities`, `_resolve_entity`, `_link_fact_entity` (",
       "area": "missing_tests",
@@ -2279,6 +2273,11 @@
       "area": "missing_tests",
       "question": "What tests should exist for module model_defaults.py? What are the key functions to test?",
       "ts": 1785766528
+    },
+    {
+      "area": "missing_tests",
+      "question": "What tests should exist for module prompts.py? What are the key functions to test?",
+      "ts": 1785796202
     }
   ]
 }
