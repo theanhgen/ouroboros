@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785882693,
-  "last_comment_check": 1785869222,
+  "last_check": 1785911558,
+  "last_comment_check": 1785899004,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1785847116,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785854793,
+  "last_self_question": 1785883646,
   "last_telegram_error_ts": 1785726290,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "61b38af6-efe1-4459-aca1-c4c45c15f7d3",
     "7fedc0c7-8abe-4639-80f0-dd25ff680827"
   ],
-  "self_question_index": 4,
+  "self_question_index": 5,
   "self_question_log": [
-    {
-      "answer": "For `src/ouroboros/prompts.py`, you\u2019d want tests that cover **(1) each prompt-loader function\u2019s return behavior**, **(2) filesystem/path error handling**, and **(3) correct handling of missing/invalid prompt files**.\n\n## What tests should exist?\n\n### 1) Happy-path prompt loading (per function)\nFor each loader, test that it:\n- Looks up the correct prompt file (via `_prompts_path()`)\n- Returns a non-empty `str` (or whatever type the code expects)\n- Contains a recognizable marker/content (so you know you didn\u2019t just return a default/empty string)\n\nKey approach: mock the underlying file read (or create a temporary prompts directory in a temp repo).\n\nYou should have one test per function, e.g.:\n- `test_load_comment_system_prompt_success`\n- `test_load_post_generation_prompt_success`\n- `test_load_comment_analysis_prompt_success`\n- `test_load_question_post_prompt_success`\n- `test_load_code_suggestion_prompt_success`\n- `test_load_comment_mining_prompt_success`\n- `test_load_topic_signal_prompt_success`\n- `test_load_insight_extraction_prompt_success`\n- `test_load_kb_summary_prompt_success`\n- `test_load_github_issue_analysis_prompt_success`\n- `test_load_github_issue_fix_prompt_success`\n- `test_load_suggestion_implementation_prompt_success`\n\n### 2) `_prompts_path()` behavior\n- Test that `_",
-      "area": "missing_tests",
-      "question": "What tests should exist for module prompts.py? What are the key functions to test?",
-      "ts": 1779997487
-    },
     {
       "answer": "For `src/ouroboros/storage.py`, you mainly want tests around:\n\n## Tests that should exist\n1. **DB initialization / schema**\n   - Creating `OuroborosStorage` with a temp `db_path` should create the expected tables (and not throw).\n\n2. **Cycle record persistence**\n   - `record_cycle()` writes a cycle entry.\n   - `get_recent_cycles(limit)` returns the most recent cycles in the expected order.\n   - `get_total_cost()` reflects recorded cycles (either via stored cost fields or via whatever the module uses).\n\n3. **Metric snapshot persistence + bounding**\n   - `record_metrics()` stores snapshots.\n   - `get_recent_cycles()` should not be affected by metrics writes (no cross-contamination).\n   - If the module bounds metric snapshots, assert the bound is enforced.\n\n4. **Embedding add + retrieval roundtrip**\n   - `add_embedding(content_type, ref_id, content, embedding)` followed by `search_embeddings(content_type, limit)` returns results.\n   - Include assertions that the returned records correspond to the inserted `ref_id` and embedding.\n\n5. **Embedding search filtering**\n   - Ensure `search_embeddings()` filters by `content_type` (i.e., embeddings of other types are not returned).\n\n6. **Embedding capacity / bounds (if any)**\n   - If there is a max number of embeddings retained per type (or per DB), test that inserts beyond the limit cause older entries",
       "area": "missing_tests",
@@ -2276,6 +2270,11 @@
       "area": "missing_tests",
       "question": "What tests should exist for module system.py? What are the key functions to test?",
       "ts": 1785854819
+    },
+    {
+      "area": "tests",
+      "question": "Which parts of the Moltbook runner are untested?",
+      "ts": 1785883703
     }
   ]
 }
