@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1785941255,
-  "last_comment_check": 1785928854,
+  "last_check": 1785970071,
+  "last_comment_check": 1785958585,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1785933615,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785912502,
+  "last_self_question": 1785942223,
   "last_telegram_error_ts": 1785726290,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,14 +1265,8 @@
     "61b38af6-efe1-4459-aca1-c4c45c15f7d3",
     "7fedc0c7-8abe-4639-80f0-dd25ff680827"
   ],
-  "self_question_index": 6,
+  "self_question_index": 7,
   "self_question_log": [
-    {
-      "answer": "For `src/ouroboros/system.py`, you should add tests that validate:\n\n## Key functions to test\n1. **`SystemHealth.get_system_stats()`**\n   - Returns a structured stats object/dict.\n   - Includes the expected keys (CPU/RAM/disk/time/etc., whatever the module promises).\n   - Handles failures safely (e.g., missing OS info, permission errors) without crashing\u2014returns a sensible fallback/error field.\n\n2. **`SystemHealth.get_service_logs(lines)`**\n   - Correctly accepts a `lines` argument and returns log text (or list of lines) with that limit applied.\n   - Validates/normalizes bad inputs:\n     - `lines=0` (should return empty or minimal output)\n     - negative `lines` (should clamp or raise a clear exception)\n     - non-int (should raise a clear error)\n   - Verifies it calls the underlying log retrieval mechanism with the correct `lines`.\n\n3. **`SystemHealth.get_system_summary()`**\n   - Produces a summary that incorporates:\n     - the output of `get_system_stats()`\n     - the output of `get_service_logs(...)` (often via a default line count)\n   - When one component fails, summary still returns (graceful degradation).\n   - Has the expected schema/keys and non-empty content where appropriate.\n\n## Tests that should exist (suggested set)\n1. **`test_get_system_stats_success`**\n",
-      "area": "missing_tests",
-      "question": "What tests should exist for module system.py? What are the key functions to test?",
-      "ts": 1780055824
-    },
     {
       "answer": "From the test list you provided, the Moltbook-related coverage appears limited to these things:\n\n- `tests/test_moltbook.py` exists and includes many tests (loading credentials, runner config defaults/loading, state load/save + atomic write, several trimming helpers, and the `run_loop` behavior when credentials are missing).\n- There are **no other** test files listed that directly exercise Moltbook runner internals.\n\nLooking at the Moltbook runner module surface area (`src/ouroboros/moltbook.py`) and comparing it to what the tests target, the likely **untested (or at least not explicitly covered)** parts are:\n\n### Likely untested Moltbook methods / behaviors\n- **API request helpers**\n  - `_request(method, path, api_key, body)` (all HTTP behavior)\n  - `_send_telegram_message(token, chat_id, text)` / `_notify(...)` (beyond basic config wiring)\n- **Core feed/post API wrappers**\n  - `get_status(api_key)`\n  - `get_feed(api_key, sort, limit)`\n  - `get_posts(api_key, sort, limit)`\n  - `create_post(api_key, submolt, title, content, url)`\n  - `create_comment(api_key, post_id, content, parent_id)`\n  - `_post_url(post_id)` / `_comment_url(post_id, comment_id)`\n  - `get_post_comments(api_key, post_id)`\n",
       "area": "tests",
@@ -2274,6 +2268,11 @@
       "area": "safety",
       "question": "What safety policy is missing for autonomous comments?",
       "ts": 1785912566
+    },
+    {
+      "area": "privacy",
+      "question": "What data do we store that could be sensitive?",
+      "ts": 1785942264
     }
   ]
 }
