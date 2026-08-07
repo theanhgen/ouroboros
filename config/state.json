@@ -1046,8 +1046,8 @@
       "ts": 1780271149
     }
   ],
-  "last_check": 1786027809,
-  "last_comment_check": 1786017236,
+  "last_check": 1786085760,
+  "last_comment_check": 1786076050,
   "last_comment_time": 1780956774,
   "last_community_improvement_start": 1780056769,
   "last_community_post": 1780057710,
@@ -1060,7 +1060,7 @@
   "last_memory_hygiene": 1786020100,
   "last_oddities_digest": 1780252340,
   "last_post": 1780230719,
-  "last_self_question": 1785999929,
+  "last_self_question": 1786057767,
   "last_telegram_error_ts": 1785726290,
   "last_wiki_update": 1782544835,
   "seen_post_ids": [
@@ -1265,20 +1265,8 @@
     "61b38af6-efe1-4459-aca1-c4c45c15f7d3",
     "7fedc0c7-8abe-4639-80f0-dd25ff680827"
   ],
-  "self_question_index": 9,
+  "self_question_index": 11,
   "self_question_log": [
-    {
-      "answer": "Here are the main categories of potentially sensitive data this codebase stores (or persists locally), based on the modules you showed:\n\n- **GitHub / PR / issue contents and identifiers**\n  - Saved/used data includes PR/issue **bodies, titles, feedback text, check feedback**, markers, branch names, etc.\n  - Likely sensitive because it can include **internal reasoning**, error details, or snippets of code/tests.\n\n- **Change proposals / code diffs and \u201cwhat we changed\u201d**\n  - Backlog items and improvement records contain **task descriptions**, sometimes tied to **specific files** and outcomes.\n  - Improvement cycle stores generated **change sets / results / failure details** (even if it doesn\u2019t persist full diffs, it persists enough context to reconstruct what was attempted).\n\n- **Test failure logs / error details**\n  - Failure details are formatted and likely stored in history/metrics/wiki, and fed into LLM prompts.\n  - Pytest output can include environment info, stack traces, and sometimes secrets if tests log them.\n\n- **LLM conversation context (indirectly)**\n  - While the code doesn\u2019t obviously persist raw chat transcripts, it *does* persist derived artifacts:\n    - prompt context files/pages,\n    - histories of improvement outcomes,\n    - wiki pages (\u201cchangelog\u201d, \u201cfailures\u201d, \u201cmetrics\u201d), which may contain model-generated text and sometimes embedded code snippets.\n\n- **Safety/config state that can reveal policy",
-      "area": "privacy",
-      "question": "What data do we store that could be sensitive?",
-      "ts": 1780143282
-    },
-    {
-      "answer": "From the codebase summary, the Moltbook API requests live in **`src/ouroboros/moltbook.py`** and are made by:\n\n- `_request(method, path, api_key, body)` (central HTTP helper)\n- `get_status`, `get_feed`, `get_posts`, `create_post`, `create_comment`, `get_post_comments`, `get_my_posts`\n\nHowever, the actual error-handling behavior (e.g., which specific exceptions are caught vs. allowed to propagate, and whether non-2xx/JSON/timeout/connection errors are wrapped) is not shown in the summary text you provided\u2014so I can\u2019t deterministically list \u201cwhich errors are not handled\u201d without seeing `_request()` and any surrounding try/except blocks.\n\nIf you paste the contents of `_request()` (and any helper it calls), I can tell you exactly which request-failure modes are *not* handled (e.g., `requests.exceptions.*`, HTTP error statuses, timeouts, JSON decode errors, missing keys in response, auth errors, etc.).",
-      "area": "reliability",
-      "question": "Which errors are not handled in Moltbook API requests?",
-      "ts": 1780172417
-    },
     {
       "answer": "I can\u2019t determine *which specific config defaults* would cause \u201cunintended posting\u201d without seeing `config.py`/the default values used by the posting-related features (notably the Moltbook/Telegram feed + community PR/comment posting paths).\n\nFrom the codebase structure, the most likely default-config fields that could lead to posting when you didn\u2019t intend it are:\n\n- **Community/GitHub auto-posting controls**\n  - Defaults for \u201cenable creating posts / PRs / issues\u201d (e.g., in `community_improvement.py`, `github_improvement.py`, `issue_scouting.py`).\n  - Anything like `enable_auto_merge`, `enable_auto_pr`, `dry_run` defaulting to **False** (meaning \u201creal posting\u201d), or `dry_run` defaulting to **None** but treated as \u201cgo ahead\u201d.\n\n- **Moltbook/Telegram notification defaults**\n  - In `moltbook.py` and `improvement_runner.py`, fields controlling:\n    - whether to **push to Moltbook feed** even when credentials are partial\n    - whether to **send Telegram messages**\n  - A default that enables notifications without requiring explicit opt-in.\n\n- **Scheduler defaults**\n  - In `improvement_runner.py` (scheduled self-improvement), defaults for:\n    - \u201crun immediately\u201d vs \u201cwait for due time\u201d\n    - retry counts / backoff\n  - If the scheduler\u2019s default state is \u201c",
       "area": "safety",
@@ -2271,6 +2259,16 @@
       "area": "safety",
       "question": "What config defaults could cause unintended posting?",
       "ts": 1785999983
+    },
+    {
+      "area": "refactoring",
+      "question": "Which functions are longer than 50 lines and should be decomposed?",
+      "ts": 1786028810
+    },
+    {
+      "area": "refactoring",
+      "question": "Where is there duplicated logic that could be extracted into a shared helper?",
+      "ts": 1786057854
     }
   ]
 }
