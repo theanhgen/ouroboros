@@ -44,3 +44,4 @@
 2026-08-01 | fix_bug | Add dimension validation to encode_atom in src/ouroboros/hol | failed | no plan generated
 2026-08-02 | fix_bug | Fix bind function in src/ouroboros/holographic.py to validat | failed | no plan generated
 2026-08-08 | fix_bug | Fix encode_fact in src/ouroboros/holographic.py to strip whi | failed | no plan generated
+2026-08-09 | fix_bug | Fix search_facts in src/ouroboros/memory.py to catch sqlite3 | failed | no plan generated
