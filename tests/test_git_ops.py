@@ -2,9 +2,15 @@
 
 import time
 from unittest.mock import patch, MagicMock
+
+import pytest
 from pathlib import Path
 
 from ouroboros.git_ops import (
+    _decode_git_path,
+    _is_auto_state_path,
+    _git_porcelain_changes,
+    _git_porcelain_target_path,
     _safe_git_env,
     commit_auto_state,
     create_issue,
@@ -166,3 +172,132 @@ def test_find_open_issue_by_marker(mock_run):
     )
     url = find_open_issue_by_marker(Path("/tmp/repo"), "<!-- ouroboros:auto-issue:abc -->")
     assert url == "https://github.com/repo/issues/8"
+
+
+# -- C-quoted path decoding (migrated here from backends) --------------------
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("config/state.json", "config/state.json"),          # unquoted, unchanged
+        ('"config/state.json"', "config/state.json"),         # quoted, no escapes
+        ('"config/state with space.json"', "config/state with space.json"),
+        (r'"config/\303\274mlaut.json"', "config/ümlaut.json"),  # octal UTF-8
+        (r'"config/say \"hi\".json"', 'config/say "hi".json'),   # escaped quotes
+        (r'"config/back\\slash.json"', "config/back\\slash.json"),
+        (r'"config/tab\there.json"', "config/tab\there.json"),
+        ('"', '"'),                                           # too short to be quoted
+    ],
+)
+def test_decode_git_path(raw, expected):
+    assert _decode_git_path(raw) == expected
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        (" M config/state.json", "config/state.json"),
+        (' M "config/state with space.json"', "config/state with space.json"),
+        ("?? config/new.json", "config/new.json"),
+        ('R  old.json -> new.json', "new.json"),
+        # " -> " inside a quoted filename must not be treated as the separator
+        ('R  "a.json" -> "weird -> name.json"', "weird -> name.json"),
+        (' M "has -> arrow.json"', "has -> arrow.json"),
+    ],
+)
+def test_git_porcelain_target_path(line, expected):
+    assert _git_porcelain_target_path(line) == expected
+
+
+def test_git_porcelain_changes_skips_blank_lines():
+    porcelain = ' M config/state.json\n\n?? config/new.json\n'
+    assert list(_git_porcelain_changes(porcelain)) == [
+        (" M", "config/state.json"),
+        ("??", "config/new.json"),
+    ]
+
+
+@patch("ouroboros.git_ops.current_branch", return_value="main")
+@patch("ouroboros.git_ops._git")
+def test_commit_auto_state_stages_quoted_state_paths(mock_git, mock_branch):
+    """Quoted paths must be decoded before the prefix check and the git add.
+
+    Without decoding, the path still carries its surrounding quotes, fails
+    startswith("config/"), and the state file is silently never committed.
+    """
+    mock_git.side_effect = [
+        MagicMock(stdout=' M "docs/wiki/page with space.md"\n M config/metrics.json\n'),
+        MagicMock(),                                          # git add
+        MagicMock(stdout="docs/wiki/page with space.md\n"),   # diff --cached
+        MagicMock(),                                          # git commit
+        MagicMock(),                                          # git push
+    ]
+
+    assert commit_auto_state(Path("/tmp/repo")) is True
+
+    add_call = mock_git.call_args_list[1]
+    assert add_call.args[1] == "add"
+    assert add_call.args[2:] == ("docs/wiki/page with space.md", "config/metrics.json")
+
+
+@patch("ouroboros.git_ops.current_branch", return_value="main")
+@patch("ouroboros.git_ops._git")
+def test_commit_auto_state_decodes_octal_escaped_state_paths(mock_git, mock_branch):
+    mock_git.side_effect = [
+        MagicMock(stdout=' M "docs/wiki/\\303\\274mlaut.md"\n'),
+        MagicMock(),
+        MagicMock(stdout="docs/wiki/ümlaut.md\n"),
+        MagicMock(),
+        MagicMock(),
+    ]
+
+    assert commit_auto_state(Path("/tmp/repo")) is True
+    assert mock_git.call_args_list[1].args[2:] == ("docs/wiki/ümlaut.md",)
+
+
+def test_commit_auto_state_is_defined_in_git_ops():
+    """Regression guard: this logic belongs in git_ops, not a monkeypatch.
+
+    It previously lived in ouroboros/__init__.py, which rebound
+    git_ops.commit_auto_state at package-import time so the source here was
+    dead code.
+    """
+    import inspect
+
+    from ouroboros import backends, git_ops  # noqa: F401  (import triggers any patching)
+
+    assert inspect.getsourcefile(git_ops.commit_auto_state) == git_ops.__file__
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        ("config/state.json", True),
+        ("config/metrics.json", True),
+        ("docs/wiki", True),                  # the directory itself
+        ("docs/wiki/architecture.md", True),  # anything under it
+        ("docs/wiki/nested/deep.md", True),
+        # Exact entries must not match by prefix -- commit_auto_state pushes
+        # whatever it stages.
+        ("config/state.json.backup", False),
+        ("config/state.json.orig", False),
+        ("config/metrics.json.tmp", False),
+        ("config/other.json", False),
+        ("docs/wikipedia/page.md", False),
+        ("src/ouroboros/git_ops.py", False),
+    ],
+)
+def test_is_auto_state_path(path, expected):
+    assert _is_auto_state_path(path) is expected
+
+
+@patch("ouroboros.git_ops.current_branch", return_value="main")
+@patch("ouroboros.git_ops._git")
+def test_commit_auto_state_ignores_sibling_of_state_file(mock_git, mock_branch):
+    """config/state.json.backup must not be swept in by a prefix match."""
+    mock_git.side_effect = [
+        MagicMock(stdout=" M config/state.json.backup\n"),
+    ]
+
+    assert commit_auto_state(Path("/tmp/repo")) is False
+    assert mock_git.call_count == 1  # never reached git add
