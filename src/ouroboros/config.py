@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from .model_defaults import DEFAULT_OPENAI_MODEL
 
@@ -98,3 +98,30 @@ class SafetyConfig:
         "shelve",
         "socket",
     )
+
+
+def reviewer_safety_kwargs(cfg: Any) -> Dict[str, Any]:
+    """Map a runner config's reviewer settings onto SafetyConfig kwargs.
+
+    Shared by the main loop and the scheduled runner so the review step is
+    configured the same way in both.
+
+    An unset reviewer_model leaves SafetyConfig's own default in place; it
+    deliberately does *not* fall back to the generation model. Tying review to
+    improvement_model is what the main loop used to do, and it makes a
+    "second opinion" a second opinion from the same model. The scheduled runner
+    never did it, so this also stops the two paths disagreeing.
+
+    reviewer_base_url and reviewer_api_key are only included when set, so the
+    SafetyConfig defaults (None) still mean "use the normal OpenAI client".
+    """
+    kwargs: Dict[str, Any] = {
+        "reviewer_backend": getattr(cfg, "reviewer_backend", "openai"),
+    }
+    if getattr(cfg, "reviewer_model", ""):
+        kwargs["reviewer_model"] = cfg.reviewer_model
+    if getattr(cfg, "reviewer_base_url", ""):
+        kwargs["reviewer_base_url"] = cfg.reviewer_base_url
+    if getattr(cfg, "reviewer_api_key", None):
+        kwargs["reviewer_api_key"] = cfg.reviewer_api_key
+    return kwargs

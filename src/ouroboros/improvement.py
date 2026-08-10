@@ -905,6 +905,8 @@ def run_improvement_cycle(
             getattr(config, "reviewer_backend", "openai"),
             openai_client=client,
             model=config.reviewer_model,
+            base_url=getattr(config, "reviewer_base_url", None),
+            api_key=getattr(config, "reviewer_api_key", None),
         )
         approved, feedback, rev_usage = llm.review_code_changes(
             review_client,

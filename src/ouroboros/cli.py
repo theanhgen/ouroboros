@@ -108,7 +108,12 @@ def cmd_config_modify(args: argparse.Namespace) -> int:
 
     modify_runner_config(updates)
     redacted = dict(updates)
-    for key in ("telegram_bot_token", "telegram_chat_id"):
+    for key in (
+        "telegram_bot_token",
+        "telegram_chat_id",
+        "reviewer_api_key",
+        "ollama_api_key",
+    ):
         if key in redacted:
             redacted[key] = "***"
     print(f"Updated runner config: {redacted}")

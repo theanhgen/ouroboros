@@ -6,7 +6,7 @@ import sys
 import threading
 import time
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -200,6 +200,14 @@ class RunnerConfig:
     generator_backend: str = "openai"
     reviewer_backend: str = "openai"
     generator_model: str = ""
+    # Reviewer routing, independent of the generation model. Empty
+    # reviewer_model means "use improvement_model", which is what the loop did
+    # unconditionally before these were configurable. Setting reviewer_base_url
+    # points the review step at an OpenAI-compatible endpoint (e.g. Ollama
+    # Cloud) while generation stays on the default backend.
+    reviewer_model: str = ""
+    reviewer_base_url: str = ""
+    reviewer_api_key: Optional[str] = field(default=None, repr=False)
 
 
 def load_runner_config() -> RunnerConfig:
@@ -223,6 +231,16 @@ def load_runner_config() -> RunnerConfig:
         or cred_data.get("telegram_chat_id")
         or data.get("telegram_chat_id")
     )
+    # Reviewer credential. ollama_api_key is accepted because the reviewer
+    # backend this was added for is Ollama Cloud; reviewer_api_key is the
+    # backend-neutral name for any other OpenAI-compatible gateway.
+    reviewer_api_key = (
+        os.environ.get("REVIEWER_API_KEY")
+        or os.environ.get("OLLAMA_API_KEY")
+        or cred_data.get("reviewer_api_key")
+        or cred_data.get("ollama_api_key")
+    )
+
     legacy_interval = int(data.get("self_improve_interval_hours", 48))
     improvement_interval = int(
         data.get(
@@ -287,6 +305,9 @@ def load_runner_config() -> RunnerConfig:
         generator_backend=str(data.get("generator_backend", "openai")),
         reviewer_backend=str(data.get("reviewer_backend", "openai")),
         generator_model=str(data.get("generator_model", "")),
+        reviewer_model=str(data.get("reviewer_model") or ""),
+        reviewer_base_url=str(data.get("reviewer_base_url") or ""),
+        reviewer_api_key=reviewer_api_key,
     )
 
 
@@ -1090,8 +1111,23 @@ def run_loop() -> int:
                                     if suggestion.get("type") == "config_change" and cfg.auto_apply_config_suggestions:
                                         config_changes = suggestion.get("config_changes", {})
                                         if config_changes:
-                                            from .self_modify import modify_runner_config
+                                            from .self_modify import (
+                                                filter_untrusted_config_updates,
+                                                modify_runner_config,
+                                            )
 
+                                            # These come from a public comment.
+                                            config_changes, _rejected = (
+                                                filter_untrusted_config_updates(config_changes)
+                                            )
+                                            if _rejected:
+                                                log.warning(
+                                                    "[self-upgrade] Refused operator-only keys "
+                                                    "from %s: %s",
+                                                    suggestion.get("commenter", "unknown"),
+                                                    ", ".join(_rejected),
+                                                )
+                                        if config_changes:
                                             if cfg.dry_run:
                                                 log.info(
                                                     "[dry-run] Would apply config: %s (suggested by %s)",
@@ -1164,16 +1200,15 @@ def run_loop() -> int:
                     try:
                         from .improvement import run_improvement_cycle
                         from .evaluation import check_pr_outcomes
-                        from .config import SafetyConfig
+                        from .config import SafetyConfig, reviewer_safety_kwargs as _reviewer_safety_kwargs
 
                         safety = SafetyConfig(
                             enable_auto_merge=cfg.enable_auto_merge,
-                            reviewer_model=cfg.improvement_model,
                             identify_backend=getattr(cfg, "identify_backend", "openai"),
                             plan_backend=getattr(cfg, "plan_backend", "openai"),
                             generator_backend=getattr(cfg, "generator_backend", "openai"),
-                            reviewer_backend=getattr(cfg, "reviewer_backend", "openai"),
                             generator_model=getattr(cfg, "generator_model", "") or None,
+                            **_reviewer_safety_kwargs(cfg),
                         )
 
                         # Telegram notification callback for improvement events

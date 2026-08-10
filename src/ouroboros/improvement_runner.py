@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 
 from . import backends, git_ops, llm
 from .codebase import get_repo_root
-from .config import SafetyConfig
+from .config import SafetyConfig, reviewer_safety_kwargs
 from .evaluation import check_pr_outcomes
 from .improvement import ImprovementResult, ImprovementTask, run_improvement_cycle
 from .moltbook import load_runner_config, _send_telegram_message
@@ -277,8 +277,8 @@ def run_scheduled_self_improvement(
         identify_backend=getattr(cfg, "identify_backend", "openai"),
         plan_backend=getattr(cfg, "plan_backend", "openai"),
         generator_backend=getattr(cfg, "generator_backend", "openai"),
-        reviewer_backend=getattr(cfg, "reviewer_backend", "openai"),
         generator_model=getattr(cfg, "generator_model", "") or None,
+        **reviewer_safety_kwargs(cfg),
     )
 
     # Build notification callback for Telegram
