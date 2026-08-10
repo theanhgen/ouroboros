@@ -1,8 +1,10 @@
 """Knowledge base -- persisted insights from community posts."""
 
+import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .storage import load_json_file, save_json_file
@@ -11,13 +13,39 @@ log = logging.getLogger(__name__)
 
 KB_PATH = os.path.expanduser("~/.config/moltbook/knowledge_base.json")
 KB_DEFAULT = {"entries": [], "summary_cache": "", "summary_updated_at": 0}
+
+# Kept for the migration only. Entries live in SQLite now and are not capped:
+# the cap existed because the whole list was rewritten as JSON on every append,
+# so keeping more meant a bigger file to load each cycle.
 MAX_ENTRIES = 200
+
+# Completion marker: a non-empty table does not mean the import finished.
+KB_MIGRATION = "knowledge_entries_v1"
 _SUMMARY_MAX_AGE = 86400  # 24 hours
 _SUMMARY_NEW_ENTRY_THRESHOLD = 20
 
 
-def load_kb(path: Optional[str] = None) -> Dict[str, Any]:
-    """Load the knowledge base from disk."""
+def _storage() -> "OuroborosStorage":
+    from .storage import OuroborosStorage
+
+    return OuroborosStorage()
+
+
+def entry_fingerprint(entry: Dict[str, Any]) -> str:
+    """Stable identity for an entry, which carries no id of its own."""
+    from .storage import OuroborosStorage
+
+    return OuroborosStorage.record_fingerprint(
+        json.dumps(entry, sort_keys=True, default=str)
+    )
+
+
+def _load_scalars(path: Optional[str] = None) -> Dict[str, Any]:
+    """Read the summary cache, which stays in JSON.
+
+    Two small fields that never grow, so there is nothing to gain from moving
+    them; only the unbounded entries list needed a table.
+    """
     p = path or KB_PATH
     return load_json_file(
         p,
@@ -27,21 +55,56 @@ def load_kb(path: Optional[str] = None) -> Dict[str, Any]:
     )
 
 
+def load_kb(path: Optional[str] = None) -> Dict[str, Any]:
+    """Return the knowledge base: entries from SQLite, cache from JSON.
+
+    Any entries still in the JSON file are imported on first read, so an
+    existing deployment needs no manual step.
+    """
+    kb = dict(_load_scalars(path))
+    storage = _storage()
+
+    legacy = kb.get("entries") or []
+    if storage.migration_done(KB_MIGRATION):
+        legacy = []
+    if legacy:
+        # save_kb stops writing entries, so the next summary refresh would
+        # erase them from the file. Keep a copy before that happens.
+        from .state_migration import freeze_rollback_snapshot
+
+        if freeze_rollback_snapshot(Path(path or KB_PATH)) is None:
+            log.warning("Skipping knowledge cutover: could not snapshot the file")
+            return kb
+        imported = sum(
+            1 for entry in legacy
+            if isinstance(entry, dict)
+            and storage.append_knowledge(entry, entry_fingerprint(entry))
+        )
+        storage.mark_migration_done(KB_MIGRATION)
+        if imported:
+            log.info("Imported %d knowledge entries from JSON into SQLite", imported)
+
+    kb["entries"] = storage.get_knowledge_entries()
+    return kb
+
+
 def save_kb(kb: Dict[str, Any], path: Optional[str] = None) -> None:
-    """Atomic write of the knowledge base."""
+    """Persist the summary cache. Entries are owned by SQLite."""
     p = path or KB_PATH
-    save_json_file(p, kb, sort_keys=True)
+    scalars = {k: v for k, v in kb.items() if k != "entries"}
+    save_json_file(p, scalars, sort_keys=True)
 
 
 def add_entries(entries: List[Dict[str, Any]], path: Optional[str] = None) -> None:
-    """Append entries to the knowledge base and trim to MAX_ENTRIES."""
+    """Append entries. No cap -- appends no longer rewrite the whole list."""
     if not entries:
         return
-    kb = load_kb(path)
-    kb["entries"].extend(entries)
-    if len(kb["entries"]) > MAX_ENTRIES:
-        kb["entries"] = kb["entries"][-MAX_ENTRIES:]
-    save_kb(kb, path)
+    pairs = [
+        (entry, entry_fingerprint(entry))
+        for entry in entries
+        if isinstance(entry, dict)
+    ]
+    _storage().append_knowledge_batch(pairs)
 
 
 def get_summary(

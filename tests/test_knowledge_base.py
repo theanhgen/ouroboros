@@ -20,24 +20,46 @@ class TestKnowledgeBase:
         assert kb["summary_updated_at"] == 0
 
     def test_save_load_kb(self):
-        data = {"entries": [{"ts": 100, "insight": "test"}], "summary_cache": "test summary", "summary_updated_at": 100}
-        save_kb(data, str(self.kb_file))
-        
+        # save_kb persists the summary cache; entries are owned by SQLite.
+        add_entries([{"ts": 100, "insight": "test"}], str(self.kb_file))
+        save_kb(
+            {"summary_cache": "test summary", "summary_updated_at": 100},
+            str(self.kb_file),
+        )
+
         loaded = load_kb(str(self.kb_file))
         assert loaded["entries"][0]["insight"] == "test"
         assert loaded["summary_cache"] == "test summary"
 
-    def test_add_entries_bounded(self):
-        # Initial entries
+    def test_legacy_json_entries_are_imported_once(self):
+        """An existing deployment must not need a manual step."""
+        import json as _json
+
+        self.kb_file.write_text(_json.dumps({
+            "entries": [{"ts": 1, "insight": "from json"}],
+            "summary_cache": "",
+            "summary_updated_at": 0,
+        }))
+
+        first = load_kb(str(self.kb_file))
+        second = load_kb(str(self.kb_file))
+
+        assert [e["insight"] for e in first["entries"]] == ["from json"]
+        assert [e["insight"] for e in second["entries"]] == ["from json"]
+
+    def test_add_entries_keeps_everything(self):
+        """No cap: the 200-entry limit existed only because each append
+        rewrote the whole JSON list."""
         add_entries([{"ts": i, "insight": f"i{i}"} for i in range(150)], str(self.kb_file))
+        assert len(load_kb(str(self.kb_file))["entries"]) == 150
+
+        add_entries(
+            [{"ts": i + 150, "insight": f"i{i+150}"} for i in range(100)],
+            str(self.kb_file),
+        )
         kb = load_kb(str(self.kb_file))
-        assert len(kb["entries"]) == 150
-        
-        # Add 100 more, total 250, should be trimmed to 200
-        add_entries([{"ts": i + 150, "insight": f"i{i+150}"} for i in range(100)], str(self.kb_file))
-        kb = load_kb(str(self.kb_file))
-        assert len(kb["entries"]) == 200
-        assert kb["entries"][0]["insight"] == "i50" # First 50 dropped
+        assert len(kb["entries"]) == 250
+        assert kb["entries"][0]["insight"] == "i0", "nothing is dropped"
 
     @patch("ouroboros.llm.generate_kb_summary")
     def test_get_summary_refresh(self, mock_gen):

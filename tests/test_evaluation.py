@@ -155,8 +155,9 @@ def test_check_pr_outcomes_updates_success_records(mock_run, _mock_feedback, tmp
     assert history[0].outcome == "merged"
     assert history[0].feedback == "Looks good"
 
-    persisted = json.loads(history_file.read_text())
-    assert persisted[0]["outcome"] == "merged"
+    # Persistence is now SQLite, so read it back the way callers do rather
+    # than inspecting the legacy JSON file.
+    assert load_history(tmp_path)[0].outcome == "merged"
 
 
 # -- centralised JSON IO -----------------------------------------------------

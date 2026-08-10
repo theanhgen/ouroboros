@@ -66,7 +66,6 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
     path = _history_path(repo_root)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    history = load_history(repo_root)
     record = EvaluationRecord(
         task_id=result.task.task_id,
         task_type=result.task.task_type,
@@ -88,9 +87,22 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
         feedback=result.details or "",
         timestamp=time.time(),
     )
-    history.append(record)
-
-    save_json_file(path, [r.to_dict() for r in history])
+    # Append, rather than load-modify-write the whole file. That read-rewrite
+    # was O(total history) per improvement and is what made these files grow
+    # into something worth capping.
+    #
+    # The PR already exists by the time this runs, so a database failure must
+    # not lose the record: fall back to the legacy JSON file, which
+    # _backfill_history_once will pick up once the database is writable again.
+    try:
+        _history_storage(repo_root).append_improvement(record.to_dict())
+    except Exception:
+        log.warning("Could not persist improvement to storage; keeping JSON copy",
+                    exc_info=True)
+        legacy = _load_legacy_history(repo_root)
+        legacy.append(record.to_dict())
+        save_json_file(path, legacy)
+        _history_storage(repo_root).mark_migration_pending(_HISTORY_MIGRATION)
 
     # Persist to SQLite
     try:
@@ -118,8 +130,75 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
         log.exception("Failed to persist metrics to SQLite")
 
 
+_HISTORY_MIGRATION = "improvement_history_v1"
+
+
+def _history_storage(repo_root: Optional[Path] = None) -> OuroborosStorage:
+    """Storage for the given repo, not just whichever one we started in.
+
+    load_history(tmp_path) has to read tmp_path's database, or a caller
+    pointing at another checkout silently gets this one's history.
+    """
+    if repo_root is None:
+        return OuroborosStorage()
+    return OuroborosStorage(db_path=Path(repo_root) / "config" / "ouroboros.db")
+
+
 def load_history(repo_root: Optional[Path] = None) -> List[EvaluationRecord]:
-    """Load improvement history from disk."""
+    """Load improvement history, oldest first.
+
+    Reads SQLite. On the first call after upgrading, the JSON file is
+    backfilled into the database; that is idempotent and leaves the file in
+    place, so rolling back to the previous version still finds it.
+    """
+    storage = _history_storage(repo_root)
+    if not storage.migration_done(_HISTORY_MIGRATION):
+        _backfill_history_once(repo_root)
+
+    return [
+        EvaluationRecord.from_dict(d)
+        for d in storage.get_improvement_history()
+        if isinstance(d, dict)
+    ]
+
+
+def _backfill_history_once(repo_root: Optional[Path]) -> None:
+    """Import the legacy JSON history, marking completion only when it all lands.
+
+    A count-based check would treat a partial import as finished: one
+    successful insert makes the table non-empty, and the next run would skip
+    the records that never made it.
+    """
+    storage = _history_storage(repo_root)
+    data = _load_legacy_history(repo_root)
+    if not data:
+        storage.mark_migration_done(_HISTORY_MIGRATION)
+        return
+
+    imported = 0
+    failed = 0
+    for record in data:
+        if not isinstance(record, dict):
+            continue
+        try:
+            imported += bool(storage.append_improvement(record))
+        except Exception:
+            failed += 1
+
+    if failed:
+        log.warning(
+            "Improvement history import incomplete: %d of %d records failed; "
+            "will retry", failed, len(data),
+        )
+        return
+
+    storage.mark_migration_done(_HISTORY_MIGRATION)
+    if imported:
+        log.info("Imported %d improvement records from JSON into SQLite", imported)
+
+
+def _load_legacy_history(repo_root: Optional[Path] = None) -> List[dict]:
+    """Read the pre-SQLite JSON history file, if it still exists."""
     data = load_json_file(
         _history_path(repo_root),
         default=[],
@@ -129,7 +208,7 @@ def load_history(repo_root: Optional[Path] = None) -> List[EvaluationRecord]:
     if not isinstance(data, list):
         log.warning("Improvement history is not a list, returning empty")
         return []
-    return [EvaluationRecord.from_dict(d) for d in data]
+    return data
 
 
 def check_pr_outcomes(repo_root: Optional[Path] = None) -> List[EvaluationRecord]:
@@ -170,13 +249,17 @@ def check_pr_outcomes(repo_root: Optional[Path] = None) -> List[EvaluationRecord
                     continue
                 record.outcome = state.lower()
                 record.feedback = feedback
+                # Update the one row rather than rewriting every record.
+                _history_storage(root).update_improvement(
+                    record.task_id, record.timestamp, record.to_dict()
+                )
                 updated = True
                 log.info("PR %s outcome updated: %s", record.pr_url, record.outcome)
         except Exception:
             log.debug("Could not check PR status for %s", record.pr_url)
 
     if updated:
-        save_json_file(_history_path(root), [r.to_dict() for r in history])
+        log.debug("PR outcomes updated in storage")
 
     return history
 

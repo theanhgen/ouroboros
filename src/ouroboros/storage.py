@@ -173,6 +173,63 @@ class OuroborosStorage:
                     FOREIGN KEY (cycle_id) REFERENCES cycles (id)
                 )
             """)
+            # Append-only history. These lived in JSON files that were read
+            # and rewritten whole on every cycle, which is why each had a cap
+            # -- comment_history alone was 102 KB of a 169 KB state.json. The
+            # caps meant the agent continuously discarded its own history to
+            # keep the file small; a table has no such pressure.
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS comment_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ts REAL NOT NULL,
+                    post_id TEXT,
+                    comment_id TEXT,
+                    -- Content hash, not (post_id, comment_id): comment_id is
+                    -- null on every historical record, and SQLite treats NULL
+                    -- as distinct from NULL, so a UNIQUE over those columns
+                    -- would let a re-run insert everything again.
+                    fingerprint TEXT UNIQUE,
+                    payload TEXT NOT NULL
+                )
+            """)
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_comment_history_ts "
+                "ON comment_history (ts DESC)"
+            )
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS improvement_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ts REAL NOT NULL,
+                    task_id TEXT,
+                    outcome TEXT,
+                    -- Identity is the task and its timestamp, but hashed for
+                    -- the same NULL reason as above.
+                    fingerprint TEXT UNIQUE,
+                    payload TEXT NOT NULL
+                )
+            """)
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_improvement_history_ts "
+                "ON improvement_history (ts DESC)"
+            )
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS knowledge_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ts REAL NOT NULL,
+                    fingerprint TEXT UNIQUE,
+                    payload TEXT NOT NULL
+                )
+            """)
+            # Explicit completion markers. Inferring "already migrated" from
+            # a non-empty table is wrong: a partial import leaves rows behind,
+            # and the next start would skip the remaining legacy records and
+            # then strip the file that still held them.
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS migrations (
+                    name TEXT PRIMARY KEY,
+                    completed_at REAL NOT NULL
+                )
+            """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS embeddings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -237,3 +294,187 @@ class OuroborosStorage:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
+
+    # -- Append-only history ------------------------------------------------
+    #
+    # Each row keeps the whole record as JSON alongside the few columns worth
+    # indexing. The shapes here are produced by an LLM and have changed before,
+    # so pinning every field into a column would mean a schema migration each
+    # time one gains a key.
+
+    @staticmethod
+    def record_fingerprint(*parts: Any) -> str:
+        """Stable identity for a record with no reliable natural key.
+
+        A UNIQUE over nullable columns does not dedupe, because SQLite treats
+        every NULL as distinct. Hashing the identifying values sidesteps that.
+        """
+        import hashlib
+
+        # json rather than str-join: it encodes None distinctly from "", so a
+        # missing field and an empty one cannot hash to the same record.
+        joined = json.dumps([None if p is None else str(p) for p in parts])
+        return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:32]
+
+    @staticmethod
+    def _timestamp(value: Any) -> float:
+        """Coerce a record timestamp, treating only None/invalid as missing.
+
+        `value or time.time()` would replace a legitimate 0.0 with now, which
+        reorders the oldest record to the newest.
+        """
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return time.time()
+
+    def append_comment(self, record: Dict[str, Any]) -> bool:
+        """Record a posted comment. Returns False if it was already recorded."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "INSERT OR IGNORE INTO comment_history "
+                "(ts, post_id, comment_id, fingerprint, payload) VALUES (?, ?, ?, ?, ?)",
+                (
+                    self._timestamp(record.get("ts")),
+                    record.get("post_id"),
+                    record.get("comment_id"),
+                    self.record_fingerprint(
+                        record.get("post_id"),
+                        record.get("comment_id"),
+                        record.get("comment"),
+                    ),
+                    json.dumps(record),
+                ),
+            )
+            return cursor.rowcount > 0
+
+    def get_comment_history(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Return comments oldest-first, or the newest `limit` of them."""
+        return self._recent_payloads("comment_history", limit)
+
+    def comment_count(self) -> int:
+        return self._count("comment_history")
+
+    def append_improvement(self, record: Dict[str, Any]) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "INSERT OR IGNORE INTO improvement_history "
+                "(ts, task_id, outcome, fingerprint, payload) VALUES (?, ?, ?, ?, ?)",
+                (
+                    self._timestamp(record.get("timestamp")),
+                    record.get("task_id"),
+                    record.get("outcome"),
+                    self.record_fingerprint(
+                        record.get("task_id"), record.get("timestamp")
+                    ),
+                    json.dumps(record),
+                ),
+            )
+            return cursor.rowcount > 0
+
+    def update_improvement(self, task_id: str, ts: float, record: Dict[str, Any]) -> bool:
+        """Rewrite one record in place, for PR outcome polling."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "UPDATE improvement_history SET outcome = ?, payload = ? "
+                "WHERE fingerprint = ?",
+                (
+                    record.get("outcome"),
+                    json.dumps(record),
+                    self.record_fingerprint(task_id, ts),
+                ),
+            )
+            return cursor.rowcount > 0
+
+    def get_improvement_history(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        return self._recent_payloads("improvement_history", limit)
+
+    def improvement_count(self) -> int:
+        return self._count("improvement_history")
+
+    def append_knowledge_batch(self, entries: List[tuple]) -> int:
+        """Insert (entry, fingerprint) pairs in one transaction.
+
+        Per-entry commits leave earlier rows written and later ones lost if
+        one fails partway, and the caller has already marked the source posts
+        seen -- so the missing insights are never regenerated.
+        """
+        if not entries:
+            return 0
+        with self._connect() as conn:
+            cursor = conn.executemany(
+                "INSERT OR IGNORE INTO knowledge_entries (ts, fingerprint, payload) "
+                "VALUES (?, ?, ?)",
+                [
+                    (self._timestamp(entry.get("ts")), fingerprint, json.dumps(entry))
+                    for entry, fingerprint in entries
+                ],
+            )
+            return cursor.rowcount
+
+    def append_knowledge(self, entry: Dict[str, Any], fingerprint: str) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "INSERT OR IGNORE INTO knowledge_entries (ts, fingerprint, payload) "
+                "VALUES (?, ?, ?)",
+                (self._timestamp(entry.get("ts")), fingerprint, json.dumps(entry)),
+            )
+            return cursor.rowcount > 0
+
+    def get_knowledge_entries(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        return self._recent_payloads("knowledge_entries", limit)
+
+    def knowledge_count(self) -> int:
+        return self._count("knowledge_entries")
+
+    def _recent_payloads(self, table: str, limit: Optional[int]) -> List[Dict[str, Any]]:
+        """Newest `limit` rows, returned oldest-first.
+
+        Ordered by insertion (id), not timestamp. The JSON lists these replace
+        were in append order, and callers slice them with [-n:] to mean "most
+        recent". Sorting by ts would reorder history whenever the Pi's clock
+        was corrected, or whenever a record carried a missing or bogus
+        timestamp, and change which records a tail slice selects.
+        """
+        with self._connect() as conn:
+            if limit is None:
+                rows = conn.execute(
+                    f"SELECT payload FROM {table} ORDER BY id ASC"  # noqa: S608
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    f"SELECT payload FROM ("  # noqa: S608
+                    f"  SELECT payload, id FROM {table} ORDER BY id DESC LIMIT ?"
+                    f") ORDER BY id ASC",
+                    (limit,),
+                ).fetchall()
+        out = []
+        for (payload,) in rows:
+            try:
+                out.append(json.loads(payload))
+            except (json.JSONDecodeError, TypeError):
+                log.warning("Skipping unreadable %s row", table)
+        return out
+
+    def migration_done(self, name: str) -> bool:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM migrations WHERE name = ?", (name,)
+            ).fetchone()
+        return row is not None
+
+    def mark_migration_done(self, name: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO migrations (name, completed_at) VALUES (?, ?)",
+                (name, time.time()),
+            )
+
+    def mark_migration_pending(self, name: str) -> None:
+        """Clear a completion marker so the import runs again."""
+        with self._connect() as conn:
+            conn.execute("DELETE FROM migrations WHERE name = ?", (name,))
+
+    def _count(self, table: str) -> int:
+        with self._connect() as conn:
+            return conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]  # noqa: S608

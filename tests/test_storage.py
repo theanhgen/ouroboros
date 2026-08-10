@@ -448,3 +448,135 @@ def test_save_leaves_a_git_repository_clean(tmp_path):
     stray = [p for p in status if p not in {"??", "config/backlog.json",
                                             "config/improvement_history.json"}]
     assert stray == [], f"save left files git would flag: {stray}"
+
+
+# -- append-only history -----------------------------------------------------
+
+def test_append_comment_round_trip(store):
+    record = {"ts": 1.0, "post_id": "p1", "comment_id": "c1", "comment": "hello",
+              "title": "T", "extra": {"nested": True}}
+    assert store.append_comment(record) is True
+    assert store.get_comment_history() == [record]
+
+
+def test_append_comment_is_idempotent(store):
+    record = {"ts": 1.0, "post_id": "p1", "comment": "hello"}
+    assert store.append_comment(record) is True
+    assert store.append_comment(record) is False
+    assert store.comment_count() == 1
+
+
+def test_append_comment_dedupes_with_a_null_comment_id(store):
+    """SQLite treats each NULL as distinct, so a UNIQUE over nullable columns
+    would not dedupe -- every historical record has comment_id null."""
+    record = {"ts": 1.0, "post_id": "p1", "comment_id": None, "comment": "hello"}
+    store.append_comment(record)
+    store.append_comment(dict(record))
+    assert store.comment_count() == 1
+
+
+def test_different_comments_on_one_post_are_distinct(store):
+    store.append_comment({"ts": 1.0, "post_id": "p1", "comment": "first"})
+    store.append_comment({"ts": 2.0, "post_id": "p1", "comment": "second"})
+    assert store.comment_count() == 2
+
+
+def test_comment_history_is_in_append_order_not_timestamp_order(store):
+    """The JSON lists were append-ordered and callers slice them with [-n:].
+
+    Sorting by ts would reorder history after a clock correction, and change
+    which records "the last 20 comments" selects.
+    """
+    for ts in (3.0, 1.0, 2.0):
+        store.append_comment({"ts": ts, "post_id": f"p{ts}", "comment": "x"})
+    assert [c["ts"] for c in store.get_comment_history()] == [3.0, 1.0, 2.0]
+
+
+def test_comment_history_order_survives_a_clock_regression(store):
+    store.append_comment({"ts": 100.0, "post_id": "p1", "comment": "first"})
+    store.append_comment({"ts": 5.0, "post_id": "p2", "comment": "after ntp fixed the clock"})
+    assert [c["comment"] for c in store.get_comment_history()] == [
+        "first", "after ntp fixed the clock",
+    ]
+
+
+def test_comment_history_limit_returns_the_newest_oldest_first(store):
+    """Callers used to slice the JSON list with [-n:]."""
+    for ts in range(1, 6):
+        store.append_comment({"ts": float(ts), "post_id": f"p{ts}", "comment": "x"})
+    assert [c["ts"] for c in store.get_comment_history(limit=2)] == [4.0, 5.0]
+
+
+def test_a_zero_timestamp_is_stored_as_zero(store):
+    """`value or time.time()` would silently replace it with now."""
+    store.append_comment({"ts": 0.0, "post_id": "p0", "comment": "oldest"})
+    with sqlite3.connect(store.db_path) as conn:
+        assert conn.execute("SELECT ts FROM comment_history").fetchone()[0] == 0.0
+
+
+@pytest.mark.parametrize("bad_ts", [None, "not a number", {}])
+def test_an_unusable_timestamp_falls_back_to_now(store, bad_ts):
+    store.append_comment({"ts": bad_ts, "post_id": "p1", "comment": "x"})
+    assert store.get_comment_history()[0]["comment"] == "x"
+
+
+def test_append_improvement_round_trip(store):
+    record = {"task_id": "t1", "timestamp": 1.0, "outcome": "success",
+              "description": "d"}
+    assert store.append_improvement(record) is True
+    assert store.get_improvement_history() == [record]
+
+
+def test_append_improvement_is_idempotent(store):
+    record = {"task_id": "t1", "timestamp": 1.0, "outcome": "success"}
+    store.append_improvement(record)
+    assert store.append_improvement(record) is False
+    assert store.improvement_count() == 1
+
+
+def test_update_improvement_rewrites_one_row(store):
+    store.append_improvement({"task_id": "t1", "timestamp": 1.0, "outcome": "success"})
+    store.append_improvement({"task_id": "t2", "timestamp": 2.0, "outcome": "success"})
+
+    assert store.update_improvement(
+        "t1", 1.0, {"task_id": "t1", "timestamp": 1.0, "outcome": "merged"}
+    ) is True
+
+    outcomes = {r["task_id"]: r["outcome"] for r in store.get_improvement_history()}
+    assert outcomes == {"t1": "merged", "t2": "success"}
+
+
+def test_update_improvement_reports_a_miss(store):
+    assert store.update_improvement("nope", 1.0, {"outcome": "merged"}) is False
+
+
+def test_append_knowledge_dedupes_on_fingerprint(store):
+    entry = {"insight": "a"}
+    assert store.append_knowledge(entry, "fp1") is True
+    assert store.append_knowledge(entry, "fp1") is False
+    assert store.knowledge_count() == 1
+
+
+def test_history_survives_reopening(tmp_path):
+    db = tmp_path / "ouroboros.db"
+    OuroborosStorage(db_path=db).append_comment({"ts": 1.0, "post_id": "p", "comment": "x"})
+    assert OuroborosStorage(db_path=db).comment_count() == 1
+
+
+def test_an_unreadable_row_is_skipped_not_fatal(store):
+    """A hand-corrupted payload must not take out the whole read."""
+    store.append_comment({"ts": 1.0, "post_id": "p1", "comment": "good"})
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute(
+            "INSERT INTO comment_history (ts, post_id, fingerprint, payload) "
+            "VALUES (2.0, 'p2', 'fp', 'not json')"
+        )
+
+    assert [c["comment"] for c in store.get_comment_history()] == ["good"]
+
+
+def test_record_fingerprint_is_stable_and_distinguishing():
+    fp = OuroborosStorage.record_fingerprint
+    assert fp("a", "b") == fp("a", "b")
+    assert fp("a", "b") != fp("b", "a")
+    assert fp("a", None) != fp("a", "")

@@ -151,16 +151,21 @@ def test_generate_kb_summary_returns_none_on_error():
 def test_kb_load_save_roundtrip(tmp_path):
     from ouroboros.knowledge_base import load_kb, save_kb
 
+    from ouroboros.knowledge_base import add_entries
+
     path = str(tmp_path / "kb.json")
     kb = load_kb(path)
     assert kb["entries"] == []
 
-    kb["entries"].append({"insight": "test", "tags": [], "ts": 100})
+    # Entries are owned by SQLite now; save_kb persists only the summary cache.
+    add_entries([{"insight": "test", "tags": [], "ts": 100}], path)
+    kb["summary_cache"] = "a summary"
     save_kb(kb, path)
 
     kb2 = load_kb(path)
     assert len(kb2["entries"]) == 1
     assert kb2["entries"][0]["insight"] == "test"
+    assert kb2["summary_cache"] == "a summary"
 
 
 def test_kb_add_entries(tmp_path):
@@ -174,17 +179,19 @@ def test_kb_add_entries(tmp_path):
     assert len(kb["entries"]) == 5
 
 
-def test_kb_add_entries_trims(tmp_path):
+def test_kb_add_entries_no_longer_discards_history(tmp_path):
+    """The old 200-entry cap existed because every append rewrote the whole
+    JSON list. Appending a row has no such pressure, so nothing is dropped."""
     from ouroboros.knowledge_base import MAX_ENTRIES, add_entries, load_kb
 
     path = str(tmp_path / "kb.json")
-    entries = [{"insight": f"i_{i}", "tags": [], "ts": i} for i in range(MAX_ENTRIES + 10)]
-    add_entries(entries, path)
+    count = MAX_ENTRIES + 10
+    add_entries([{"insight": f"i_{i}", "tags": [], "ts": i} for i in range(count)], path)
 
     kb = load_kb(path)
-    assert len(kb["entries"]) == MAX_ENTRIES
-    # Should keep the latest entries
-    assert kb["entries"][-1]["insight"] == f"i_{MAX_ENTRIES + 9}"
+    assert len(kb["entries"]) == count
+    assert kb["entries"][0]["insight"] == "i_0", "the oldest entry survives"
+    assert kb["entries"][-1]["insight"] == f"i_{count - 1}"
 
 
 def test_kb_get_summary_cached(tmp_path):
