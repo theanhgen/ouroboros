@@ -108,6 +108,28 @@ def _clamp_trust(value: float) -> float:
     return max(_TRUST_MIN, min(_TRUST_MAX, value))
 
 
+def _fts5_match_query(text: str) -> str:
+    """Compile arbitrary text into a literal FTS5 MATCH expression.
+
+    FTS5 reads its own operators out of the query string, so ordinary text
+    containing a colon, an unbalanced quote, a trailing ``AND`` or a bare
+    ``*`` is a syntax error rather than a search term. Quoting each
+    whitespace-separated token turns it into a phrase, which FTS5 matches
+    literally: ``issue:123`` searches for "issue:123" instead of failing on
+    an unknown column. Embedded double quotes are escaped by doubling.
+
+    Returns "" when the text has no searchable tokens, which callers treat
+    as "no results" without touching the database.
+
+    NUL is replaced rather than quoted: SQLite stops reading the MATCH
+    expression at U+0000, so a quoted phrase containing one is reported as
+    an unterminated string no matter how it is escaped. It is the only
+    control character that survives quoting.
+    """
+    tokens = [token for token in text.replace("\x00", " ").split() if token.strip()]
+    return " ".join('"' + token.replace('"', '""') + '"' for token in tokens)
+
+
 # ---------------------------------------------------------------------------
 # Code indexing
 # ---------------------------------------------------------------------------
@@ -241,12 +263,16 @@ class MemoryStore:
 
     def search_facts(self, query: str, category: Optional[str] = None,
                      min_trust: float = 0.3, limit: int = 10) -> List[Dict]:
-        """Full-text search over facts using FTS5."""
+        """Full-text search over facts using FTS5.
+
+        ``query`` is treated as literal text, not as an FTS5 expression, so
+        arbitrary input is safe to pass through.
+        """
         with self._lock:
-            query = query.strip()
-            if not query:
+            match_query = _fts5_match_query(query)
+            if not match_query:
                 return []
-            params: list = [query, min_trust]
+            params: list = [match_query, min_trust]
             cat_clause = ""
             if category is not None:
                 cat_clause = "AND f.category = ?"
