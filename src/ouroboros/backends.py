@@ -360,13 +360,28 @@ def _untracked_files(repo: Path) -> set:
     return {_decode_git_path(line) for line in proc.stdout.splitlines() if line.strip()}
 
 
-def _build_agent_prompt(task: Any, plan: str, config: Any) -> str:
+def _build_agent_prompt(task: Any, plan: str, config: Any, model: Optional[str] = None) -> str:
+    """Build the CLI agent prompt, bounded to the target model's budget.
+
+    CLI backends take a prompt string rather than a message list, so they do
+    not pass through llm.create_completion. The description and plan are
+    model-generated and unbounded, so the same ceiling is applied here --
+    otherwise the configured generator_backend is a live path with no cap.
+    """
+    from .llm import model_input_budget, truncate_to_tokens  # local: avoids a cycle
+
+    budget = model_input_budget(model or "")
+    description = truncate_to_tokens(
+        str(getattr(task, "description", "")), budget // 4, label="task description"
+    )
+    plan = truncate_to_tokens(plan, budget // 2, label="plan")
+
     forbidden = ", ".join(getattr(config, "forbidden_modification_paths", ()))
     allowed = ", ".join(getattr(config, "allowed_modification_paths", ()))
     return (
         "You are working inside a git repository. Implement the improvement below "
         "by editing files directly in the working tree.\n\n"
-        f"## Task ({getattr(task, 'task_type', '')})\n{getattr(task, 'description', '')}\n\n"
+        f"## Task ({getattr(task, 'task_type', '')})\n{description}\n\n"
         f"## Plan\n{plan}\n\n"
         "## Hard constraints (violating any of these causes your work to be discarded)\n"
         f"- Modify at most {getattr(config, 'max_changed_files_per_pr', 3)} files.\n"
@@ -446,7 +461,7 @@ def agent_generate_changes(
 
     repo = Path(repo_root)
     untracked_before = _untracked_files(repo)
-    prompt = _build_agent_prompt(task, plan, config)
+    prompt = _build_agent_prompt(task, plan, config, model)
 
     try:
         if backend == "claude":
