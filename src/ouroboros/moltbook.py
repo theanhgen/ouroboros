@@ -27,7 +27,15 @@ _shutdown_event = lifecycle.shutdown_event
 MAX_SELF_QUESTION_LOG = 200
 MAX_BACKOFF_SECONDS = 900  # 15 min cap
 MAX_SEEN_POST_IDS = 200
+# Size of the recent-comment window kept in memory. Comments themselves are
+# stored in SQLite without a limit; this only bounds what load_state hydrates,
+# since every reader looks at a tail slice or the last seven days.
 MAX_COMMENT_HISTORY = 100
+
+# Set by load_state. save_state only drops comment_history once the records
+# are known to be in the database; it is stripped from what gets written.
+_COMMENTS_IN_SQLITE = "_comments_in_sqlite"
+_COMMENT_MIGRATION = "comment_history_v1"
 MAX_SELF_UPGRADES = 50
 MAX_COMMUNITY_HISTORY = 20
 
@@ -367,18 +375,82 @@ def load_state() -> Dict[str, Any]:
     # timestamps with defaults and the agent would repeat work it had already
     # done. load_json_file distinguishes missing from unreadable.
     path = _state_path()
-    return load_json_file(
+    state = load_json_file(
         path,
         default=_default_state(),
         error_msg=f"Corrupt state file at {path}, returning default",
         logger=log,
     )
 
+    # comment_history lives in SQLite. Hydrate a recent window so the readers
+    # that slice state["comment_history"] keep working unchanged, while the
+    # full history stays in the database and out of this file -- it was 102 KB
+    # of a 169 KB state.json, rewritten every cycle.
+    try:
+        storage = _comment_storage()
+        _drain_comment_outbox(state, storage)
+        _drain_knowledge_outbox(state)
+        legacy = state.get("comment_history") or []
+        if storage.migration_done(_COMMENT_MIGRATION):
+            legacy = []
+        if legacy:
+            # save_state stops writing this list, so the next save would erase
+            # it. Snapshot before that, without depending on the startup
+            # migration having run first.
+            from .state_migration import freeze_rollback_snapshot
+
+            snapshot = freeze_rollback_snapshot(Path(path))
+            if snapshot is None:
+                # No rollback artifact means no cutover. Leave the file
+                # authoritative and try again next start.
+                log.warning("Skipping comment cutover: could not snapshot %s", path)
+                state[_COMMENTS_IN_SQLITE] = False
+                return state
+            imported = 0
+            failed = 0
+            for c in legacy:
+                if not isinstance(c, dict):
+                    continue
+                try:
+                    imported += bool(storage.append_comment(c))
+                except Exception:
+                    failed += 1
+            if failed:
+                # save_state would drop the list next, so a partial import
+                # would lose the records that did not make it.
+                log.warning(
+                    "Skipping comment cutover: %d of %d records could not be "
+                    "imported", failed, len(legacy),
+                )
+                state[_COMMENTS_IN_SQLITE] = False
+                return state
+            # Only now is the file safe to stop writing.
+            storage.mark_migration_done(_COMMENT_MIGRATION)
+            if imported:
+                log.info("Imported %d comments from state.json into SQLite", imported)
+        state["comment_history"] = storage.get_comment_history(limit=MAX_COMMENT_HISTORY)
+        state[_COMMENTS_IN_SQLITE] = True
+    except Exception:
+        # Fall back to whatever the file had rather than losing the window.
+        log.warning("Could not load comment history from storage", exc_info=True)
+        state[_COMMENTS_IN_SQLITE] = False
+
+    return state
+
 
 def save_state(state: Dict[str, Any]) -> None:
     path = _state_path()
     _trim_state(state)
-    save_json_file(path, state, sort_keys=True)
+    # comment_history is owned by SQLite once the cutover succeeded; writing
+    # it here too would recreate the bloat and give two sources of truth. If
+    # the cutover was skipped -- no snapshot, or a record that would not
+    # import -- the file is still authoritative and must keep the list.
+    cut_over = state.get(_COMMENTS_IN_SQLITE, False)
+    to_write = {
+        k: v for k, v in state.items()
+        if k != _COMMENTS_IN_SQLITE and not (cut_over and k == "comment_history")
+    }
+    save_json_file(path, to_write, sort_keys=True)
 
 
 def _send_telegram_message(token: str, chat_id: str, text: str) -> None:
@@ -429,7 +501,89 @@ def _trim_self_question_log(state: Dict[str, Any]) -> None:
         state["self_question_log"] = log_list[-MAX_SELF_QUESTION_LOG:]
 
 
+def _comment_storage() -> Any:
+    from .storage import OuroborosStorage
+
+    return OuroborosStorage()
+
+
+def record_comment(state: Dict[str, Any], entry: Dict[str, Any]) -> None:
+    """Persist a posted comment and make it visible to this cycle's readers.
+
+    The comment is already public by the time this runs, so a database
+    failure must not lose the local record. On failure the entry goes to an
+    outbox that save_state does persist, and load_state retries it -- without
+    that it would live only in the in-memory list, which save_state
+    deliberately drops.
+    """
+    try:
+        _comment_storage().append_comment(entry)
+    except Exception:
+        log.warning("Could not persist comment; queued for retry", exc_info=True)
+        state.setdefault("comment_outbox", []).append(entry)
+        # Written now, not at the end of the cycle: the comment is already
+        # public, and a crash before the cycle-end save would lose the only
+        # local record of it.
+        try:
+            save_state(state)
+        except Exception:
+            log.error("Could not persist the comment outbox", exc_info=True)
+    state.setdefault("comment_history", []).append(entry)
+
+
+def _record_knowledge(state: Dict[str, Any], entries: List[Dict[str, Any]]) -> None:
+    """Persist knowledge entries, queueing the batch if the write fails.
+
+    The source posts are added to seen_post_ids before this runs, so a lost
+    batch is never regenerated -- later cycles skip those posts entirely.
+    """
+    from .knowledge_base import add_entries
+
+    try:
+        add_entries(entries)
+        log.info("[knowledge-base] Added %d entries", len(entries))
+    except Exception:
+        log.warning("Could not persist knowledge entries; queued", exc_info=True)
+        state.setdefault("knowledge_outbox", []).extend(entries)
+        try:
+            save_state(state)
+        except Exception:
+            log.error("Could not persist the knowledge outbox", exc_info=True)
+
+
+def _drain_knowledge_outbox(state: Dict[str, Any]) -> None:
+    """Retry a knowledge batch whose write failed on an earlier cycle."""
+    queued = state.get("knowledge_outbox") or []
+    if not queued:
+        return
+    from .knowledge_base import add_entries
+
+    try:
+        add_entries(queued)
+    except Exception:
+        return  # still failing; keep it queued
+    state["knowledge_outbox"] = []
+    log.info("Recovered %d queued knowledge entries", len(queued))
+
+
+def _drain_comment_outbox(state: Dict[str, Any], storage: Any) -> None:
+    """Retry comments whose database write failed on an earlier cycle."""
+    outbox = state.get("comment_outbox") or []
+    if not outbox:
+        return
+    remaining = []
+    for entry in outbox:
+        try:
+            storage.append_comment(entry)
+        except Exception:
+            remaining.append(entry)
+    state["comment_outbox"] = remaining
+    if len(remaining) < len(outbox):
+        log.info("Recovered %d queued comments into storage", len(outbox) - len(remaining))
+
+
 def _trim_comment_history(state: Dict[str, Any], limit: int = 80) -> None:
+    """Bound the in-memory window. SQLite keeps the full history."""
     history = state.get("comment_history", [])
     if len(history) > limit:
         state["comment_history"] = history[-limit:]
@@ -727,6 +881,18 @@ def run_loop() -> int:
     cfg = load_runner_config()
     state = load_state()
 
+    # Backfill the JSON history into SQLite. Idempotent and non-destructive,
+    # so it is safe to run on every start and needs no separate deploy step.
+    try:
+        from .codebase import get_repo_root
+        from .state_migration import migrate_json_history
+
+        migrate_json_history(get_repo_root())
+    except Exception:
+        # A failed backfill must not stop the agent; the JSON files are still
+        # there and the next start will try again.
+        log.warning("State migration skipped", exc_info=True)
+
     try:
         creds: Optional[Credentials] = load_credentials()
     except MoltbookError as exc:
@@ -881,7 +1047,7 @@ def run_loop() -> int:
                         }
                         if not cfg.dry_run and comment_result:
                             comment_entry["comment_id"] = comment_result.get("id")
-                        state.setdefault("comment_history", []).append(comment_entry)
+                        record_comment(state, comment_entry)
 
                         # -- Comment mining: extract codebase improvement insights --
                         if (
@@ -984,8 +1150,7 @@ def run_loop() -> int:
                                         })
 
                         if kb_entries:
-                            add_entries(kb_entries)
-                            log.info("[knowledge-base] Added %d entries", len(kb_entries))
+                            _record_knowledge(state, kb_entries)
                     except Exception:
                         log.exception("Knowledge base population failed")
 
