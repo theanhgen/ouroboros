@@ -76,3 +76,25 @@ class SafetyConfig:
         "evaluation.py",
         "policies.py",
     )
+
+    # Modules generated code may not import, checked by
+    # policies.validate_import_policy. Matching covers submodules, so "socket"
+    # also rejects "import socket.foo" and "from socket import socket".
+    #
+    # This is a lint-level guard, not a capability boundary. subprocess, os and
+    # urllib stay importable because the codebase depends on them, so code that
+    # passes this check can still spawn processes and reach the network. It
+    # catches an improvement that casually reaches for pickle or ctypes; it does
+    # not contain one that is trying to get out. Enforce real limits in a
+    # sandbox.
+    #
+    # The default entries are unused anywhere in src/ or tests/, so it rejects
+    # nothing that exists today -- a test asserts that against the real tree.
+    forbidden_import_modules: Tuple[str, ...] = (
+        "ctypes",
+        "marshal",
+        "pickle",
+        "pty",
+        "shelve",
+        "socket",
+    )
