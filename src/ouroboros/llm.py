@@ -60,8 +60,98 @@ def create_completion(client: Any, **kwargs: Any) -> Any:
     Transient faults (429, 5xx, dropped connections, timeouts) are retried with
     exponential backoff and jitter; everything else propagates on the first
     attempt. See retry.is_retryable.
+
+    Messages are also fitted to the model's input budget here. Doing it at the
+    call sites alone would only cover the prompts someone remembered to cap --
+    and would miss the ReAct loop, whose tool results are appended to a message
+    history that is resent whole.
     """
+    messages = kwargs.get("messages")
+    if messages:
+        kwargs["messages"] = fit_messages_to_budget(messages, kwargs.get("model", ""))
     return client.chat.completions.create(**kwargs)
+
+
+def fit_messages_to_budget(
+    messages: List[Dict[str, Any]], model: str
+) -> List[Dict[str, Any]]:
+    """Trim message contents so the request fits the model's input budget.
+
+    Trims the largest message first and re-measures, so one oversized blob is
+    cut rather than every message being shaved evenly. System messages are
+    left alone unless nothing else is left to give: they carry the
+    instructions, and losing those changes what the model is being asked to
+    do.
+    """
+    budget = model_input_budget(model)
+    if _messages_tokens(messages) <= budget:
+        return messages
+
+    trimmed = [dict(m) for m in messages]
+
+    def _reduce(indices: List[int]) -> None:
+        # Largest first, re-measuring each time, so one oversized blob is cut
+        # rather than every message shaved evenly.
+        for _ in range(len(indices) * 2):
+            total = _messages_tokens(trimmed)
+            if total <= budget:
+                return
+            candidates = [i for i in indices if trimmed[i].get("content")]
+            if not candidates:
+                return
+            biggest = max(candidates, key=lambda i: len(trimmed[i]["content"]))
+            content = trimmed[biggest]["content"]
+            target = max(estimate_tokens(content) - (total - budget), 0)
+            reduced = truncate_to_tokens(content, target, label="prompt")
+            if reduced == content:
+                return  # cannot shrink further
+            trimmed[biggest]["content"] = reduced
+
+    is_text = [i for i, m in enumerate(trimmed) if isinstance(m.get("content"), str)]
+    _reduce([i for i in is_text if trimmed[i].get("role") != "system"])
+    # Only if trimming everything else still does not fit. The system message
+    # carries the instructions, so losing it changes what is being asked --
+    # but a request that cannot be sent is worse.
+    _reduce([i for i in is_text if trimmed[i].get("role") == "system"])
+
+    final = _messages_tokens(trimmed)
+    log.warning(
+        "prompt exceeded the %s input budget (%d tokens); trimmed to ~%d",
+        model or "default",
+        budget,
+        final,
+    )
+    if final > budget:
+        log.error(
+            "prompt still over budget after trimming (~%d > %d); "
+            "non-text content dominates the request",
+            final,
+            budget,
+        )
+    return trimmed
+
+
+def _message_tokens(message: Dict[str, Any]) -> int:
+    """Estimate a message's cost, including non-string parts.
+
+    tool_calls and structured content carry real tokens. Counting only string
+    content would report a message with a 100k-character tool-call argument as
+    free, and the budget check would pass on a request that cannot be sent.
+    """
+    total = 0
+    for key, value in message.items():
+        if isinstance(value, str):
+            total += estimate_tokens(value)
+        elif value is not None:
+            try:
+                total += estimate_tokens(json.dumps(value, default=str))
+            except (TypeError, ValueError):
+                total += estimate_tokens(str(value))
+    return total
+
+
+def _messages_tokens(messages: List[Dict[str, Any]]) -> int:
+    return sum(_message_tokens(m) for m in messages)
 
 
 # Backwards-compatible private alias.
@@ -73,6 +163,128 @@ def _completion_token_kwargs(model: str, max_tokens: int) -> dict:
     if model.startswith("gpt-5"):
         return {"max_completion_tokens": max_tokens}
     return {"max_tokens": max_tokens}
+
+
+# -- Prompt sizing -----------------------------------------------------------
+#
+# The agent injects whole-codebase summaries and full test output into prompts.
+# Both grow with the repo, so without a ceiling the request eventually exceeds
+# the model's context window and every cycle fails with a 400.
+
+# Characters per token. 4 is the usual English rule of thumb, but this mostly
+# carries Python source and pytest output, where dense punctuation pushes the
+# real ratio nearer 2.5-3. Estimating low is the safe direction: it yields a
+# slightly smaller prompt rather than one that overflows.
+CHARS_PER_TOKEN = 3
+
+# Input budget per model, in tokens. The value is the context window minus
+# generous room for the reply, since these are input-side limits.
+_MODEL_INPUT_BUDGETS = (
+    ("gpt-5", 300_000),
+    ("gpt-4.1", 800_000),
+    ("gpt-4o", 100_000),
+    ("gpt-4", 100_000),
+    ("claude", 150_000),
+    # Local Ollama models are typically 8k-32k; assume the small end.
+    ("gemma", 6_000),
+    ("qwen", 24_000),
+    ("llama", 6_000),
+    ("ollama/", 6_000),
+)
+
+# Used when the model is unrecognised. Deliberately modest: overshooting a
+# small local model's window fails the request, while undershooting a large
+# one only trims context.
+DEFAULT_MAX_REQUEST_TOKENS = 48_000
+
+# Per-section ceilings, applied where prompts are assembled. These are a
+# backstop against one section crowding out the others; the request-wide
+# budget enforced in create_completion is what actually guarantees the window
+# is respected.
+MAX_CODEBASE_SUMMARY_TOKENS = 24_000
+MAX_TEST_OUTPUT_TOKENS = 6_000
+MAX_HISTORY_TOKENS = 4_000
+MAX_CODE_CONTEXT_TOKENS = 24_000
+
+
+def estimate_tokens(text: str) -> int:
+    """Approximate the token count of text."""
+    if not text:
+        return 0
+    return (len(text) + CHARS_PER_TOKEN - 1) // CHARS_PER_TOKEN
+
+
+def model_input_budget(model: str) -> int:
+    """Return the input-token budget for model."""
+    name = (model or "").lower()
+    for prefix, budget in _MODEL_INPUT_BUDGETS:
+        if name.startswith(prefix):
+            return budget
+    return DEFAULT_MAX_REQUEST_TOKENS
+
+
+def _cut_at_line_start(text: str) -> str:
+    """Drop a trailing partial line, unless there is no line structure at all."""
+    return text[: text.rindex("\n") + 1] if "\n" in text else text
+
+
+def _cut_to_line_start(text: str) -> str:
+    """Drop a leading partial line, unless there is no line structure at all."""
+    return text[text.index("\n") + 1:] if "\n" in text else text
+
+
+def truncate_to_tokens(text: str, max_tokens: int, *, label: str = "content") -> str:
+    """Trim text to roughly max_tokens, keeping the start and the end.
+
+    Middle-out rather than a plain head cut, because for the things this
+    truncates both ends carry the signal: a codebase summary's tail lists
+    modules the head does not, and pytest output puts the first failure at the
+    top and the summary line at the bottom. Cutting the tail would routinely
+    discard the part naming what actually failed.
+
+    Cuts land on line boundaries. Fenced content is truncated head-only
+    instead: splicing a head onto a tail can leave one file's opening fence
+    joined to another file's closing fence, so the model reads the second
+    file's code under the first file's heading. Balancing the fence count
+    would make that look well-formed while still being wrong, and
+    structurally false context is worse than less context.
+
+    The elision is marked so the model is told the input was abridged rather
+    than silently seeing a partial picture.
+    """
+    if max_tokens <= 0 or not text:
+        return ""
+
+    budget = max_tokens * CHARS_PER_TOKEN
+    if len(text) <= budget:
+        return text
+
+    dropped = len(text) - budget
+    marker = f"\n\n... [{label} truncated: {dropped:,} of {len(text):,} characters omitted] ...\n\n"
+    remaining = budget - len(marker)
+    if remaining <= 0:
+        # The marker alone would exceed the budget. Returning it anyway would
+        # make this function overshoot the limit it exists to enforce, so drop
+        # the annotation and hard-cut instead.
+        return text[:budget]
+
+    if "```" in text:
+        # Head-only: never join two fenced regions that were not adjacent.
+        head = _cut_at_line_start(text[:remaining])
+        if head.count("```") % 2:
+            # The cut landed inside a fence; drop back to before it opened.
+            head = head[: head.rindex("```")]
+        return head + marker
+
+    # Favour the head slightly: it holds the overview, the tail holds the
+    # summary line.
+    head_len = (remaining * 2) // 3
+    tail_len = remaining - head_len
+
+    head = _cut_at_line_start(text[:head_len])
+    tail = _cut_to_line_start(text[-tail_len:]) if tail_len > 0 else ""
+
+    return head + marker + tail
 
 
 
@@ -138,6 +350,13 @@ def identify_improvements(
         "- Do not repeat a task that the recent history shows already failed the same way.\n\n"
         "Output JSON with keys: task_type, description, target_files, evidence, priority."
     )
+    summary = truncate_to_tokens(
+        summary, MAX_CODEBASE_SUMMARY_TOKENS, label="codebase summary"
+    )
+    test_results = truncate_to_tokens(
+        test_results, MAX_TEST_OUTPUT_TOKENS, label="test output"
+    )
+    history = truncate_to_tokens(history, MAX_HISTORY_TOKENS, label="history")
     user_prompt = f"## Summary\n{summary}\n\n## Tests\n{test_results}\n\n## History\n{history}\n\n{additional_context}"
 
     try:
@@ -293,7 +512,7 @@ def generate_question_post(
             **_completion_token_kwargs(model, 600),
             messages=[
                 {"role": "system", "content": prompts.load_question_post_prompt()},
-                {"role": "user", "content": f"## Task\n{task_data}\n\n## Code\n{code_block}\n\n## Tests\n{test_failures}"}
+                {"role": "user", "content": f"## Task\n{task_data}\n\n## Code\n{truncate_to_tokens(code_block, MAX_CODE_CONTEXT_TOKENS, label='code context')}\n\n## Tests\n{truncate_to_tokens(test_failures, MAX_TEST_OUTPUT_TOKENS, label='test output')}"}
             ]
         )
         return json.loads(resp.choices[0].message.content)
@@ -538,6 +757,9 @@ def generate_post(
 
 
 def generate_comment(client: Any, post_title: str, post_content: str, model: str = DEFAULT_OPENAI_MODEL, codebase_context: str = "") -> Optional[str]:
+    codebase_context = truncate_to_tokens(
+        codebase_context, MAX_CODEBASE_SUMMARY_TOKENS, label="codebase context"
+    )
     user_msg = f"Post title: {post_title}\n\nPost content: {post_content}\n\nContext: {codebase_context}"
     try:
         resp = create_completion(
@@ -553,6 +775,9 @@ def generate_comment(client: Any, post_title: str, post_content: str, model: str
         return None
 
 def answer_question(client: Any, question: str, codebase_summary: str = "", model: str = DEFAULT_OPENAI_MODEL) -> Optional[str]:
+    codebase_summary = truncate_to_tokens(
+        codebase_summary, MAX_CODEBASE_SUMMARY_TOKENS, label="codebase summary"
+    )
     user_content = f"## Codebase\n{codebase_summary}\n\n## Question\n{question}"
     try:
         resp = create_completion(
