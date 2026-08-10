@@ -4,6 +4,9 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
+
+import pytest
+
 from ouroboros.backlog import (
     load_backlog,
     save_backlog,
@@ -127,3 +130,77 @@ class TestBacklog:
         assert "[P10] feat: high" in formatted
         assert "[P1] fix: low (attempts: 2)" in formatted
         assert "done" not in formatted  # completed items should be excluded
+
+
+# -- centralised JSON IO -----------------------------------------------------
+
+def test_load_backlog_missing_file(tmp_path):
+    assert load_backlog(tmp_path) == []
+
+
+def test_load_backlog_corrupt_file(tmp_path):
+    path = tmp_path / "config" / "backlog.json"
+    path.parent.mkdir(parents=True)
+    path.write_text("{ not json")
+    assert load_backlog(tmp_path) == []
+
+
+def test_load_backlog_accepts_a_bare_list(tmp_path):
+    """Older files stored the list directly rather than under "items"."""
+    path = tmp_path / "config" / "backlog.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps([{"id": "1"}]))
+    assert load_backlog(tmp_path) == [{"id": "1"}]
+
+
+def test_save_backlog_creates_the_directory(tmp_path):
+    save_backlog(tmp_path, [{"id": "1"}])
+    assert (tmp_path / "config" / "backlog.json").exists()
+
+
+def test_backlog_round_trip(tmp_path):
+    items = [{"id": "a", "description": "x"}, {"id": "b", "description": "y"}]
+    save_backlog(tmp_path, items)
+    assert load_backlog(tmp_path) == items
+
+
+def test_save_backlog_leaves_no_temp_file(tmp_path):
+    save_backlog(tmp_path, [{"id": "1"}])
+    leftovers = list((tmp_path / "config").glob("*.tmp"))
+    assert leftovers == []
+
+
+def test_unreadable_backlog_is_not_silently_replaced(tmp_path, monkeypatch):
+    """Returning [] here would let add_item overwrite a real backlog."""
+    from pathlib import Path as _Path
+
+    path = tmp_path / "config" / "backlog.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"items": [{"id": "keep-me"}]}))
+    original = path.read_text()
+
+    def unreadable(*a, **kw):
+        raise PermissionError("cannot read")
+
+    monkeypatch.setattr(_Path, "open", unreadable)
+    with pytest.raises(PermissionError):
+        load_backlog(tmp_path)
+
+    monkeypatch.undo()
+    assert path.read_text() == original
+
+
+def test_load_backlog_binary_garbage(tmp_path):
+    """A crash can leave a file full of NULs, which never reaches the parser."""
+    path = tmp_path / "config" / "backlog.json"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"\x00\x81\xfe" * 100)
+    assert load_backlog(tmp_path) == []
+
+
+@pytest.mark.parametrize("payload", ['{"items": null}', "null", '"a string"', "42"])
+def test_load_backlog_non_list_payload(tmp_path, payload):
+    path = tmp_path / "config" / "backlog.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(payload)
+    assert load_backlog(tmp_path) == []

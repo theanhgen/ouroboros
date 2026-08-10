@@ -361,9 +361,12 @@ def _default_state() -> Dict[str, Any]:
 
 
 def load_state() -> Dict[str, Any]:
+    # No os.path.exists() preflight: it answers False for any stat error, so a
+    # transient EACCES would look like a fresh install. run_loop persists what
+    # it loaded, so that would overwrite seen_post_ids and the cycle
+    # timestamps with defaults and the agent would repeat work it had already
+    # done. load_json_file distinguishes missing from unreadable.
     path = _state_path()
-    if not os.path.exists(path):
-        return _default_state()
     return load_json_file(
         path,
         default=_default_state(),

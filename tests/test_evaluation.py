@@ -1,8 +1,11 @@
 """Tests for evaluation module."""
 
 import json
+import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+
+import pytest
 
 from ouroboros.evaluation import (
     EvaluationRecord,
@@ -154,3 +157,90 @@ def test_check_pr_outcomes_updates_success_records(mock_run, _mock_feedback, tmp
 
     persisted = json.loads(history_file.read_text())
     assert persisted[0]["outcome"] == "merged"
+
+
+# -- centralised JSON IO -----------------------------------------------------
+
+def test_history_write_is_atomic(tmp_path, monkeypatch):
+    """A crash mid-write must not leave a truncated history file."""
+    import ouroboros.evaluation as ev
+
+    path = tmp_path / "config" / "improvement_history.json"
+    path.parent.mkdir(parents=True)
+    path.write_text("[]")
+    monkeypatch.setattr(ev, "_history_path", lambda root=None: path)
+
+    real_replace = os.replace
+    calls = []
+
+    def failing_replace(src, dst):
+        calls.append((src, dst))
+        raise OSError("simulated crash before rename")
+
+    monkeypatch.setattr("ouroboros.storage.os.replace", failing_replace)
+
+    with pytest.raises(OSError):
+        ev.save_json_file(path, [{"a": 1}])
+
+    # The original file is untouched -- the partial write went to a temp file.
+    assert path.read_text() == "[]"
+    assert calls, "expected an atomic rename to have been attempted"
+    monkeypatch.setattr("ouroboros.storage.os.replace", real_replace)
+
+
+def test_load_history_tolerates_a_corrupt_file(tmp_path, monkeypatch):
+    import ouroboros.evaluation as ev
+
+    path = tmp_path / "improvement_history.json"
+    path.write_text("{ not json")
+    monkeypatch.setattr(ev, "_history_path", lambda root=None: path)
+
+    assert ev.load_history() == []
+
+
+def test_load_history_missing_file_is_empty(tmp_path, monkeypatch):
+    import ouroboros.evaluation as ev
+
+    monkeypatch.setattr(ev, "_history_path", lambda root=None: tmp_path / "nope.json")
+    assert ev.load_history() == []
+
+
+def test_unreadable_history_is_not_silently_replaced(tmp_path, monkeypatch):
+    """An I/O failure must not let record_improvement overwrite real history."""
+    import ouroboros.evaluation as ev
+
+    path = tmp_path / "improvement_history.json"
+    path.write_text(json.dumps([{"task_type": "fix_bug"}]))
+    monkeypatch.setattr(ev, "_history_path", lambda root=None: path)
+
+    original = path.read_text()
+
+    def unreadable(*a, **kw):
+        raise PermissionError("cannot read")
+
+    monkeypatch.setattr(Path, "open", unreadable)
+
+    with pytest.raises(PermissionError):
+        ev.load_history()
+
+    monkeypatch.undo()
+    assert path.read_text() == original
+
+
+@pytest.mark.parametrize("payload", ["{}", "null", '"a string"', "42"])
+def test_load_history_non_list_payload(tmp_path, monkeypatch, payload):
+    import ouroboros.evaluation as ev
+
+    path = tmp_path / "improvement_history.json"
+    path.write_text(payload)
+    monkeypatch.setattr(ev, "_history_path", lambda root=None: path)
+    assert ev.load_history() == []
+
+
+def test_load_history_binary_garbage(tmp_path, monkeypatch):
+    import ouroboros.evaluation as ev
+
+    path = tmp_path / "improvement_history.json"
+    path.write_bytes(b"\x00\x81\xfe" * 100)
+    monkeypatch.setattr(ev, "_history_path", lambda root=None: path)
+    assert ev.load_history() == []

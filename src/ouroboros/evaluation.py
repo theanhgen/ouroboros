@@ -1,6 +1,5 @@
 """Outcome tracking for self-improvement attempts."""
 
-import json
 import logging
 import os
 import time
@@ -11,7 +10,13 @@ from typing import Dict, List, Optional, Tuple
 from . import git_ops
 from .codebase import get_repo_root
 from .model_defaults import DEFAULT_OPENAI_MODEL
-from .storage import OuroborosStorage, CycleRecord, MetricRecord
+from .storage import (
+    CycleRecord,
+    MetricRecord,
+    OuroborosStorage,
+    load_json_file,
+    save_json_file,
+)
 
 log = logging.getLogger(__name__)
 
@@ -85,8 +90,7 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
     )
     history.append(record)
 
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump([r.to_dict() for r in history], f, indent=2)
+    save_json_file(path, [r.to_dict() for r in history])
 
     # Persist to SQLite
     try:
@@ -116,16 +120,16 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
 
 def load_history(repo_root: Optional[Path] = None) -> List[EvaluationRecord]:
     """Load improvement history from disk."""
-    path = _history_path(repo_root)
-    if not path.exists():
+    data = load_json_file(
+        _history_path(repo_root),
+        default=[],
+        error_msg="Corrupt improvement history file, returning empty",
+        logger=log,
+    )
+    if not isinstance(data, list):
+        log.warning("Improvement history is not a list, returning empty")
         return []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return [EvaluationRecord.from_dict(d) for d in data]
-    except (json.JSONDecodeError, KeyError):
-        log.warning("Corrupt improvement history file, returning empty")
-        return []
+    return [EvaluationRecord.from_dict(d) for d in data]
 
 
 def check_pr_outcomes(repo_root: Optional[Path] = None) -> List[EvaluationRecord]:
@@ -160,9 +164,7 @@ def check_pr_outcomes(repo_root: Optional[Path] = None) -> List[EvaluationRecord
             log.debug("Could not check PR status for %s", record.pr_url)
 
     if updated:
-        path = _history_path(root)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump([r.to_dict() for r in history], f, indent=2)
+        save_json_file(_history_path(root), [r.to_dict() for r in history])
 
     return history
 

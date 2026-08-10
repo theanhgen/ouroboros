@@ -191,8 +191,12 @@ def test_load_runner_config_missing_file():
     assert cfg == RunnerConfig()
 
 
-def test_load_state_default():
-    with mock.patch("ouroboros.moltbook.os.path.exists", return_value=False):
+def test_load_state_default(tmp_path):
+    # Point at a path that really is absent rather than mocking os.path.exists:
+    # load_state no longer preflights, so the mock would not apply and the test
+    # would read whatever real state.json the host happens to have.
+    missing = tmp_path / "state.json"
+    with mock.patch("ouroboros.moltbook._state_path", return_value=str(missing)):
         state = load_state()
     assert state["last_check"] is None
     assert state["last_comment_time"] is None
@@ -426,3 +430,28 @@ def test_load_runner_config_null_reviewer_fields_are_empty(tmp_path, value):
 def test_runner_config_repr_hides_the_reviewer_api_key():
     cfg = RunnerConfig(reviewer_api_key="super-secret")
     assert "super-secret" not in repr(cfg)
+
+
+def test_load_state_unreadable_does_not_reset_to_default(tmp_path):
+    """A stat/read error must not look like a fresh install.
+
+    run_loop persists what it loaded, so returning defaults here would
+    overwrite seen_post_ids and the cycle timestamps and the agent would
+    repeat work it had already done.
+    """
+    state_file = tmp_path / "state.json"
+    state_file.write_text(json.dumps({"last_check": 123, "seen_post_ids": ["a"]}))
+
+    real_open = Path.open
+
+    def unreadable(self, *a, **kw):
+        if str(self) == str(state_file):
+            raise PermissionError("EACCES")
+        return real_open(self, *a, **kw)
+
+    with mock.patch("ouroboros.moltbook._state_path", return_value=str(state_file)):
+        with mock.patch.object(Path, "open", unreadable):
+            with pytest.raises(PermissionError):
+                load_state()
+
+    assert json.loads(state_file.read_text())["seen_post_ids"] == ["a"]
