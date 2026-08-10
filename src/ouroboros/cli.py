@@ -1,4 +1,5 @@
 import argparse
+from typing import Any, Optional
 import json
 import logging
 from .config import SafetyConfig
@@ -85,6 +86,70 @@ def cmd_config_show(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _int_config_fields() -> set:
+    """Names of RunnerConfig fields typed int.
+
+    Read from the dataclass rather than hardcoded, so a field added later is
+    covered without anyone remembering to update a list here.
+    """
+    from dataclasses import fields as dataclass_fields
+
+    from .moltbook import RunnerConfig
+
+    return {f.name for f in dataclass_fields(RunnerConfig) if f.type in ("int", int)}
+
+
+def _parse_config_value(value: str) -> Any:
+    """Coerce a command-line value to bool, int, or str.
+
+    Deliberately no float: RunnerConfig has nineteen int fields and no float
+    ones, so a fractional value is always wrong for the field it is aimed at.
+    Coercing it would be worse than leaving it a string -- load_runner_config
+    calls int() on those fields, and int(0.5) is 0, which turns a typo into a
+    loop that never sleeps. _validate_config_update rejects it instead.
+    """
+    if value.lower() == "true":
+        return True
+    if value.lower() == "false":
+        return False
+    try:
+        return int(value)
+    except ValueError:
+        return value
+
+
+def _validate_config_update(key: str, value: str) -> Optional[str]:
+    """Return an error message for a value that would break the loader.
+
+    Narrow on purpose: only the cases that stop the agent starting or remove
+    its rate limiting. Full schema validation -- unknown keys, ranges -- is
+    tracked separately.
+    """
+    int_fields = _int_config_fields()
+
+    if not value.strip():
+        if key in int_fields:
+            # load_runner_config calls int("") and raises, so the agent will
+            # not start until someone edits the file by hand.
+            return f"{key} is numeric and cannot be empty"
+        # Empty is meaningful for the string fields: reviewer_base_url,
+        # reviewer_model and generator_model all use it to mean "unset", and
+        # clearing a compromised reviewer endpoint has to be possible here.
+        return None
+
+    if key in int_fields:
+        try:
+            parsed = int(value)
+        except ValueError:
+            return f"{key} must be a whole number, got {value!r}"
+        if parsed <= 0:
+            # int() accepts these; the loop then sleeps for zero or negative
+            # seconds and hammers every dependency it has.
+            return f"{key} must be positive, got {parsed}"
+
+    return None
+
+
 def cmd_config_modify(args: argparse.Namespace) -> int:
     if not can_self_modify():
         print("Self-modification is disabled. Set allow_self_modification=True in SafetyConfig.")
@@ -96,15 +161,11 @@ def cmd_config_modify(args: argparse.Namespace) -> int:
             print(f"Invalid update format: {kv}. Use key=value")
             return 1
         key, value = kv.split("=", 1)
-        # Parse value
-        if value.lower() == "true":
-            updates[key] = True
-        elif value.lower() == "false":
-            updates[key] = False
-        elif value.isdigit():
-            updates[key] = int(value)
-        else:
-            updates[key] = value
+        error = _validate_config_update(key, value)
+        if error:
+            print(f"Invalid update: {error}")
+            return 1
+        updates[key] = _parse_config_value(value)
 
     modify_runner_config(updates)
     redacted = dict(updates)
