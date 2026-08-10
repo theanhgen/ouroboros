@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import sqlite3
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -66,20 +67,50 @@ def save_json_file(
     sort_keys: bool = False,
     indent: int = 2,
 ) -> None:
-    """Safely write JSON via a locked temp file, fsync, and atomic replace."""
+    """Safely write JSON via a temp file, fsync, and atomic replace.
+
+    The temp file name is unique per writer. A fixed "<name>.tmp" is shared
+    state: two processes writing the same target would open and truncate the
+    same scratch file, and whichever renamed second could publish a file the
+    other was still writing.
+
+    The lock is taken on the containing directory rather than on a lock file.
+    Several of these targets live inside the repository, and any extra file
+    left beside them shows up as untracked -- commit_auto_state would not
+    stage it and git_ops.is_clean counts untracked as dirty, so every
+    subsequent improvement cycle would abort with a dirty worktree. Locking
+    the directory needs no file at all. It serialises every write in that
+    directory rather than just this one, which for a handful of small state
+    files is not worth a more precise scheme.
+
+    A failure anywhere before the rename removes the temp file, so a full disk
+    or a serialisation error does not leave scratch files accumulating.
+    """
     json_path = Path(path).expanduser()
     json_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = json_path.with_name(f"{json_path.name}.tmp")
 
-    with tmp_path.open("w", encoding="utf-8") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(json_path.parent), prefix=f".{json_path.name}.", suffix=".tmp"
+    )
+    tmp_path = Path(tmp_name)
+
+    try:
+        dir_fd = os.open(str(json_path.parent), os.O_RDONLY)
         try:
-            json.dump(data, f, indent=indent, sort_keys=sort_keys)
-            f.flush()
-            os.fsync(f.fileno())
+            fcntl.flock(dir_fd, fcntl.LOCK_EX)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=indent, sort_keys=sort_keys)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_path, json_path)
+            finally:
+                fcntl.flock(dir_fd, fcntl.LOCK_UN)
         finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
-    os.replace(tmp_path, json_path)
+            os.close(dir_fd)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 @dataclass
@@ -101,6 +132,18 @@ class MetricRecord:
 
 
 class OuroborosStorage:
+    def _connect(self) -> sqlite3.Connection:
+        """Open a connection with the declared foreign key actually enforced.
+
+        SQLite defaults foreign_keys to OFF per connection, so the REFERENCES
+        clause on metrics was decorative: a MetricRecord for a cycle that does
+        not exist was accepted, counted by get_total_cost, and invisible to
+        get_recent_cycles, which reports a cost no cycle accounts for.
+        """
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
+
     def __init__(self, db_path: Optional[Path] = None):
         if db_path is None:
             db_path = get_repo_root() / "config" / "ouroboros.db"
@@ -110,7 +153,7 @@ class OuroborosStorage:
         self._init_db()
 
     def _init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS cycles (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -142,7 +185,7 @@ class OuroborosStorage:
             """)
 
     def record_cycle(self, record: CycleRecord) -> int:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             cursor = conn.execute(
                 "INSERT INTO cycles (ts, task_type, model, status, description) VALUES (?, ?, ?, ?, ?)",
                 (record.ts or time.time(), record.task_type, record.model, record.status, record.description)
@@ -150,14 +193,14 @@ class OuroborosStorage:
             return cursor.lastrowid
 
     def record_metrics(self, metrics: MetricRecord):
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO metrics (cycle_id, tokens_in, tokens_out, cost) VALUES (?, ?, ?, ?)",
                 (metrics.cycle_id, metrics.tokens_in, metrics.tokens_out, metrics.cost)
             )
 
     def get_recent_cycles(self, limit: int = 10) -> List[Dict[str, Any]]:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 "SELECT c.*, m.tokens_in, m.tokens_out, m.cost FROM cycles c "
@@ -168,13 +211,13 @@ class OuroborosStorage:
             return [dict(row) for row in cursor.fetchall()]
 
     def get_total_cost(self) -> float:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             cursor = conn.execute("SELECT SUM(cost) FROM metrics")
             row = cursor.fetchone()
             return row[0] if row[0] is not None else 0.0
 
     def add_embedding(self, content_type: str, ref_id: str, content: str, embedding: List[float]):
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute(
                 "INSERT INTO embeddings (content_type, ref_id, content, embedding, ts) VALUES (?, ?, ?, ?, ?)",
                 (content_type, ref_id, content, json.dumps(embedding), time.time())
@@ -190,7 +233,7 @@ class OuroborosStorage:
         query += " ORDER BY ts DESC LIMIT ?"
         params.append(limit)
         
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
