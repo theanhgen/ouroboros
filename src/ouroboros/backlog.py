@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .model_defaults import DEFAULT_OPENAI_MODEL
+from .storage import load_json_file, save_json_file
 
 log = logging.getLogger(__name__)
 
@@ -19,26 +20,23 @@ def _backlog_path(repo_root: Path) -> Path:
 
 
 def load_backlog(repo_root: Path) -> List[Dict[str, Any]]:
-    path = _backlog_path(repo_root)
-    if not path.exists():
-        return []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get("items", []) if isinstance(data, dict) else data
-    except (json.JSONDecodeError, KeyError):
-        log.warning("Corrupt backlog file, returning empty")
-        return []
+    data = load_json_file(
+        _backlog_path(repo_root),
+        default={"items": []},
+        error_msg="Corrupt backlog file, returning empty",
+        logger=log,
+    )
+    if isinstance(data, dict):
+        items = data.get("items")
+    else:
+        items = data
+    # A null or non-list payload is corruption, not an empty backlog's shape;
+    # returning it would break the annotated contract for every caller.
+    return items if isinstance(items, list) else []
 
 
 def save_backlog(repo_root: Path, items: List[Dict[str, Any]]) -> None:
-    path = _backlog_path(repo_root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = str(path) + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump({"items": items}, f, indent=2)
-    import os
-    os.replace(tmp, str(path))
+    save_json_file(_backlog_path(repo_root), {"items": items})
 
 
 def add_item(

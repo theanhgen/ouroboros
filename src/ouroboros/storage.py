@@ -24,17 +24,34 @@ def load_json_file(
     error_msg: Optional[str] = None,
     logger: Optional[logging.Logger] = None,
 ) -> Any:
-    """Load a JSON file, returning a default for missing or corrupt files."""
+    """Load a JSON file, returning a default for missing or corrupt files.
+
+    A read error other than "not there" propagates. Permission denied or a
+    failing disk means the data may well exist and simply could not be read;
+    handing back the default would let a caller that loads-modifies-writes
+    overwrite the real contents with an empty one.
+
+    The file is opened directly rather than probed with exists() first.
+    Path.exists() answers False for any stat error, so a preflight check
+    would quietly turn EACCES or EIO back into "missing" and reintroduce
+    exactly that overwrite.
+    """
     json_path = Path(path).expanduser()
-    if not json_path.exists():
+
+    try:
+        handle = json_path.open("r", encoding="utf-8")
+    except FileNotFoundError:
         if default is _MISSING:
-            raise FileNotFoundError(json_path)
+            raise
         return copy.deepcopy(default)
 
     try:
-        with json_path.open("r", encoding="utf-8") as f:
+        with handle as f:
             return json.load(f)
-    except (json.JSONDecodeError, KeyError, OSError):
+    except (json.JSONDecodeError, UnicodeDecodeError, KeyError):
+        # UnicodeDecodeError, not just JSONDecodeError: a file zeroed or filled
+        # with binary garbage by a crash never reaches the JSON parser, and
+        # that is precisely the corruption the default exists for.
         if default is _MISSING:
             raise
         if error_msg:
