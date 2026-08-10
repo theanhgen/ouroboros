@@ -795,7 +795,8 @@ def run_improvement_cycle(
         _MAX_REACT_ROUNDS = 5
         for react_round in range(1, _MAX_REACT_ROUNDS + 1):
             log.info("[improve] ReAct round %d/%d", react_round, _MAX_REACT_ROUNDS)
-            resp = identify_client.chat.completions.create(
+            resp = llm.create_completion(
+                identify_client,
                 model=model,
                 messages=messages,
                 response_format={"type": "json_object"}
@@ -824,7 +825,8 @@ def run_improvement_cycle(
             if react_round == _MAX_REACT_ROUNDS:
                 log.info("[improve] ReAct loop hit max rounds (%d), forcing final answer", _MAX_REACT_ROUNDS)
                 # Force a final answer without tools
-                resp = identify_client.chat.completions.create(
+                resp = llm.create_completion(
+                identify_client,
                     model=model,
                     messages=messages,
                     response_format={"type": "json_object"}

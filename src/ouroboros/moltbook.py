@@ -10,7 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from . import lifecycle
 from .model_defaults import DEFAULT_OPENAI_MODEL
+from .retry import is_idempotent_request, retry_with_backoff
 from .storage import load_json_file, save_json_file
 
 log = logging.getLogger(__name__)
@@ -18,7 +20,9 @@ log = logging.getLogger(__name__)
 API_BASE = "https://www.moltbook.com/api/v1"
 WEB_BASE = "https://www.moltbook.com"
 
-_shutdown_event = threading.Event()
+# Aliased to the shared lifecycle event so llm's retry backoff observes the
+# same shutdown. Existing references to _shutdown_event keep working.
+_shutdown_event = lifecycle.shutdown_event
 
 MAX_SELF_QUESTION_LOG = 200
 MAX_BACKOFF_SECONDS = 900  # 15 min cap
@@ -66,6 +70,31 @@ def load_credentials(*, require_agent_name: bool = True) -> Credentials:
     return Credentials(api_key=api_key, agent_name=agent_name or "")
 
 
+def _send(req: "urllib.request.Request") -> Dict[str, Any]:
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+_send_with_retry = retry_with_backoff(cancelled=lifecycle.is_shutting_down)(_send)
+
+
+def _urlopen_json(req: "urllib.request.Request") -> Dict[str, Any]:
+    """Send req and decode the JSON body.
+
+    Transient failures are retried only for idempotent methods. A POST that
+    the server committed but whose response was lost is indistinguishable
+    here from one it never received, and this API creates public posts and
+    comments -- replaying one would duplicate it. There is no idempotency key
+    to make that safe, so writes get a single attempt.
+
+    Retries live at this level rather than in _request so the MoltbookError
+    wrapper does not hide the original exception type from is_retryable.
+    """
+    if is_idempotent_request(req):
+        return _send_with_retry(req)
+    return _send(req)
+
+
 def _request(method: str, path: str, api_key: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     url = f"{API_BASE}{path}"
     data = None
@@ -76,9 +105,7 @@ def _request(method: str, path: str, api_key: str, body: Optional[Dict[str, Any]
 
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            payload = resp.read().decode("utf-8")
-            return json.loads(payload)
+        return _urlopen_json(req)
     except Exception as exc:  # pragma: no cover - network errors
         raise MoltbookError(f"Request failed: {exc}") from exc
 

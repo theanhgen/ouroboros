@@ -102,7 +102,9 @@ def test_load_key_missing_raises():
 def test_make_client():
     with mock.patch("ouroboros.llm.OpenAI") as MockOpenAI:
         client = make_client("sk-test")
-    MockOpenAI.assert_called_once_with(api_key="sk-test")
+    # max_retries=0: retry.retry_with_backoff owns retrying. The SDK's default
+    # of 2 would compound with ours (4 x 3 = up to 12 transmissions).
+    MockOpenAI.assert_called_once_with(api_key="sk-test", max_retries=0)
     assert client is MockOpenAI.return_value
 
 
