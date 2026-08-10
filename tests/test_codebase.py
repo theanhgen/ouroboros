@@ -86,6 +86,87 @@ def test_get_function_signatures(tmp_path):
     assert method_sig['line'] == 5
 
 
+def test_get_function_signatures_attributes_nested_class(tmp_path):
+    """A method belongs to its immediate class, not the outermost one."""
+    test_file = tmp_path / 'nested.py'
+    test_file.write_text(textwrap.dedent('''
+        class Outer:
+            class Inner:
+                def m(self):
+                    pass
+    ''').lstrip())
+
+    assert get_function_signatures(test_file) == [
+        {'name': 'm', 'args': ['self'], 'line': 3, 'type': 'method', 'class': 'Inner'},
+    ]
+
+
+def test_get_function_signatures_nested_function_is_not_a_method(tmp_path):
+    """Only a direct child of a class body is a method."""
+    test_file = tmp_path / 'inner.py'
+    test_file.write_text(textwrap.dedent('''
+        class C:
+            def m(self):
+                def helper():
+                    pass
+                return helper
+    ''').lstrip())
+
+    assert get_function_signatures(test_file) == [
+        {'name': 'm', 'args': ['self'], 'line': 2, 'type': 'method', 'class': 'C'},
+        {'name': 'helper', 'args': [], 'line': 3, 'type': 'function'},
+    ]
+
+
+def test_get_function_signatures_indirect_class_child_is_not_a_method(tmp_path):
+    """A def under an `if` in a class body is not a direct child of the class."""
+    test_file = tmp_path / 'guarded.py'
+    test_file.write_text(textwrap.dedent('''
+        import typing
+
+        class C:
+            if typing.TYPE_CHECKING:
+                def m(self):
+                    pass
+    ''').lstrip())
+
+    assert get_function_signatures(test_file) == [
+        {'name': 'm', 'args': ['self'], 'line': 5, 'type': 'function'},
+    ]
+
+
+def test_get_function_signatures_async_method(tmp_path):
+    test_file = tmp_path / 'async_mod.py'
+    test_file.write_text(textwrap.dedent('''
+        class C:
+            async def fetch(self, url):
+                pass
+    ''').lstrip())
+
+    assert get_function_signatures(test_file) == [
+        {'name': 'fetch', 'args': ['self', 'url'], 'line': 2,
+         'type': 'method', 'class': 'C'},
+    ]
+
+
+def test_get_function_signatures_preserves_breadth_first_order(tmp_path):
+    """Shallower definitions are reported before deeper ones."""
+    test_file = tmp_path / 'order.py'
+    test_file.write_text(textwrap.dedent('''
+        def first():
+            pass
+
+        class C:
+            def second(self):
+                def third():
+                    pass
+    ''').lstrip())
+
+    assert [s['name'] for s in get_function_signatures(test_file)] == [
+        'first', 'second', 'third',
+    ]
+
+
 def test_get_function_signatures_syntax_error(tmp_path):
     bad_file = tmp_path / 'bad.py'
     bad_file.write_text('def incomplete(')

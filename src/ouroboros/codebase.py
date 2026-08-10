@@ -3,6 +3,7 @@
 import ast
 import logging
 import subprocess
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -152,29 +153,31 @@ def get_function_signatures(path: Path) -> List[Dict[str, Any]]:
 
     signatures = []
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-            args = []
-            for arg in node.args.args:
-                args.append(arg.arg)
+    # Breadth-first, carrying the enclosing class down to each child. This
+    # mirrors ast.walk's traversal order while tracking the parent, so a
+    # function's owning class is known when it is reached instead of being
+    # rediscovered by re-walking the whole tree per function.
+    queue = deque([(tree, None)])
+    while queue:
+        node, owner = queue.popleft()
 
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             sig: Dict[str, Any] = {
                 "name": node.name,
-                "args": args,
+                "args": [arg.arg for arg in node.args.args],
                 "line": node.lineno,
                 "type": "function",
             }
-
-            # Check if this is a method (parent is a ClassDef)
-            for parent_node in ast.walk(tree):
-                if isinstance(parent_node, ast.ClassDef):
-                    for child in ast.iter_child_nodes(parent_node):
-                        if child is node:
-                            sig["type"] = "method"
-                            sig["class"] = parent_node.name
-                            break
-
+            # Only a direct child of a ClassDef body is a method: a function
+            # nested inside another function, or under an `if` in a class
+            # body, stays a plain function.
+            if owner is not None:
+                sig["type"] = "method"
+                sig["class"] = owner
             signatures.append(sig)
+
+        child_owner = node.name if isinstance(node, ast.ClassDef) else None
+        queue.extend((child, child_owner) for child in ast.iter_child_nodes(node))
 
     return signatures
 
