@@ -249,12 +249,19 @@ def run_scheduled_self_improvement(
         return ScheduledImprovementRun("skipped_dirty_repo", state["last_error"])
 
     check_pr_outcomes(repo_root)
-    if git_ops.has_open_improvement_prs(repo_root):
+    open_prs = git_ops.has_open_improvement_prs(repo_root)
+    if open_prs is not False:
+        # None means the lookup failed; defer rather than risk a second PR for
+        # work already in flight.
         _set_deferred_state(
             state,
             now,
             "skipped_open_pr",
-            "Open autonomous improvement PR already exists.",
+            (
+                "Open autonomous improvement PR already exists."
+                if open_prs
+                else "Could not determine whether an improvement PR is open."
+            ),
             OPEN_PR_RETRY_SECONDS,
         )
         save_scheduler_state(state)

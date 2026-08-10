@@ -1,5 +1,6 @@
 """Tests for git_ops module."""
 
+import subprocess
 import time
 from unittest.mock import patch, MagicMock
 
@@ -8,6 +9,9 @@ from pathlib import Path
 
 from ouroboros.git_ops import (
     _decode_git_path,
+    get_pr_feedback,
+    get_pr_status,
+    has_open_improvement_prs,
     _is_auto_state_path,
     _git_porcelain_changes,
     _git_porcelain_target_path,
@@ -301,3 +305,259 @@ def test_commit_auto_state_ignores_sibling_of_state_file(mock_git, mock_branch):
 
     assert commit_auto_state(Path("/tmp/repo")) is False
     assert mock_git.call_count == 1  # never reached git add
+
+
+# -- has_open_improvement_prs ------------------------------------------------
+
+def _completed(stdout="", returncode=0):
+    return subprocess.CompletedProcess([], returncode, stdout=stdout, stderr="")
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_has_open_improvement_prs_true(mock_run):
+    mock_run.return_value = _completed("ouroboros/improve-fix_bug-123\nfeature/other\n")
+    assert has_open_improvement_prs(Path("/repo")) is True
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_has_open_improvement_prs_ignores_other_branches(mock_run):
+    """Only the agent's own branches gate the next cycle."""
+    mock_run.return_value = _completed("feature/x\nbugfix/y\nouroboros/other-thing\n")
+    assert has_open_improvement_prs(Path("/repo")) is False
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_has_open_improvement_prs_no_open_prs(mock_run):
+    mock_run.return_value = _completed("")
+    assert has_open_improvement_prs(Path("/repo")) is False
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_has_open_improvement_prs_whitespace_only(mock_run):
+    mock_run.return_value = _completed("\n  \n")
+    assert has_open_improvement_prs(Path("/repo")) is False
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_has_open_improvement_prs_queries_open_only(mock_run):
+    mock_run.return_value = _completed("")
+    has_open_improvement_prs(Path("/repo"))
+
+    cmd = mock_run.call_args.args[0]
+    kwargs = mock_run.call_args.kwargs
+    assert cmd[:3] == ["gh", "pr", "list"]
+    assert "--state" in cmd and cmd[cmd.index("--state") + 1] == "open"
+    # gh pr list defaults to 30; the guard has to see every open PR, not a page.
+    assert "--limit" in cmd and int(cmd[cmd.index("--limit") + 1]) >= 100
+    assert kwargs["cwd"] == Path("/repo")
+    assert kwargs["check"] is True
+    assert kwargs["text"] is True
+    assert kwargs["timeout"] == 30
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_has_open_improvement_prs_sees_beyond_the_first_page(mock_run):
+    """A matching PR after the default 30 must still be found."""
+    branches = [f"feature/pr-{i}" for i in range(40)]
+    branches.append("ouroboros/improve-fix_bug-999")
+    mock_run.return_value = _completed("\n".join(branches))
+
+    assert has_open_improvement_prs(Path("/repo")) is True
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        subprocess.CalledProcessError(1, ["gh"]),
+        FileNotFoundError("gh not installed"),
+        subprocess.TimeoutExpired(["gh"], 30),
+    ],
+)
+@patch("ouroboros.git_ops.subprocess.run")
+def test_has_open_improvement_prs_unknown_on_gh_failure(mock_run, error):
+    """Unknown must not read as "none".
+
+    This gates whether another cycle may start, and callers treat False as
+    permission -- so a GitHub outage returning False would let the agent open
+    a second PR for work already in flight.
+    """
+    mock_run.side_effect = error
+    assert has_open_improvement_prs(Path("/repo")) is None
+
+
+# -- get_pr_status -----------------------------------------------------------
+
+@pytest.mark.parametrize("state", ["MERGED", "CLOSED", "OPEN"])
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_status_returns_the_state(mock_run, state):
+    mock_run.return_value = _completed(f"{state}\n")
+    assert get_pr_status(Path("/repo"), "some-branch") == state
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_status_passes_the_branch(mock_run):
+    mock_run.return_value = _completed("OPEN")
+    get_pr_status(Path("/repo"), "ouroboros/improve-fix_bug-1")
+
+    cmd = mock_run.call_args.args[0]
+    assert cmd[:3] == ["gh", "pr", "view"]
+    assert "ouroboros/improve-fix_bug-1" in cmd
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_status_empty_output(mock_run):
+    mock_run.return_value = _completed("")
+    assert get_pr_status(Path("/repo"), "branch") == ""
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        subprocess.CalledProcessError(1, ["gh"]),   # no PR for this branch
+        FileNotFoundError("gh not installed"),
+        subprocess.TimeoutExpired(["gh"], 30),
+    ],
+)
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_status_none_on_failure(mock_run, error):
+    mock_run.side_effect = error
+    assert get_pr_status(Path("/repo"), "branch") is None
+
+
+# -- get_pr_feedback ---------------------------------------------------------
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_feedback_returns_review_text(mock_run):
+    mock_run.return_value = _completed("Looks good\n---\nOne nit\n")
+    assert get_pr_feedback(Path("/repo"), "https://x/pr/1") == "Looks good\n---\nOne nit"
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_feedback_requests_reviews_and_comments(mock_run):
+    mock_run.return_value = _completed("")
+    get_pr_feedback(Path("/repo"), "https://x/pr/1")
+
+    cmd = mock_run.call_args.args[0]
+    assert "--json" in cmd
+    assert cmd[cmd.index("--json") + 1] == "reviews,comments"
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_feedback_truncates(mock_run):
+    """This text is fed back into a prompt, so it needs a ceiling."""
+    mock_run.return_value = _completed("x" * 5000)
+    assert len(get_pr_feedback(Path("/repo"), "https://x/pr/1", max_chars=100)) == 100
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_feedback_under_the_limit_is_untouched(mock_run):
+    mock_run.return_value = _completed("short")
+    assert get_pr_feedback(Path("/repo"), "https://x/pr/1", max_chars=100) == "short"
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_feedback_empty(mock_run):
+    mock_run.return_value = _completed("   \n")
+    # "" means the query worked and there was nothing to report.
+    assert get_pr_feedback(Path("/repo"), "https://x/pr/1") == ""
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        subprocess.CalledProcessError(1, ["gh"]),
+        FileNotFoundError("gh not installed"),
+        subprocess.TimeoutExpired(["gh"], 30),
+    ],
+)
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_feedback_none_on_failure(mock_run, error):
+    """None, not "": the caller finalises the record and stops polling it, so
+    an unfetchable review would otherwise be lost permanently."""
+    mock_run.side_effect = error
+    assert get_pr_feedback(Path("/repo"), "https://x/pr/1") is None
+
+
+def test_every_open_pr_caller_handles_the_unknown_state():
+    """The tri-state contract only helps if every call site honours it.
+
+    Two ways to get it wrong: branching directly on the call, or assigning it
+    and never distinguishing None from False. The CLI did the second, which an
+    `if <call>` check misses.
+
+    Truthiness *after* an explicit comparison is fine -- at that point the
+    ambiguous case has already been separated out -- so this requires an
+    explicit `is`/`is not` comparison per name rather than forbidding all
+    boolean use.
+    """
+    import ast
+    from pathlib import Path as _Path
+
+    CALL = "has_open_improvement_prs"
+    src = _Path(__file__).resolve().parent.parent / "src" / "ouroboros"
+    offenders = []
+
+    def _is_the_call(node):
+        return (
+            isinstance(node, ast.Call)
+            and getattr(node.func, "attr", getattr(node.func, "id", None)) == CALL
+        )
+
+    for path in sorted(src.rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        if CALL not in text or path.name == "git_ops.py":
+            continue
+        tree = ast.parse(text)
+
+        for node in ast.walk(tree):
+            # Branching straight on the call cannot distinguish None.
+            if isinstance(node, (ast.If, ast.IfExp)):
+                test = node.test
+                if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
+                    test = test.operand
+                if _is_the_call(test):
+                    offenders.append(f"{path.name}:{node.lineno} (bare call)")
+
+        # Every name the result is bound to must be compared explicitly.
+        bound = {
+            target.id: node.lineno
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Assign) and _is_the_call(node.value)
+            for target in node.targets
+            if isinstance(target, ast.Name)
+        }
+        compared = {
+            operand.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Compare)
+            and any(isinstance(op, (ast.Is, ast.IsNot)) for op in node.ops)
+            for operand in [node.left]
+            if isinstance(operand, ast.Name)
+        }
+        for name, lineno in bound.items():
+            if name not in compared:
+                offenders.append(f"{path.name}:{lineno} ({name} never compared)")
+
+    assert offenders == [], (
+        "these read the result as a boolean, so None counts as "
+        f"'no open PR': {', '.join(offenders)}"
+    )
+
+
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_has_open_improvement_prs_saturated_page_is_unknown(mock_run):
+    """"None of the first 200" is not "none"."""
+    from ouroboros.git_ops import _PR_LIST_LIMIT
+
+    mock_run.return_value = _completed(
+        "\n".join(f"feature/pr-{i}" for i in range(_PR_LIST_LIMIT))
+    )
+    assert has_open_improvement_prs(Path("/repo")) is None
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_has_open_improvement_prs_short_page_is_definitive(mock_run):
+    mock_run.return_value = _completed("\n".join(f"feature/pr-{i}" for i in range(5)))
+    assert has_open_improvement_prs(Path("/repo")) is False

@@ -244,3 +244,62 @@ def test_load_history_binary_garbage(tmp_path, monkeypatch):
     path.write_bytes(b"\x00\x81\xfe" * 100)
     monkeypatch.setattr(ev, "_history_path", lambda root=None: path)
     assert ev.load_history() == []
+
+
+def test_unfetchable_feedback_leaves_the_record_open(tmp_path, monkeypatch):
+    """A terminal record is never polled again, so it must not be finalised
+    before its review text has actually been retrieved."""
+    import ouroboros.evaluation as ev
+
+    path = tmp_path / "improvement_history.json"
+    path.write_text(json.dumps([{
+        "task_id": "abc", "task_type": "fix_bug", "description": "d",
+        "test_delta": {}, "pr_url": "https://github.com/x/pull/1",
+        "outcome": "success", "feedback": "", "timestamp": 1000.0,
+    }]))
+    monkeypatch.setattr(ev, "_history_path", lambda root=None: path)
+
+    with patch("subprocess.run", return_value=MagicMock(stdout="MERGED\n")):
+        with patch.object(ev.git_ops, "get_pr_feedback", return_value=None):
+            history = ev.check_pr_outcomes(tmp_path)
+
+    assert history[0].outcome == "success", "must stay pollable"
+    assert json.loads(path.read_text())[0]["outcome"] == "success"
+
+
+def test_fetched_feedback_finalises_the_record(tmp_path, monkeypatch):
+    import ouroboros.evaluation as ev
+
+    path = tmp_path / "improvement_history.json"
+    path.write_text(json.dumps([{
+        "task_id": "abc", "task_type": "fix_bug", "description": "d",
+        "test_delta": {}, "pr_url": "https://github.com/x/pull/1",
+        "outcome": "success", "feedback": "", "timestamp": 1000.0,
+    }]))
+    monkeypatch.setattr(ev, "_history_path", lambda root=None: path)
+
+    with patch("subprocess.run", return_value=MagicMock(stdout="MERGED\n")):
+        with patch.object(ev.git_ops, "get_pr_feedback", return_value="Nice work"):
+            history = ev.check_pr_outcomes(tmp_path)
+
+    assert history[0].outcome == "merged"
+    assert history[0].feedback == "Nice work"
+
+
+def test_a_merged_pr_with_genuinely_no_feedback_still_finalises(tmp_path, monkeypatch):
+    """"" is a real answer; only None means the fetch failed."""
+    import ouroboros.evaluation as ev
+
+    path = tmp_path / "improvement_history.json"
+    path.write_text(json.dumps([{
+        "task_id": "abc", "task_type": "fix_bug", "description": "d",
+        "test_delta": {}, "pr_url": "https://github.com/x/pull/1",
+        "outcome": "success", "feedback": "", "timestamp": 1000.0,
+    }]))
+    monkeypatch.setattr(ev, "_history_path", lambda root=None: path)
+
+    with patch("subprocess.run", return_value=MagicMock(stdout="MERGED\n")):
+        with patch.object(ev.git_ops, "get_pr_feedback", return_value=""):
+            history = ev.check_pr_outcomes(tmp_path)
+
+    assert history[0].outcome == "merged"

@@ -683,9 +683,16 @@ def run_improvement_cycle(
         return None
 
     # Check for open PRs
-    if git_ops.has_open_improvement_prs(repo_root):
-        log.info("Skipping improvement: open improvement PRs exist")
-        _fire("cycle_end", "Skipped: open improvement PRs exist")
+    open_prs = git_ops.has_open_improvement_prs(repo_root)
+    if open_prs is not False:
+        # None means the lookup failed; defer rather than risk a second PR for
+        # work already in flight.
+        reason = (
+            "open improvement PRs exist" if open_prs
+            else "could not determine whether an improvement PR is open"
+        )
+        log.info("Skipping improvement: %s", reason)
+        _fire("cycle_end", f"Skipped: {reason}")
         return None
 
     # Dedup: skip if recent attempts at the same task_type made no test progress

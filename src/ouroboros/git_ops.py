@@ -333,12 +333,26 @@ def make_auto_issue_marker(task_type: str, description: str, target_files: List[
     return f"<!-- ouroboros:auto-issue:{digest} -->"
 
 
-def has_open_improvement_prs(repo: Path) -> bool:
-    """Check if there are any open PRs with the ouroboros/improve- prefix."""
+# gh pr list defaults to 30 results. This guard has to see every open
+# improvement PR, not the first page of them.
+_PR_LIST_LIMIT = 200
+
+
+def has_open_improvement_prs(repo: Path) -> Optional[bool]:
+    """Whether an open ouroboros/improve- PR exists.
+
+    Returns True if one exists, False if none does, and None if that could not
+    be determined -- gh missing, erroring, or hanging.
+
+    None rather than False for the failure case: this gates whether another
+    autonomous cycle may start, and callers read a plain False as permission.
+    A GitHub outage would then let the agent open a second PR for work already
+    in flight, which is the exact situation the guard exists to prevent.
+    """
     try:
         result = subprocess.run(
-            ["gh", "pr", "list", "--state", "open", "--json", "headRefName", "-q",
-             '.[].headRefName'],
+            ["gh", "pr", "list", "--state", "open", "--limit", str(_PR_LIST_LIMIT),
+             "--json", "headRefName", "-q", '.[].headRefName'],
             cwd=repo,
             capture_output=True,
             text=True,
@@ -346,10 +360,20 @@ def has_open_improvement_prs(repo: Path) -> bool:
             timeout=30,
         )
         branches = result.stdout.strip().splitlines()
-        return any(b.startswith("ouroboros/improve-") for b in branches)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        log.warning("Could not check open PRs (gh CLI unavailable?)")
+        if any(b.startswith("ouroboros/improve-") for b in branches):
+            return True
+        if len(branches) >= _PR_LIST_LIMIT:
+            # The page was full, so there may be more we did not see. "None of
+            # the first 200" is not "none".
+            log.warning(
+                "Open PR list hit the %d result limit; cannot rule out an "
+                "open improvement PR", _PR_LIST_LIMIT,
+            )
+            return None
         return False
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        log.warning("Could not check open PRs (gh CLI unavailable or timed out)")
+        return None
 
 
 def make_branch_name(task_type: str) -> str:
@@ -370,7 +394,7 @@ def get_pr_status(repo: Path, branch: str) -> Optional[str]:
             timeout=30,
         )
         return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return None
 
 
@@ -432,12 +456,18 @@ def get_pr_checks_status(repo: Path, pr_url: str) -> Optional[str]:
             timeout=30,
         )
         return result.stdout.strip() or None
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return None
 
 
-def get_pr_feedback(repo: Path, pr_url: str, max_chars: int = 2000) -> str:
-    """Extract review and comment bodies from a PR. Returns concatenated text, truncated."""
+def get_pr_feedback(repo: Path, pr_url: str, max_chars: int = 2000) -> Optional[str]:
+    """Extract review and comment bodies from a PR, truncated.
+
+    Returns "" when the PR genuinely has no feedback, and None when it could
+    not be fetched. The caller records this against a terminal outcome and
+    then stops polling that record, so collapsing a timeout into "" would
+    discard the review permanently.
+    """
     try:
         result = subprocess.run(
             [
@@ -455,6 +485,6 @@ def get_pr_feedback(repo: Path, pr_url: str, max_chars: int = 2000) -> str:
         if len(text) > max_chars:
             text = text[:max_chars]
         return text
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         log.debug("Could not fetch PR feedback for %s", pr_url)
-        return ""
+        return None
