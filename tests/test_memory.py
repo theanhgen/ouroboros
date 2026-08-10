@@ -1,5 +1,6 @@
 """Tests for holographic memory and AST-based code indexing."""
 
+import sqlite3
 import tempfile
 from pathlib import Path
 import pytest
@@ -194,6 +195,88 @@ def test_memory_store_crud_entities_search_and_feedback(temp_store):
     assert not temp_store.remove_fact(fact_id)
     with pytest.raises(KeyError):
         temp_store.record_feedback(fact_id, helpful=True)
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "col:val",        # unknown column
+        'foo"bar',        # unbalanced double quote
+        '"unclosed',      # unterminated phrase
+        "NEAR/",          # malformed NEAR
+        "*",              # bare special-query prefix
+        "***",
+        '" "',
+    ],
+)
+def test_search_facts_no_hits_for_fts5_syntax_text(temp_store, query):
+    """FTS5 syntax characters in user text must not escape as an exception."""
+    temp_store.add_fact("the cat sat on the mat", category="test")
+
+    assert temp_store.search_facts(query) == []
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("cat:", "the cat sat on the mat"),          # punctuation is a separator
+        ("issue:123", "see issue:123 for details"),  # colon is not a column filter
+        ("http://example.com", "visit http://example.com now"),
+        ("user's manual", "the user's manual"),
+        ("a AND", "a AND b are both listed"),        # AND is not an operator
+    ],
+)
+def test_search_facts_treats_query_as_literal_text(temp_store, query, expected):
+    """Text with FTS5 metacharacters searches literally instead of failing."""
+    for content in (
+        "the cat sat on the mat",
+        "see issue:123 for details",
+        "visit http://example.com now",
+        "the user's manual",
+        "a AND b are both listed",
+    ):
+        temp_store.add_fact(content, category="test")
+
+    assert [r["content"] for r in temp_store.search_facts(query)] == [expected]
+
+
+def test_search_facts_handles_embedded_nul(temp_store):
+    """U+0000 truncates the MATCH expression however it is quoted."""
+    temp_store.add_fact("the cat sat on the mat", category="test")
+
+    assert temp_store.search_facts("\x00") == []
+    assert [r["content"] for r in temp_store.search_facts("cat\x00")] == [
+        "the cat sat on the mat"
+    ]
+    assert [r["content"] for r in temp_store.search_facts("cat\x00mat")] == [
+        "the cat sat on the mat"
+    ]
+
+
+@pytest.mark.parametrize("query", ["", "   ", "\x00", "\x00\x00"])
+def test_search_facts_empty_query_short_circuits(temp_store, query):
+    temp_store.add_fact("the cat sat on the mat", category="test")
+
+    assert temp_store.search_facts(query) == []
+
+
+def test_search_facts_no_hits_does_not_bump_retrieval_count(temp_store):
+    fact_id = temp_store.add_fact("the cat sat on the mat", category="test")
+
+    assert temp_store.search_facts("col:val") == []
+
+    stored = temp_store.list_facts()[0]
+    assert stored["fact_id"] == fact_id
+    assert stored["retrieval_count"] == 0
+
+
+def test_search_facts_propagates_real_database_errors(temp_store):
+    """Infrastructure failures must not be masked as "no results"."""
+    temp_store.add_fact("the cat sat on the mat", category="test")
+    temp_store._conn.execute("DROP TABLE facts_fts")
+
+    with pytest.raises(sqlite3.OperationalError, match="facts_fts"):
+        temp_store.search_facts("cat")
 
 
 def test_fact_retriever_hybrid_search_uses_fts_jaccard_and_hrr(tmp_path):
