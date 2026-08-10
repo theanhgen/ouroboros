@@ -104,8 +104,12 @@ def test_load_runner_config_from_file(tmp_path):
             return str(cred_file)
         return path
 
+    orig_exists = os.path.exists
+
     def fake_exists(path):
-        return path == str(cfg_file)
+        if os.fspath(path) == str(cfg_file):
+            return True
+        return orig_exists(path)
 
     with mock.patch("ouroboros.moltbook.os.path.expanduser", side_effect=fake_expanduser):
         with mock.patch("ouroboros.moltbook.os.path.exists", side_effect=fake_exists):
@@ -129,8 +133,12 @@ def test_load_runner_config_uses_legacy_self_improve_interval(tmp_path):
             return str(cfg_file)
         return path
 
+    orig_exists = os.path.exists
+
     def fake_exists(path):
-        return path == str(cfg_file)
+        if os.fspath(path) == str(cfg_file):
+            return True
+        return orig_exists(path)
 
     with mock.patch("ouroboros.moltbook.os.path.expanduser", side_effect=fake_expanduser):
         with mock.patch("ouroboros.moltbook.os.path.exists", side_effect=fake_exists):
@@ -159,8 +167,12 @@ def test_load_runner_config_telegram_from_credentials(tmp_path):
             return str(cred_file)
         return path
 
+    orig_exists = os.path.exists
+
     def fake_exists(path):
-        return path in {str(cfg_file), str(cred_file)}
+        if os.fspath(path) in {str(cfg_file), str(cred_file)}:
+            return True
+        return orig_exists(path)
 
     with mock.patch.dict(os.environ, {}, clear=True):
         with mock.patch("ouroboros.moltbook.os.path.expanduser", side_effect=fake_expanduser):
