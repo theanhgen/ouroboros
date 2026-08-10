@@ -36,8 +36,16 @@ def _require_numpy() -> None:
 
 
 def encode_atom(word: str, dim: int = 1024) -> "np.ndarray":
-    """Deterministic phase vector via SHA-256 counter blocks."""
+    """Deterministic phase vector via SHA-256 counter blocks.
+
+    Raises ValueError if dim is not positive. A non-positive dim would
+    otherwise yield a length-0 vector that every HRR operation accepts
+    silently -- similarity() on two of them returns nan, which corrupts
+    ranking instead of failing.
+    """
     _require_numpy()
+    if dim <= 0:
+        raise ValueError(f"dim must be positive, got {dim}")
     values_per_block = 16
     blocks_needed = math.ceil(dim / values_per_block)
     uint16_values: list[int] = []
