@@ -7,7 +7,7 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Iterator, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +41,100 @@ def is_clean(repo: Path) -> bool:
     return result.stdout.strip() == ""
 
 
+_GIT_C_ESCAPES = {
+    "a": b"\a",
+    "b": b"\b",
+    "f": b"\f",
+    "n": b"\n",
+    "r": b"\r",
+    "t": b"\t",
+    "v": b"\v",
+    "\\": b"\\",
+    '"': b'"',
+}
+
+
+def _decode_git_path(path: str) -> str:
+    """Decode a C-quoted path from git output.
+
+    git quotes any path containing spaces, quotes, backslashes or non-ASCII
+    bytes, escaping the contents C-style (``\\303\\251`` for a UTF-8 e-acute).
+    Unquoted paths are returned unchanged.
+    """
+    path = path.strip()
+    if len(path) < 2 or path[0] != '"' or path[-1] != '"':
+        return path
+
+    raw = path[1:-1]
+    decoded = bytearray()
+    i = 0
+    while i < len(raw):
+        char = raw[i]
+        if char != "\\":
+            decoded.extend(char.encode("utf-8"))
+            i += 1
+            continue
+
+        i += 1
+        if i >= len(raw):
+            decoded.append(ord("\\"))
+            break
+
+        char = raw[i]
+        if char in "01234567":
+            octal = char
+            i += 1
+            while i < len(raw) and len(octal) < 3 and raw[i] in "01234567":
+                octal += raw[i]
+                i += 1
+            decoded.append(int(octal, 8))
+            continue
+
+        decoded.extend(_GIT_C_ESCAPES.get(char, char.encode("utf-8")))
+        i += 1
+
+    return decoded.decode("utf-8", "surrogateescape")
+
+
+def _git_porcelain_target_path(line: str) -> str:
+    """Return the changed path from a git status --porcelain line.
+
+    For renames and copies the line is ``XY <orig> -> <dest>``; the separator
+    is only meaningful outside a quoted path, since a filename may itself
+    contain " -> ".
+    """
+    status = line[:2]
+    path = line[3:].strip()
+    if "R" in status or "C" in status:
+        in_quote = False
+        escaped = False
+        for i, char in enumerate(path):
+            if escaped:
+                escaped = False
+                continue
+            if in_quote and char == "\\":
+                escaped = True
+                continue
+            if char == '"':
+                in_quote = not in_quote
+                continue
+            if not in_quote and path.startswith(" -> ", i):
+                path = path[i + 4:].strip()
+                break
+    return _decode_git_path(path)
+
+
+def _git_porcelain_changes(porcelain: str) -> Iterator[Tuple[str, str]]:
+    """Yield ``(status, decoded_path)`` entries from git status porcelain output."""
+    for line in porcelain.splitlines():
+        if not line.strip():
+            continue
+        yield line[:2], _git_porcelain_target_path(line)
+
+
 # Files that the main loop modifies during normal operation.
+# A trailing slash means "this directory and everything under it"; every other
+# entry names one exact file.
 _AUTO_STATE_FILES = [
     "config/state.json",
     "config/improvement_history.json",
@@ -50,6 +143,22 @@ _AUTO_STATE_FILES = [
     "config/metrics.json",
     "docs/wiki/",
 ]
+
+
+def _is_auto_state_path(path: str) -> bool:
+    """Return True if path is one of the files the loop may auto-commit.
+
+    Exact entries are compared for equality rather than by prefix: matching
+    "config/state.json" with startswith would also pull in a sibling like
+    config/state.json.backup, and commit_auto_state pushes what it stages.
+    """
+    for entry in _AUTO_STATE_FILES:
+        if entry.endswith("/"):
+            if path == entry.rstrip("/") or path.startswith(entry):
+                return True
+        elif path == entry:
+            return True
+    return False
 
 
 def commit_auto_state(repo: Path) -> bool:
@@ -61,12 +170,10 @@ def commit_auto_state(repo: Path) -> bool:
     if not porcelain.strip():
         return False
 
-    to_add: list[str] = []
-    for line in porcelain.splitlines():
-        # porcelain format: XY <path>  or  XY <orig> -> <path>
-        path = line[3:].split(" -> ")[-1]
-        if any(path.startswith(prefix) or path == prefix.rstrip("/") for prefix in _AUTO_STATE_FILES):
-            to_add.append(path)
+    to_add: list[str] = [
+        path for _status, path in _git_porcelain_changes(porcelain)
+        if _is_auto_state_path(path)
+    ]
 
     if not to_add:
         return False
