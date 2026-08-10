@@ -323,7 +323,11 @@ def make_backend_client(
 
             # Compatible gateways still expect some bearer token; "ollama" is
             # what a local Ollama accepts and is harmless elsewhere.
-            return OpenAI(api_key=api_key or "ollama", base_url=base_url)
+            # max_retries=0 for the same reason as llm.make_client: retry.py owns
+            # retrying, and the SDK default of 2 would compound with it.
+            return OpenAI(
+                api_key=api_key or "ollama", base_url=base_url, max_retries=0
+            )
         except Exception:
             log.warning(
                 "OpenAI-compatible endpoint '%s' unavailable; falling back to the default client",

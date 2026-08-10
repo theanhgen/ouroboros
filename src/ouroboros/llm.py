@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from openai import OpenAI
 
 from .model_defaults import DEFAULT_OPENAI_MODEL
+from . import lifecycle
+from .retry import is_retryable, retry_with_backoff
 from . import prompts
 
 log = logging.getLogger(__name__)
@@ -38,8 +40,32 @@ def load_openai_key() -> str:
 
 
 def make_client(api_key: str) -> Any:
-    """Create a reusable OpenAI client instance."""
-    return OpenAI(api_key=api_key)
+    """Create a reusable OpenAI client instance.
+
+    max_retries=0 because retry.retry_with_backoff owns retrying. The SDK
+    defaults to 2 internal retries, which would compound with our attempts --
+    4 x 3 = up to 12 transmissions for one logical call, and an outer backoff
+    that cannot see the inner ones.
+    """
+    return OpenAI(api_key=api_key, max_retries=0)
+
+
+@retry_with_backoff(cancelled=lifecycle.is_shutting_down)
+def create_completion(client: Any, **kwargs: Any) -> Any:
+    """Single chokepoint for chat completions, so every call gets retries.
+
+    Every completion in the codebase must go through here -- a test asserts
+    no module calls client.chat.completions.create directly.
+
+    Transient faults (429, 5xx, dropped connections, timeouts) are retried with
+    exponential backoff and jitter; everything else propagates on the first
+    attempt. See retry.is_retryable.
+    """
+    return client.chat.completions.create(**kwargs)
+
+
+# Backwards-compatible private alias.
+_create_completion = create_completion
 
 
 def _completion_token_kwargs(model: str, max_tokens: int) -> dict:
@@ -70,7 +96,7 @@ def chat_completion(
         }
         if response_format:
             kwargs["response_format"] = response_format
-        resp = client.chat.completions.create(**kwargs)
+        resp = create_completion(client, **kwargs)
         usage = None
         if resp.usage:
             usage = {
@@ -115,7 +141,8 @@ def identify_improvements(
     user_prompt = f"## Summary\n{summary}\n\n## Tests\n{test_results}\n\n## History\n{history}\n\n{additional_context}"
 
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -144,6 +171,13 @@ def identify_improvements(
             }
         return data, None
     except Exception as e:
+        # The fallback reshapes the request, so it can recover a capability or
+        # parsing failure. It cannot recover a transport outage -- create_completion
+        # has already spent its four attempts on that, and retrying here would
+        # spend four more for one logical operation.
+        if is_retryable(e):
+            log.warning("identify_improvements: call failed after retries (%s)", e)
+            return None, str(e)
         log.warning("identify_improvements: primary call failed (%s), retrying as plain JSON", e)
         content, usage = chat_completion(client, system_prompt, user_prompt + "\nOutput JSON.", model)
         try:
@@ -252,7 +286,8 @@ def generate_question_post(
 ) -> Optional[dict]:
     code_block = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             response_format={"type": "json_object"},
             **_completion_token_kwargs(model, 600),
@@ -277,7 +312,8 @@ def analyze_code_suggestions(
     code_block = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
     comments_text = "\n\n".join(f"Comment by {c.get('author', {}).get('name')}: {c.get('content')}" for c in comments)
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             response_format={"type": "json_object"},
             **_completion_token_kwargs(model, 800),
@@ -302,7 +338,8 @@ def generate_code_from_suggestion(
 ) -> Optional[list]:
     file_contents = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             response_format={"type": "json_object"},
             **_completion_token_kwargs(model, 2000),
@@ -326,7 +363,8 @@ def analyze_comments_for_upgrades(
 ) -> Optional[dict]:
     comments_text = "\n\n".join([f"Comment by {c.get('author', {}).get('name')}: {c.get('content')}" for c in comments])
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             response_format={"type": "json_object"},
             **_completion_token_kwargs(model, 600),
@@ -349,7 +387,8 @@ def mine_insight_for_codebase(
     model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[str]:
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             **_completion_token_kwargs(model, 150),
             messages=[
@@ -373,7 +412,8 @@ def extract_topic_signal(
 ) -> Optional[str]:
     replies_text = "\n".join([f"- {r.get('content') if isinstance(r, dict) else r}" for r in replies])
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             **_completion_token_kwargs(model, 80),
             messages=[
@@ -394,7 +434,8 @@ def extract_insights_batch(
 ) -> Optional[list]:
     posts_text = "\n\n".join([f"[{i}] {p.get('title')}: {p.get('content')}" for i, p in enumerate(posts[:5])])
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             response_format={"type": "json_object"},
             **_completion_token_kwargs(model, 300),
@@ -417,7 +458,8 @@ def generate_kb_summary(
 ) -> Optional[str]:
     entries_text = "\n".join([f"- {e.get('insight')}" for e in entries])
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             **_completion_token_kwargs(model, 200),
             messages=[
@@ -438,7 +480,8 @@ def pick_oddities(
 ) -> Optional[str]:
     posts_text = "\n\n".join([f"[{i}] {p.get('title')}: {p.get('content')[:200]}" for i, p in enumerate(posts[:20])])
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             **_completion_token_kwargs(model, 400),
             messages=[
@@ -478,7 +521,8 @@ def generate_post(
         if extra_context:
             user_msg += f"\n\n## Additional Live Metrics\n{extra_context}"
             
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             response_format={"type": "json_object"},
             **_completion_token_kwargs(model, 800),
@@ -496,7 +540,8 @@ def generate_post(
 def generate_comment(client: Any, post_title: str, post_content: str, model: str = DEFAULT_OPENAI_MODEL, codebase_context: str = "") -> Optional[str]:
     user_msg = f"Post title: {post_title}\n\nPost content: {post_content}\n\nContext: {codebase_context}"
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             messages=[{"role": "system", "content": prompts.load_comment_system_prompt()}, {"role": "user", "content": user_msg}],
             **_completion_token_kwargs(model, 300),
@@ -510,7 +555,8 @@ def generate_comment(client: Any, post_title: str, post_content: str, model: str
 def answer_question(client: Any, question: str, codebase_summary: str = "", model: str = DEFAULT_OPENAI_MODEL) -> Optional[str]:
     user_content = f"## Codebase\n{codebase_summary}\n\n## Question\n{question}"
     try:
-        resp = client.chat.completions.create(
+        resp = create_completion(
+            client,
             model=model,
             messages=[{"role": "system", "content": "You are a self-reflective agent."}, {"role": "user", "content": user_content}],
             **_completion_token_kwargs(model, 300),

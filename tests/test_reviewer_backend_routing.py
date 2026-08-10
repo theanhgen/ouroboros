@@ -25,9 +25,10 @@ def test_make_backend_client_builds_a_client_for_a_compatible_endpoint(monkeypat
     built = {}
 
     class FakeOpenAI:
-        def __init__(self, api_key=None, base_url=None):
+        def __init__(self, api_key=None, base_url=None, max_retries=None):
             built["api_key"] = api_key
             built["base_url"] = base_url
+            built["max_retries"] = max_retries
 
     monkeypatch.setattr("openai.OpenAI", FakeOpenAI)
     sentinel = object()
@@ -42,7 +43,11 @@ def test_make_backend_client_builds_a_client_for_a_compatible_endpoint(monkeypat
 
     assert client is not sentinel
     assert isinstance(client, FakeOpenAI)
-    assert built == {"api_key": "secret", "base_url": "https://ollama.com/v1"}
+    assert built == {
+        "api_key": "secret",
+        "base_url": "https://ollama.com/v1",
+        "max_retries": 0,
+    }
 
 
 def test_make_backend_client_falls_back_when_endpoint_client_fails(monkeypatch):

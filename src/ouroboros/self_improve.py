@@ -136,7 +136,8 @@ def run_self_improve(client: Any, state: Dict[str, Any], model: str = DEFAULT_OP
     req = _build_prompt_update_request(current_prompt, context)
 
     try:
-        resp = client.chat.completions.create(
+        resp = llm.create_completion(
+            client,
             model=model,
             **llm._completion_token_kwargs(model, 400),
             messages=[
