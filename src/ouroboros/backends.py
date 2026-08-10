@@ -295,16 +295,42 @@ class CLIClient:
         raise RuntimeError(f"Unsupported CLI backend: {self.backend}")
 
 
-def make_backend_client(backend: Optional[str], *, openai_client: Any, model: Optional[str] = None) -> Any:
+def make_backend_client(
+    backend: Optional[str],
+    *,
+    openai_client: Any,
+    model: Optional[str] = None,
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+) -> Any:
     """Return a client for ``backend``, falling back to ``openai_client``.
 
     For non-CLI backends (``openai``/``anthropic``/None) the original client is
-    returned unchanged. For CLI backends, a ``CLIClient`` is returned when the
-    binary is available; otherwise we log and fall back so the unattended loop
-    never wedges on a missing CLI.
+    returned unchanged, unless ``base_url`` names an OpenAI-compatible endpoint
+    -- then a separate client is built for it. That is how the review step
+    reaches a gateway such as Ollama Cloud without moving generation off the
+    default backend.
+
+    For CLI backends, a ``CLIClient`` is returned when the binary is available;
+    otherwise we log and fall back so the unattended loop never wedges on a
+    missing CLI. ``base_url`` is meaningless for a CLI backend and is ignored.
     """
     if not is_cli_backend(backend):
-        return openai_client
+        if not base_url:
+            return openai_client
+        try:
+            from openai import OpenAI
+
+            # Compatible gateways still expect some bearer token; "ollama" is
+            # what a local Ollama accepts and is harmless elsewhere.
+            return OpenAI(api_key=api_key or "ollama", base_url=base_url)
+        except Exception:
+            log.warning(
+                "OpenAI-compatible endpoint '%s' unavailable; falling back to the default client",
+                base_url,
+                exc_info=True,
+            )
+            return openai_client
     try:
         return CLIClient(backend, model=model)
     except Exception:

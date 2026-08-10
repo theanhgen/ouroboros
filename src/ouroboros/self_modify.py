@@ -40,8 +40,81 @@ def modify_config(updates: Dict[str, Any], config_type: str = "safety") -> None:
         raise ValueError(f"Unknown config_type: {config_type}")
 
 
+# Config keys that only an operator may set.
+#
+# The comment-upgrade path feeds LLM-extracted key/value pairs from public
+# comments straight into modify_runner_config, and both
+# enable_comment_based_upgrades and auto_apply_config_suggestions default to
+# True. Anything that redirects model traffic, names a credential, or widens
+# the agent's own permissions therefore has to be refused on that path: a
+# suggested reviewer_base_url would send the reviewer credential and the full
+# proposed diff to a host chosen by a commenter, whose reply then decides
+# whether the change is approved.
+OPERATOR_ONLY_CONFIG_KEYS = frozenset({
+    # Endpoint redirection -- exfiltration of credentials and source.
+    "reviewer_base_url",
+    "local_model_base_url",
+    # Credentials.
+    "reviewer_api_key",
+    "ollama_api_key",
+    "telegram_bot_token",
+    "telegram_chat_id",
+    # Model and backend routing -- chooses who sees the code.
+    "reviewer_model",
+    "reviewer_backend",
+    "identify_backend",
+    "plan_backend",
+    "generator_backend",
+    "generator_model",
+    "improvement_model",
+    "issue_scouting_model",
+    "self_improve_model",
+    "local_model",
+    # Permission widening, including over this mechanism itself.
+    "auto_apply_config_suggestions",
+    "dry_run",
+    # Destination and behaviour selectors, as opposed to rate tuning: where the
+    # agent publishes, and whether it publishes at all.
+    "default_submolt",
+    "post_after_self_question",
+})
+
+# Every "enable_*" flag is operator-only. They are the switches that turn on
+# automation which writes outside this process -- pushing branches, opening
+# PRs and issues, posting comments, editing the wiki -- so a commenter must not
+# be able to flip one on. Matching by prefix rather than by name means a flag
+# added later is operator-only on arrival instead of settable from a comment
+# until someone remembers to list it.
+OPERATOR_ONLY_CONFIG_PREFIXES = ("enable_",)
+
+
+def is_operator_only_config_key(key: str) -> bool:
+    """Return True if key may only be set by an operator, not suggested."""
+    return key in OPERATOR_ONLY_CONFIG_KEYS or key.startswith(
+        OPERATOR_ONLY_CONFIG_PREFIXES
+    )
+
+
+def filter_untrusted_config_updates(
+    updates: Dict[str, Any],
+) -> tuple[Dict[str, Any], list]:
+    """Split updates into (applicable, rejected_keys) for an untrusted source.
+
+    Used for config changes suggested by public comments. Operator-driven
+    paths such as the CLI call modify_runner_config directly and are not
+    filtered.
+    """
+    safe = {k: v for k, v in updates.items() if not is_operator_only_config_key(k)}
+    rejected = sorted(k for k in updates if is_operator_only_config_key(k))
+    return safe, rejected
+
+
 def modify_runner_config(updates: Dict[str, Any]) -> None:
-    """Modify the runner configuration file autonomously."""
+    """Modify the runner configuration file autonomously.
+
+    Applies whatever it is given. Callers relaying an untrusted suggestion must
+    run it through filter_untrusted_config_updates first.
+    """
     from .moltbook import load_runner_config
 
     updates = dict(updates)
@@ -56,8 +129,13 @@ def modify_runner_config(updates: Dict[str, Any]) -> None:
     else:
         data = {}
 
-    # Keep Telegram secrets out of tracked runtime config.
-    secret_keys = ("telegram_bot_token", "telegram_chat_id")
+    # Keep secrets out of tracked runtime config.
+    secret_keys = (
+        "telegram_bot_token",
+        "telegram_chat_id",
+        "reviewer_api_key",
+        "ollama_api_key",
+    )
     secret_updates = {
         key: updates.pop(key)
         for key in secret_keys
@@ -69,6 +147,14 @@ def modify_runner_config(updates: Dict[str, Any]) -> None:
                 cred_data = json.load(f)
         else:
             cred_data = {}
+        # ollama_api_key is an accepted alias for reviewer_api_key. Store one
+        # canonical entry and drop the alias, otherwise setting one while the
+        # other is present reports success while the loader keeps using the
+        # stale value -- key rotation would silently not take effect.
+        if "ollama_api_key" in secret_updates:
+            secret_updates["reviewer_api_key"] = secret_updates.pop("ollama_api_key")
+        if "reviewer_api_key" in secret_updates:
+            cred_data.pop("ollama_api_key", None)
         cred_data.update(secret_updates)
         cred_tmp_path = cred_path + ".tmp"
         with open(cred_tmp_path, "w", encoding="utf-8") as f:

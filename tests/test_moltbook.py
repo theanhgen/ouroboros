@@ -1,5 +1,7 @@
 import json
 import os
+
+import pytest
 import tempfile
 import threading
 import time
@@ -334,3 +336,93 @@ def test_run_loop_without_moltbook_credentials_runs_issue_scouting():
     mock_status.assert_not_called()
     mock_feed.assert_not_called()
     mock_issue_scout.assert_called_once()
+
+
+def _runner_config_from(tmp_path, agent_data, cred_data=None):
+    cfg_file = tmp_path / "agent.json"
+    cred_file = tmp_path / "credentials.json"
+    cfg_file.write_text(json.dumps(agent_data))
+    if cred_data is not None:
+        cred_file.write_text(json.dumps(cred_data))
+
+    def fake_expanduser(path):
+        if path == "~/.config/moltbook/agent.json":
+            return str(cfg_file)
+        if path == "~/.config/moltbook/credentials.json":
+            return str(cred_file)
+        return path
+
+    orig_exists = os.path.exists
+
+    def fake_exists(path):
+        if os.fspath(path) in {str(cfg_file), str(cred_file)}:
+            return orig_exists(path)
+        return orig_exists(path)
+
+    with mock.patch.dict(os.environ, {}, clear=True):
+        with mock.patch("ouroboros.moltbook.os.path.expanduser", side_effect=fake_expanduser):
+            with mock.patch("ouroboros.moltbook.os.path.exists", side_effect=fake_exists):
+                return load_runner_config()
+
+
+def test_runner_config_reviewer_defaults():
+    cfg = RunnerConfig()
+    assert cfg.reviewer_model == ""
+    assert cfg.reviewer_base_url == ""
+    assert cfg.reviewer_api_key is None
+
+
+def test_load_runner_config_reads_reviewer_routing(tmp_path):
+    cfg = _runner_config_from(
+        tmp_path,
+        {
+            "improvement_model": "gpt-generation",
+            "reviewer_model": "qwen3-coder:480b-cloud",
+            "reviewer_base_url": "https://ollama.com/v1",
+        },
+        {"ollama_api_key": "secret"},
+    )
+
+    assert cfg.improvement_model == "gpt-generation"
+    assert cfg.reviewer_model == "qwen3-coder:480b-cloud"
+    assert cfg.reviewer_base_url == "https://ollama.com/v1"
+    assert cfg.reviewer_api_key == "secret"
+
+
+def test_load_runner_config_prefers_explicit_reviewer_api_key(tmp_path):
+    cfg = _runner_config_from(
+        tmp_path,
+        {},
+        {"reviewer_api_key": "explicit", "ollama_api_key": "fallback"},
+    )
+    assert cfg.reviewer_api_key == "explicit"
+
+
+def test_load_runner_config_reviewer_key_absent_when_unset(tmp_path):
+    cfg = _runner_config_from(tmp_path, {}, {})
+    assert cfg.reviewer_api_key is None
+
+
+def test_load_runner_config_reviewer_model_unset_does_not_track_improvement_model(tmp_path):
+    """Review must not silently follow the generation model."""
+    from ouroboros.config import reviewer_safety_kwargs
+
+    cfg = _runner_config_from(tmp_path, {"improvement_model": "gpt-generation"})
+
+    assert cfg.reviewer_model == ""
+    assert "reviewer_model" not in reviewer_safety_kwargs(cfg)
+
+
+@pytest.mark.parametrize("value", [None, ""])
+def test_load_runner_config_null_reviewer_fields_are_empty(tmp_path, value):
+    """JSON null must not become the string "None"."""
+    cfg = _runner_config_from(
+        tmp_path, {"reviewer_model": value, "reviewer_base_url": value}
+    )
+    assert cfg.reviewer_model == ""
+    assert cfg.reviewer_base_url == ""
+
+
+def test_runner_config_repr_hides_the_reviewer_api_key():
+    cfg = RunnerConfig(reviewer_api_key="super-secret")
+    assert "super-secret" not in repr(cfg)
