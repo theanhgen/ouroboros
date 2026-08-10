@@ -191,6 +191,12 @@ class MemoryStore:
     """SQLite-backed fact store with entity resolution, trust scoring, and HRR vectors."""
 
     def __init__(self, db_path: Optional[Path] = None, hrr_dim: int = 1024) -> None:
+        # Checked here, before the database is touched: add_fact commits the
+        # fact row before computing its HRR vector, so letting a bad hrr_dim
+        # reach encode_atom would leave a committed row with a NULL vector
+        # that the dedup path then reports as a success on retry.
+        if hrr_dim <= 0:
+            raise ValueError(f"hrr_dim must be positive, got {hrr_dim}")
         if db_path is None:
             db_path = get_repo_root() / "config" / "memory.db"
         self.db_path = Path(db_path).expanduser()

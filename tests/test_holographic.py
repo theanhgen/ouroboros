@@ -24,6 +24,30 @@ def test_encode_atom():
     assert np.array_equal(v1, v2)
     assert not np.array_equal(v1, v3)
 
+@pytest.mark.parametrize("dim", [0, -1, -1024])
+def test_encode_atom_rejects_non_positive_dim(dim):
+    with pytest.raises(ValueError, match="dim must be positive"):
+        encode_atom("hello", dim=dim)
+
+def test_encode_atom_accepts_smallest_valid_dim():
+    assert encode_atom("hello", dim=1).shape == (1,)
+
+@pytest.mark.parametrize("dim", [0, -1])
+def test_encode_text_rejects_non_positive_dim(dim):
+    with pytest.raises(ValueError, match="dim must be positive"):
+        encode_text("the cat", dim=dim)
+
+@pytest.mark.parametrize("dim", [0, -1])
+def test_encode_text_rejects_non_positive_dim_when_no_tokens(dim):
+    # The empty-token path takes a different branch to encode_atom.
+    with pytest.raises(ValueError, match="dim must be positive"):
+        encode_text("...", dim=dim)
+
+@pytest.mark.parametrize("dim", [0, -1])
+def test_encode_fact_rejects_non_positive_dim(dim):
+    with pytest.raises(ValueError, match="dim must be positive"):
+        encode_fact("content", ["entity"], dim=dim)
+
 def test_bind_unbind():
     a = encode_atom("key", dim=64)
     b = encode_atom("val", dim=64)

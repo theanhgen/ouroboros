@@ -270,6 +270,17 @@ def test_search_facts_no_hits_does_not_bump_retrieval_count(temp_store):
     assert stored["retrieval_count"] == 0
 
 
+@pytest.mark.parametrize("hrr_dim", [0, -1, -1024])
+def test_memory_store_rejects_non_positive_hrr_dim(tmp_path, hrr_dim):
+    """Reject before touching the DB, so no partial fact row can be committed."""
+    db_path = tmp_path / "bad_dim.db"
+
+    with pytest.raises(ValueError, match="hrr_dim must be positive"):
+        MemoryStore(db_path=db_path, hrr_dim=hrr_dim)
+
+    assert not db_path.exists()
+
+
 def test_search_facts_propagates_real_database_errors(temp_store):
     """Infrastructure failures must not be masked as "no results"."""
     temp_store.add_fact("the cat sat on the mat", category="test")
