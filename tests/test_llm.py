@@ -28,8 +28,12 @@ def test_load_key_from_file(tmp_path):
                 return str(tmp_path / "openai.json")
             return path
 
+        orig_exists = os.path.exists
+
         def fake_exists(path):
-            return path == str(cfg)
+            if os.fspath(path) == str(cfg):
+                return True
+            return orig_exists(path)
 
         with mock.patch("ouroboros.llm.os.path.expanduser", side_effect=fake_expanduser):
             with mock.patch("ouroboros.llm.os.path.exists", side_effect=fake_exists):
@@ -48,8 +52,12 @@ def test_load_key_does_not_use_moltbook_api_key(tmp_path):
                 return str(tmp_path / "openai.json")
             return path
 
+        orig_exists = os.path.exists
+
         def fake_exists(path):
-            return path == str(cfg)
+            if os.fspath(path) == str(cfg):
+                return True
+            return orig_exists(path)
 
         with mock.patch("ouroboros.llm.os.path.expanduser", side_effect=fake_expanduser):
             with mock.patch("ouroboros.llm.os.path.exists", side_effect=fake_exists):
@@ -69,8 +77,12 @@ def test_load_key_from_legacy_file(tmp_path):
                 return str(legacy)
             return path
 
+        orig_exists = os.path.exists
+
         def fake_exists(path):
-            return path == str(legacy)
+            if os.fspath(path) == str(legacy):
+                return True
+            return orig_exists(path)
 
         with mock.patch("ouroboros.llm.os.path.expanduser", side_effect=fake_expanduser):
             with mock.patch("ouroboros.llm.os.path.exists", side_effect=fake_exists):
