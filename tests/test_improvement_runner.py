@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import MagicMock, patch
 
 from ouroboros.improvement import ImprovementResult, ImprovementTask
@@ -115,3 +116,49 @@ def test_run_scheduled_self_improvement_skips_until_due(mock_cfg, _mock_load_sta
     result = run_scheduled_self_improvement()
 
     assert result.status == "skipped_due"
+
+
+@pytest.mark.parametrize(
+    ("open_pr_lookup", "expected_status"),
+    [
+        (True, "skipped_open_pr"),
+        # None means gh could not answer. Treating that as "no open PR" would
+        # let the agent open a second PR for work already in flight.
+        (None, "skipped_open_pr"),
+    ],
+)
+@patch("ouroboros.improvement_runner.time.time", return_value=1_700_000_000)
+@patch("ouroboros.improvement_runner.save_scheduler_state")
+@patch("ouroboros.improvement_runner.load_scheduler_state",
+       # A fresh dict per call: the runner mutates the state it is handed, so a
+       # shared return_value leaks next_due_ts into the next parametrised case.
+       side_effect=lambda: {"consecutive_failures": 0, "next_due_ts": None})
+@patch("ouroboros.improvement_runner._load_feed_context_state", return_value={})
+@patch("ouroboros.improvement_runner.run_improvement_cycle")
+@patch("ouroboros.improvement_runner.git_ops.has_open_improvement_prs")
+@patch("ouroboros.improvement_runner.git_ops.is_clean", return_value=True)
+@patch("ouroboros.improvement_runner.check_pr_outcomes")
+@patch("ouroboros.improvement_runner.get_repo_root")
+@patch("ouroboros.improvement_runner.load_runner_config")
+def test_scheduled_run_defers_unless_open_pr_state_is_definitely_false(
+    mock_cfg,
+    mock_repo_root,
+    _mock_check_prs,
+    _mock_is_clean,
+    mock_has_open_prs,
+    mock_run_cycle,
+    _mock_feed_state,
+    _mock_load_state,
+    _mock_save_state,
+    _mock_time,
+    open_pr_lookup,
+    expected_status,
+):
+    mock_cfg.return_value = _cfg()
+    mock_repo_root.return_value = "/tmp/repo"
+    mock_has_open_prs.return_value = open_pr_lookup
+
+    result = run_scheduled_self_improvement()
+
+    assert result.status == expected_status
+    mock_run_cycle.assert_not_called()

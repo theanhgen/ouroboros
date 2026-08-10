@@ -227,7 +227,9 @@ def run_github_improvement_cycle(
         log.info("Processing issue #%d: %s", issue.id, issue.title)
         
         # Skip if already has an open improvement PR
-        if git_ops.has_open_improvement_prs(repo_root):
+        # `is not False` covers None: an indeterminate lookup must not be read
+        # as permission to open another PR.
+        if git_ops.has_open_improvement_prs(repo_root) is not False:
             log.info("Skipping issue #%d: another improvement PR is open", issue.id)
             results.append(IssueResolutionResult(issue.id, "skipped", description="Other PR open"))
             continue

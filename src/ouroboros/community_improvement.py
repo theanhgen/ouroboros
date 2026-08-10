@@ -63,7 +63,9 @@ def step_community_improvement(
 
         # Check no open PRs
         repo_root = get_repo_root()
-        if git_ops.has_open_improvement_prs(repo_root):
+        # `is not False` covers None: an indeterminate lookup must not be read
+        # as permission to start work that ends in a PR.
+        if git_ops.has_open_improvement_prs(repo_root) is not False:
             log.debug("[community] Skipping: open improvement PRs exist")
             return None
 

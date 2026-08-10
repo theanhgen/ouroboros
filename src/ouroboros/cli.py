@@ -158,7 +158,10 @@ def cmd_improve_status(_args: argparse.Namespace) -> int:
     scheduler_state = load_scheduler_state()
 
     has_open = git_ops.has_open_improvement_prs(repo)
-    print(f"Open improvement PRs: {'yes' if has_open else 'no'}")
+    # Three states, not two: None means gh could not answer, and reporting
+    # that as "no" hides the degraded dependency this contract exists to show.
+    open_prs = "unknown" if has_open is None else ("yes" if has_open else "no")
+    print(f"Open improvement PRs: {open_prs}")
     print(f"Last scheduler status: {scheduler_state.get('last_status') or 'none'}")
     if scheduler_state.get("next_due_ts"):
         next_due = int(scheduler_state["next_due_ts"])

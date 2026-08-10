@@ -1256,7 +1256,7 @@ def run_loop() -> int:
                         check_pr_outcomes(repo_root)
 
                         # Skip if open PRs exist
-                        if not _git_ops.has_open_improvement_prs(repo_root):
+                        if _git_ops.has_open_improvement_prs(repo_root) is False:
                             log.info("[self-improve] Starting improvement cycle...")
                             imp_result = run_improvement_cycle(
                                 _pick_client(cfg.improvement_model), state, safety,

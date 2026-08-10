@@ -1,7 +1,9 @@
+import pytest
 import argparse
 import json
 from unittest.mock import MagicMock, patch
 from ouroboros.cli import (
+    cmd_improve_status,
     cmd_plan,
     cmd_config_show,
     cmd_config_modify,
@@ -90,3 +92,23 @@ def test_cmd_improve_scout_success(mock_scout, mock_repo_root, _mock_key, _mock_
     captured = capsys.readouterr()
     assert "Issue scout: [created] Opened issue" in captured.out
     assert "Issue: https://github.com/repo/issues/42" in captured.out
+
+
+@pytest.mark.parametrize(
+    ("lookup", "expected"),
+    [(True, "yes"), (False, "no"), (None, "unknown")],
+)
+@patch("ouroboros.moltbook.load_state", return_value={})
+@patch("ouroboros.improvement_runner.load_scheduler_state", return_value={})
+@patch("ouroboros.evaluation.check_pr_outcomes", return_value=[])
+@patch("ouroboros.codebase.get_repo_root", return_value="/repo")
+@patch("ouroboros.git_ops.has_open_improvement_prs")
+def test_status_reports_the_open_pr_state_in_three_forms(
+    mock_has_open, _root, _outcomes, _sched, _loop, lookup, expected, capsys
+):
+    """Reporting an indeterminate lookup as "no" hides a degraded dependency."""
+    mock_has_open.return_value = lookup
+
+    cmd_improve_status(argparse.Namespace())
+
+    assert f"Open improvement PRs: {expected}" in capsys.readouterr().out

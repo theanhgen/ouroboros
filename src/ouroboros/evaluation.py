@@ -156,8 +156,20 @@ def check_pr_outcomes(repo_root: Optional[Path] = None) -> List[EvaluationRecord
             )
             state = result.stdout.strip()
             if state in ("MERGED", "CLOSED"):
+                feedback = git_ops.get_pr_feedback(root, record.pr_url)
+                if feedback is None:
+                    # Marking the record terminal now would stop it ever being
+                    # polled again, permanently losing the review text. Leave
+                    # it open and pick it up on the next pass.
+                    log.info(
+                        "PR %s is %s but its feedback could not be fetched; "
+                        "leaving it open to retry",
+                        record.pr_url,
+                        state.lower(),
+                    )
+                    continue
                 record.outcome = state.lower()
-                record.feedback = git_ops.get_pr_feedback(root, record.pr_url)
+                record.feedback = feedback
                 updated = True
                 log.info("PR %s outcome updated: %s", record.pr_url, record.outcome)
         except Exception:
