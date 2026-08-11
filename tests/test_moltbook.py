@@ -928,3 +928,16 @@ def test_the_retry_exemption_cannot_grow_beyond_one_batch():
     ]}
     moltbook._trim_state(state)
     assert len(state["knowledge_pending"]) == moltbook.MAX_KNOWLEDGE_PENDING
+
+
+def test_a_null_title_is_normalised_like_a_null_body():
+    """A get default does not fire for an explicit null, so the title reached
+    the extraction prompt as the literal "None"."""
+    from ouroboros import moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(
+        state, [{"id": "p1", "title": None, "content": None}]
+    )
+    assert state["knowledge_pending"][0]["title"] == ""
+    assert state["knowledge_pending"][0]["content"] == ""

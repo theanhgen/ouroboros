@@ -562,7 +562,9 @@ def _queue_for_extraction(state: Dict[str, Any], posts: List[Dict[str, Any]]) ->
         known.add(pid)
         pending.append({
             "id": pid,
-            "title": post.get("title", ""),
+            # `or ""`, not a get default: an explicit null title would
+            # otherwise reach the prompt as the literal "None".
+            "title": post.get("title") or "",
             "content": (post.get("content") or "")[:MAX_PENDING_CONTENT_CHARS],
             "attempts": 0,
         })
