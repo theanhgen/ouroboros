@@ -73,7 +73,7 @@ class TestGitHubImprovement:
     def test_apply_github_fix_success(self, mock_exists, mock_write, mock_read, mock_test, mock_pr, mock_push, mock_commit, mock_checkout, mock_curr, mock_branch, mock_llm):
         mock_llm.return_value = (json.dumps({
             "explanation": "fixed bug",
-            "changes": [{"file_path": "src/a.py", "new_content": "VALUE = 1\n"}]
+            "changes": [{"file_path": "src/ouroboros/a.py", "new_content": "VALUE = 1\n"}]
         }), None)
         mock_exists.return_value = True
         mock_read.return_value = "old code"
@@ -103,7 +103,7 @@ class TestGitHubImprovement:
     def test_apply_github_fix_test_failure(self, mock_exists, mock_write, mock_branch, mock_curr, mock_del, mock_checkout, mock_test, mock_llm):
         mock_llm.return_value = (json.dumps({
             "explanation": "bad fix",
-            "changes": [{"file_path": "src/a.py", "new_content": "VALUE = 2\n"}]
+            "changes": [{"file_path": "src/ouroboros/a.py", "new_content": "VALUE = 2\n"}]
         }), None)
         mock_test.return_value = MagicMock(failed=1, errors=0)
         mock_curr.return_value = "main"
@@ -134,7 +134,7 @@ class TestGitHubFixImportPolicy:
         mock_llm.return_value = (json.dumps({
             "explanation": "sneaky",
             "changes": [
-                {"file_path": "src/a.py", "new_content": "import pickle\n"}
+                {"file_path": "src/ouroboros/a.py", "new_content": "import pickle\n"}
             ],
         }), None)
 
@@ -156,7 +156,7 @@ class TestGitHubFixImportPolicy:
         """new_tests is written by the same loop and was equally ungated."""
         mock_llm.return_value = (json.dumps({
             "explanation": "fix",
-            "changes": [{"file_path": "src/a.py", "new_content": "VALUE = 1\n"}],
+            "changes": [{"file_path": "src/ouroboros/a.py", "new_content": "VALUE = 1\n"}],
             "new_tests": [
                 {"file_path": "tests/test_a.py", "content": "import ctypes\n"}
             ],
@@ -176,7 +176,7 @@ class TestGitHubFixImportPolicy:
         mock_llm.return_value = (json.dumps({
             "explanation": "docs",
             "changes": [
-                {"file_path": "docs/x.md", "new_content": "not python: import pickle"}
+                {"file_path": "docs/wiki/x.md", "new_content": "not python: import pickle"}
             ],
         }), None)
 
@@ -190,3 +190,46 @@ class TestGitHubFixImportPolicy:
 
         assert "Import policy" not in (result.error or "")
         mock_write.assert_called()
+
+    @patch("ouroboros.git_ops.create_branch")
+    @patch("pathlib.Path.write_text")
+    @patch("ouroboros.llm.chat_completion")
+    def test_an_absolute_path_cannot_escape_the_repository(
+        self, mock_llm, mock_write, mock_branch
+    ):
+        """file_path comes from a model reading a public issue, and
+        `repo_root / "/etc/passwd"` discards repo_root entirely. This flow
+        wrote it with no path check at all."""
+        mock_llm.return_value = (json.dumps({
+            "explanation": "helpful",
+            "changes": [
+                {"file_path": "/etc/passwd", "new_content": "VALUE = 1\n"}
+            ],
+        }), None)
+
+        issue = GitHubIssue(123, "title", "body", "author", "url")
+        result = apply_github_fix(MagicMock(), issue, {}, self.repo_root)
+
+        assert result.status == "failed"
+        mock_write.assert_not_called()
+        mock_branch.assert_not_called()
+
+    @patch("ouroboros.git_ops.create_branch")
+    @patch("pathlib.Path.write_text")
+    @patch("ouroboros.llm.chat_completion")
+    def test_an_immutable_file_cannot_be_rewritten(
+        self, mock_llm, mock_write, mock_branch
+    ):
+        mock_llm.return_value = (json.dumps({
+            "explanation": "loosen the safety config",
+            "changes": [
+                {"file_path": "src/ouroboros/config.py",
+                 "new_content": "VALUE = 1\n"}
+            ],
+        }), None)
+
+        issue = GitHubIssue(123, "title", "body", "author", "url")
+        result = apply_github_fix(MagicMock(), issue, {}, self.repo_root)
+
+        assert result.status == "failed"
+        mock_write.assert_not_called()

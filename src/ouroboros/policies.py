@@ -1,6 +1,7 @@
 import ast
 from dataclasses import dataclass
-from pathlib import Path
+import posixpath
+from pathlib import Path, PurePosixPath
 from typing import List, Optional, Tuple
 
 from .config import SafetyConfig
@@ -51,6 +52,16 @@ class ChangeSizeResult(_PolicyDecision):
         self.max_lines = max_lines
 
 
+def _normalised(file_path: str) -> PurePosixPath:
+    """Collapse `.`, `..` and duplicate separators without touching the disk.
+
+    posixpath rather than os.path so the result does not depend on the host
+    separator, and normpath rather than resolve() so no filesystem lookup
+    happens and a path that does not exist yet still normalises.
+    """
+    return PurePosixPath(posixpath.normpath(file_path.replace("\\", "/")))
+
+
 def is_forbidden_modification_path(
     file_path: str,
     forbidden_paths: Tuple[str, ...],
@@ -60,14 +71,21 @@ def is_forbidden_modification_path(
     Entries may be a bare filename or a path prefix. The shipped config uses
     filenames, so the prefix arm is what lets an operator forbid a directory
     without listing every file in it.
+
+    Both sides are normalised first: "./src/x.py" and "src/./x.py" name the
+    same file as "src/x.py", and a raw string compare would let either past a
+    prefix entry. Matching is on whole path components, so "policies.py" does
+    not also claim "policies.pyx" and "src/a" does not claim "src/ab".
     """
-    if Path(file_path).name in forbidden_paths:
+    candidate = _normalised(file_path)
+    if candidate.name in forbidden_paths:
         return True
 
-    return any(
-        file_path == forbidden_path or file_path.startswith(forbidden_path)
-        for forbidden_path in forbidden_paths
-    )
+    for forbidden_path in forbidden_paths:
+        target = _normalised(forbidden_path)
+        if candidate == target or target in candidate.parents:
+            return True
+    return False
 
 
 def require_pr_only(is_pr_only: bool) -> None:
@@ -97,9 +115,12 @@ def validate_modification_scope(
             violations.append(f"Forbidden file: {file_path} ({basename} is immutable)")
             continue
 
-        # Check allowed path prefixes
+        # Check allowed path prefixes, against the same normalised form the
+        # forbidden check used, so one path is not judged by two standards.
+        normalised = _normalised(file_path)
         allowed = any(
-            file_path.startswith(prefix)
+            normalised == _normalised(prefix)
+            or _normalised(prefix) in normalised.parents
             for prefix in config.allowed_modification_paths
         )
         if not allowed:

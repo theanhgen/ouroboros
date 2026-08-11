@@ -80,6 +80,13 @@ IMMUTABLE_FILES = frozenset({
 })
 
 
+PYTHON_SUFFIXES = frozenset({".py", ".pyi", ".pyw"})
+
+
+def _is_python_source(file_path: str) -> bool:
+    return Path(file_path).suffix.lower() in PYTHON_SUFFIXES
+
+
 def _is_path_allowed(file_path: str, config: SafetyConfig) -> bool:
     """Check if a file path is allowed for modification."""
     from .policies import is_forbidden_modification_path
@@ -119,8 +126,10 @@ def _validate_changes(changes: List[CodeChange], config: SafetyConfig) -> List[s
             violations.append(f"Forbidden file modification: {change.file_path}")
 
         # Only Python is parseable, and a JSON or Markdown change reported as
-        # unparseable would be a false positive, not a finding.
-        if change.file_path.endswith(".py"):
+        # unparseable would be a false positive, not a finding. Stubs and .pyw
+        # count, and the suffix is lowercased because a case-insensitive
+        # filesystem makes "x.PY" the same file as "x.py".
+        if _is_python_source(change.file_path):
             violations.extend(
                 validate_import_policy(
                     change.file_path, change.new_content, config

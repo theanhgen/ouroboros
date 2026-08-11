@@ -427,3 +427,37 @@ def test_metrics_still_records_the_inputs_to_the_decision():
     )
     assert {"file_paths", "allowed_prefixes", "forbidden_paths"} <= set(scope)
     assert scope["is_valid"] is False
+
+
+# -- path matching is on components, after normalisation ---------------------
+
+@pytest.mark.parametrize("path", [
+    "src/ouroboros/internal/x.py",
+    "./src/ouroboros/internal/x.py",
+    "src/ouroboros/./internal/x.py",
+    "src/ouroboros/other/../internal/x.py",
+])
+def test_a_forbidden_prefix_is_not_dodged_by_an_unnormalised_path(path):
+    from ouroboros.policies import is_forbidden_modification_path
+
+    assert is_forbidden_modification_path(path, ("src/ouroboros/internal/",))
+
+
+def test_a_prefix_matches_whole_components_only():
+    """"src/a" must not claim "src/ab", and "policies.py" must not claim
+    "policies.pyx"."""
+    from ouroboros.policies import is_forbidden_modification_path
+
+    assert not is_forbidden_modification_path("src/ab/x.py", ("src/a/",))
+    assert not is_forbidden_modification_path("src/policies.pyx", ("policies.py",))
+    assert is_forbidden_modification_path("src/a/x.py", ("src/a/",))
+
+
+def test_scope_judges_the_same_normalised_path_as_the_forbidden_check():
+    """Otherwise one path is measured by two different standards."""
+    from ouroboros.policies import validate_modification_scope
+
+    assert list(validate_modification_scope(["./src/ouroboros/x.py"])) == []
+    assert list(validate_modification_scope(["src/ouroboros/../x.py"])), (
+        "escaping the allowed prefix was accepted"
+    )

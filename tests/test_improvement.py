@@ -391,17 +391,6 @@ def test_non_python_changes_are_not_reported_as_unparseable():
         ], violations
 
 
-def test_the_retry_flow_uses_the_same_gate():
-    """_retry_with_root_cause validates through _validate_changes, so a retry
-    cannot launder a change the first attempt would have been refused."""
-    import inspect
-
-    from ouroboros import improvement
-
-    source = inspect.getsource(improvement._retry_with_root_cause)
-    assert "_validate_changes(" in source
-
-
 def test_blocked_code_never_reaches_apply(monkeypatch, tmp_path):
     """The gate has to sit before anything is written, not after.
 
@@ -433,3 +422,55 @@ def test_blocked_code_never_reaches_apply(monkeypatch, tmp_path):
     assert runs == [False], "tests ran against the generated code"
     assert result.status == "failed"
     assert "ctypes" in result.details
+
+
+@pytest.mark.parametrize("path", [
+    "src/ouroboros/x.pyi",
+    "src/ouroboros/x.pyw",
+    "src/ouroboros/x.PY",
+])
+def test_python_by_any_of_its_suffixes_is_gated(path):
+    """A case-insensitive filesystem makes x.PY the same file as x.py, and a
+    stub is still source."""
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import _validate_changes
+
+    violations = _validate_changes(
+        [_change(path=path, new="import pickle\n")], SafetyConfig()
+    )
+    assert any("pickle" in v for v in violations), violations
+
+
+def test_the_retry_flow_refuses_a_blocked_change(monkeypatch, tmp_path):
+    """Behavioural, not a source grep: a retry must not launder a change the
+    first attempt would have been refused."""
+    from ouroboros import improvement
+    from ouroboros.improvement import ImprovementTask
+    from ouroboros.test_runner import RunnerOutcome
+
+    applied = []
+    monkeypatch.setattr(
+        improvement, "apply_changes", lambda *a, **kw: applied.append(a) or True
+    )
+    monkeypatch.setattr(
+        improvement.llm, "generate_code",
+        lambda *a, **kw: (
+            [{"file_path": "src/ouroboros/x.py",
+              "new_content": "import pickle\n",
+              "description": "d"}],
+            None,
+        ),
+    )
+
+    result = improvement._retry_with_root_cause(
+        client=MagicMock(),
+        task=ImprovementTask("t1", "fix_bug", "d", [], "e"),
+        original_changes=[_change(new="VALUE = 1\n")],
+        test_before=RunnerOutcome(passed=1, failed=0, errors=0, returncode=0),
+        test_after=RunnerOutcome(passed=0, failed=1, errors=0, returncode=1),
+        config=SafetyConfig(),
+        repo_root=tmp_path,
+    )
+
+    assert applied == [], "the retry applied a change the gate should refuse"
+    assert result is None

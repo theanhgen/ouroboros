@@ -398,17 +398,36 @@ def test_clear_caps_history():
     assert state["community_improvement_history"][-1]["task_id"] == "abc12345"
 
 
-def test_the_community_flow_gates_generated_code_through_the_same_check():
-    """It builds CodeChange objects from a public suggestion and hands them to
-    validate_improvement, which is where _validate_changes -- and so the import
-    policy -- applies. If it ever wrote files directly it would need its own
-    gate, as github_improvement does."""
-    import inspect
+def test_the_community_flow_routes_generated_code_through_the_gate(
+    monkeypatch, tmp_path
+):
+    """This flow turns a public suggestion into code. It does not validate
+    anything itself -- it hands the changes to validate_improvement, so what
+    matters is that the symbol it reaches for is the gated one."""
+    from ouroboros import community_improvement, improvement
+    from ouroboros.improvement import CodeChange, ImprovementTask
+    from ouroboros.test_runner import RunnerOutcome
 
-    from ouroboros import community_improvement
-
-    source = inspect.getsource(community_improvement)
-    assert "validate_improvement(" in source
-    assert "write_text(" not in source, (
-        "this flow now writes directly and needs its own import gate"
+    applied = []
+    monkeypatch.setattr(
+        improvement, "apply_changes", lambda *a, **kw: applied.append(a) or True
     )
+    monkeypatch.setattr(
+        improvement, "run_tests",
+        lambda *a, **kw: RunnerOutcome(passed=1, failed=0, errors=0, returncode=0),
+    )
+
+    result = community_improvement.validate_improvement(
+        ImprovementTask("t1", "fix_bug", "d", [], "e"),
+        [CodeChange(
+            file_path="src/ouroboros/x.py",
+            original_content="",
+            new_content="import pickle\n",
+            description="from a stranger",
+        )],
+        tmp_path,
+    )
+
+    assert applied == [], "a public suggestion reached apply"
+    assert result.status == "failed"
+    assert "pickle" in result.details

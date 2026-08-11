@@ -143,38 +143,46 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
         log.info("[dry-run] Would apply fix for issue #%d: %s", issue.id, fix_data.get("explanation"))
         return IssueResolutionResult(issue.id, "success", description=fix_data.get("explanation"))
 
-    # Gate the generated source before anything is written. This flow writes
-    # files directly rather than going through improvement.validate_improvement,
-    # so it needs its own check or forbidden_import_modules would not apply to
-    # it at all.
+    # This flow writes files directly instead of going through
+    # validate_improvement, so it had no policy gate at all: file_path comes
+    # from a model reading a public issue, and `repo_root / "/etc/passwd"`
+    # discards repo_root entirely. Run the same checks the other flows run --
+    # scope, immutable files, change size and imports -- before anything is
+    # written.
     from .config import SafetyConfig
-    from .policies import validate_import_policy
+    from .improvement import CodeChange, _validate_changes
 
     safety = SafetyConfig()
-    import_violations = []
+    proposed = []
     for change in fix_data.get("changes", []):
-        path = change.get("file_path", "")
-        if path.endswith(".py"):
-            import_violations.extend(
-                validate_import_policy(path, change.get("new_content", ""), safety)
-            )
+        proposed.append((change.get("file_path", ""), change.get("new_content", "")))
     for test in fix_data.get("new_tests", []):
-        path = test.get("file_path", "")
-        if path.endswith(".py"):
-            import_violations.extend(
-                validate_import_policy(path, test.get("content", ""), safety)
-            )
+        proposed.append((test.get("file_path", ""), test.get("content", "")))
 
-    if import_violations:
-        # Checked before the branch exists, so a rejected fix leaves nothing
-        # behind to clean up.
+    gated = []
+    for path, content in proposed:
+        try:
+            original = (repo_root / path).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            original = ""
+        gated.append(
+            CodeChange(
+                file_path=path,
+                original_content=original,
+                new_content=content,
+                description=f"issue #{issue.id}",
+            )
+        )
+
+    violations = _validate_changes(gated, safety) if gated else []
+    if violations:
+        # Refused before the branch exists, so nothing needs cleaning up.
         log.warning(
-            "Fix for issue #%d rejected by import policy: %s",
-            issue.id, "; ".join(import_violations),
+            "Fix for issue #%d rejected by policy: %s",
+            issue.id, "; ".join(violations),
         )
         return IssueResolutionResult(
-            issue.id, "failed",
-            error="Import policy: " + "; ".join(import_violations),
+            issue.id, "failed", error="Policy: " + "; ".join(violations),
         )
 
     # Apply changes on a new branch
