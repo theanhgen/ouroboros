@@ -1,6 +1,9 @@
 import ast
 from dataclasses import dataclass
-from pathlib import Path
+import ntpath
+import posixpath
+import unicodedata
+from pathlib import Path, PurePosixPath
 from typing import List, Optional, Tuple
 
 from .config import SafetyConfig
@@ -17,6 +20,144 @@ class PolicyError(RuntimeError):
     pass
 
 
+class _PolicyDecision(list):
+    """A list of violations that also carries what was decided and against what.
+
+    A list first, so every caller that treats the result as "the violations"
+    keeps working; the attributes exist because metrics records the inputs to
+    the decision, not only its outcome.
+    """
+
+    @property
+    def violations(self) -> List[str]:
+        return list(self)
+
+    @property
+    def is_valid(self) -> bool:
+        return len(self) == 0
+
+
+class ModificationScopeResult(_PolicyDecision):
+    def __init__(self, file_paths, allowed_prefixes, forbidden_paths, violations):
+        super().__init__(violations)
+        self.file_paths = list(file_paths)
+        self.allowed_prefixes = list(allowed_prefixes)
+        self.forbidden_paths = list(forbidden_paths)
+
+
+class ChangeSizeResult(_PolicyDecision):
+    def __init__(self, num_files, max_files, num_lines, max_lines, violations):
+        super().__init__(violations)
+        self.num_files = num_files
+        self.max_files = max_files
+        self.num_lines = num_lines
+        self.max_lines = max_lines
+
+
+def _normalised(file_path: str) -> PurePosixPath:
+    """Collapse `.`, `..` and duplicate separators without touching the disk.
+
+    posixpath rather than os.path so the result does not depend on the host
+    separator, and normpath rather than resolve() so no filesystem lookup
+    happens and a path that does not exist yet still normalises.
+    """
+    return PurePosixPath(posixpath.normpath(file_path.replace("\\", "/")))
+
+
+def _comparison_key(file_path: str) -> PurePosixPath:
+    """The form two paths are compared in.
+
+    Case-folded and NFC-normalised, because the question these gates answer is
+    "which file on disk does this name", not "are these strings equal". APFS
+    and NTFS are case-insensitive, so "src/ouroboros/CONFIG.PY" opens the
+    forbidden config.py while comparing unequal to it; macOS also hands back
+    decomposed unicode, so an NFD name misses its NFC twin.
+
+    On a case-sensitive filesystem this over-matches -- Config.py is genuinely
+    a different file there -- which for a deny list is the safe direction.
+    """
+    text = unicodedata.normalize("NFC", file_path)
+    return PurePosixPath(posixpath.normpath(text.replace("\\", "/")).casefold())
+
+
+def is_safe_relative_path(file_path: str) -> bool:
+    """Whether a path stays inside the tree it is resolved against.
+
+    An absolute path is not "under" anything: `repo_root / "/etc/passwd"`
+    discards repo_root entirely. A path that normalises to a leading ".."
+    climbs out. Both must be refused outright rather than pattern-matched,
+    because "src/../../etc/passwd" satisfies a "src/" prefix by string
+    comparison while naming a file two levels above the repository.
+    """
+    if not file_path or "\x00" in file_path:
+        # A null byte is not a path. pathlib accepts it and the OS call then
+        # raises ValueError, which callers do not expect from a path check.
+        return False
+    cleaned = file_path.replace("\\", "/")
+    if posixpath.isabs(cleaned) or ntpath.isabs(cleaned):
+        return False
+    normalised = _normalised(cleaned)
+    return not (normalised.parts and normalised.parts[0] == "..")
+
+
+def is_within_allowed_paths(
+    file_path: str,
+    allowed_paths: Tuple[str, ...],
+) -> bool:
+    """Whether a path is under one of the allowed prefixes.
+
+    The single implementation behind both gates. They used to check this
+    separately -- one normalised and one did not -- which is how they came to
+    disagree about "src/../../etc/passwd".
+    """
+    if not is_safe_relative_path(file_path):
+        return False
+
+    candidate = _comparison_key(file_path)
+    for prefix in allowed_paths:
+        allowed = _comparison_key(prefix)
+        if candidate == allowed or allowed in candidate.parents:
+            return True
+    return False
+
+
+def is_forbidden_modification_path(
+    file_path: str,
+    forbidden_paths: Tuple[str, ...],
+) -> bool:
+    """Whether a path is off limits for modification.
+
+    Entries may be a bare filename or a path prefix. The shipped config uses
+    filenames, so the prefix arm is what lets an operator forbid a directory
+    without listing every file in it.
+
+    Both sides are normalised first: "./src/x.py" and "src/./x.py" name the
+    same file as "src/x.py", and a raw string compare would let either past a
+    prefix entry. Matching is on whole path components, so "policies.py" does
+    not also claim "policies.pyx" and "src/a" does not claim "src/ab".
+    """
+    candidate = _comparison_key(file_path)
+    # Only a bare filename matches by basename anywhere in the tree. An entry
+    # with directories in it names one file, so "src/ouroboros/config.py"
+    # must not also claim "tests/config.py".
+    # Judged before normalisation: normpath strips the trailing slash off
+    # "some_dir/", which would then look like a bare filename and block every
+    # file named some_dir anywhere in the tree.
+    bare_names = {
+        _comparison_key(entry).name
+        for entry in forbidden_paths
+        if "/" not in entry.replace("\\", "/")
+    }
+    if candidate.name in bare_names:
+        return True
+
+    for forbidden_path in forbidden_paths:
+        target = _comparison_key(forbidden_path)
+        if candidate == target or target in candidate.parents:
+            return True
+    return False
+
+
 def require_pr_only(is_pr_only: bool) -> None:
     if not is_pr_only:
         raise PolicyError("PR-only policy violated")
@@ -25,10 +166,11 @@ def require_pr_only(is_pr_only: bool) -> None:
 def validate_modification_scope(
     file_paths: List[str],
     config: SafetyConfig | None = None,
-) -> List[str]:
+) -> ModificationScopeResult:
     """Validate that all file paths are within allowed modification scope.
 
-    Returns a list of violation messages (empty = all paths valid).
+    The result is a list of violation messages (empty = all paths valid) that
+    also carries what was checked, for metrics.
     """
     config = config or SafetyConfig()
     violations = []
@@ -36,22 +178,32 @@ def validate_modification_scope(
     for file_path in file_paths:
         basename = Path(file_path).name
 
+        if not is_safe_relative_path(file_path):
+            violations.append(
+                f"Unsafe path: {file_path} (must be relative and inside the tree)"
+            )
+            continue
+
         # Check forbidden files
-        if basename in config.forbidden_modification_paths:
+        if is_forbidden_modification_path(
+            file_path, config.forbidden_modification_paths
+        ):
             violations.append(f"Forbidden file: {file_path} ({basename} is immutable)")
             continue
 
-        # Check allowed path prefixes
-        allowed = any(
-            file_path.startswith(prefix)
-            for prefix in config.allowed_modification_paths
-        )
-        if not allowed:
+        if not is_within_allowed_paths(
+            file_path, config.allowed_modification_paths
+        ):
             violations.append(
                 f"Out of scope: {file_path} (must be under {config.allowed_modification_paths})"
             )
 
-    return violations
+    return ModificationScopeResult(
+        file_paths=file_paths,
+        allowed_prefixes=config.allowed_modification_paths,
+        forbidden_paths=config.forbidden_modification_paths,
+        violations=violations,
+    )
 
 
 def _imported_module_names(tree: ast.AST) -> List[Tuple[str, int]]:
@@ -205,10 +357,11 @@ def validate_change_size(
     num_files: int,
     num_lines: int,
     config: SafetyConfig | None = None,
-) -> List[str]:
+) -> ChangeSizeResult:
     """Validate that a change doesn't exceed size limits.
 
-    Returns a list of violation messages (empty = valid).
+    The result is a list of violation messages (empty = valid) that also
+    carries the limits it was measured against, for metrics.
     """
     config = config or SafetyConfig()
     violations = []
@@ -222,4 +375,10 @@ def validate_change_size(
             f"Too many lines: {num_lines} > {config.max_lines_changed_per_pr}"
         )
 
-    return violations
+    return ChangeSizeResult(
+        num_files=num_files,
+        max_files=config.max_changed_files_per_pr,
+        num_lines=num_lines,
+        max_lines=config.max_lines_changed_per_pr,
+        violations=violations,
+    )

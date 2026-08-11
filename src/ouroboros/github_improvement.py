@@ -99,6 +99,50 @@ Codebase context (relevant files):
         return {}
 
 
+def _read_inside_repo(repo_root: Path, file_path: str) -> Optional[str]:
+    """Read a file only if it really is one, inside the repository.
+
+    Both paths this function guards come from a model reading a public issue.
+    `repo_root / "/etc/passwd"` is "/etc/passwd", and the contents go into a
+    prompt whose reply becomes a public PR -- so an unguarded read here is a
+    way to get a credentials file quoted back out. A lexical check is not
+    enough: a symlink component resolves elsewhere while looking local.
+
+    Restricted to the paths the agent is allowed to modify. Resolving inside
+    the repository is not enough on its own: .git/config carries the remote
+    URL and any token embedded in it, and a .env is inside the tree too. "Read
+    only what you may write" is the bound that makes sense here -- a file the
+    fix cannot touch is not context it needs.
+
+    is_file() is what keeps a FIFO or a character device from hanging the
+    process or reading forever.
+    """
+    from .config import SafetyConfig
+    from .improvement import _is_path_allowed
+
+    config = SafetyConfig()
+    # _is_path_allowed, not just the allowed prefixes: it also refuses the
+    # immutable files, so read and write answer to one rule.
+    if not _is_path_allowed(file_path, config):
+        return None
+    try:
+        root = repo_root.resolve()
+        full = (repo_root / file_path).resolve()
+        if full != root and root not in full.parents:
+            return None
+        # Judge what it resolved to, not only what was asked for. A symlink at
+        # src/ouroboros/link pointing to .env lands inside the repository and
+        # satisfies every check on its own name -- the same hole the write
+        # path had before _resolved_inside re-judged the target.
+        if not _is_path_allowed(full.relative_to(root).as_posix(), config):
+            return None
+        if not full.is_file():
+            return None
+        return full.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError, ValueError):
+        return None
+
+
 def apply_github_fix(
     client: Any,
     issue: GitHubIssue,
@@ -112,9 +156,14 @@ def apply_github_fix(
     target_files = analysis.get("target_files", [])
     file_contents = {}
     for f_rel in target_files:
-        f_path = repo_root / f_rel
-        if f_path.exists():
-            file_contents[f_rel] = read_file_raw(f_path)
+        contents = _read_inside_repo(repo_root, f_rel)
+        if contents is not None:
+            file_contents[f_rel] = contents
+        else:
+            log.warning(
+                "[github] Refusing to read %r for issue #%d context",
+                f_rel, issue.id,
+            )
 
     user_prompt = f"""
 Issue #{issue.id}: {issue.title}
@@ -139,6 +188,47 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
     except json.JSONDecodeError:
         return IssueResolutionResult(issue.id, "failed", error="Failed to parse fix JSON")
 
+    # This flow writes files directly instead of going through
+    # validate_improvement, so it had no policy gate at all: file_path comes
+    # from a model reading a public issue, and `repo_root / "/etc/passwd"`
+    # discards repo_root entirely. Run the same checks the other flows run --
+    # scope, immutable files, change size and imports -- before anything is
+    # written.
+    from .config import SafetyConfig
+    from .improvement import CodeChange, _validate_changes, apply_changes
+
+    safety = SafetyConfig()
+    proposed = []
+    for change in fix_data.get("changes", []):
+        proposed.append((change.get("file_path", ""), change.get("new_content", "")))
+    for test in fix_data.get("new_tests", []):
+        proposed.append((test.get("file_path", ""), test.get("content", "")))
+
+    gated = []
+    for path, content in proposed:
+        # Gathering size accounting is not a reason to open a file the change
+        # is about to be refused for naming.
+        original = _read_inside_repo(repo_root, path) or ""
+        gated.append(
+            CodeChange(
+                file_path=path,
+                original_content=original,
+                new_content=content,
+                description=f"issue #{issue.id}",
+            )
+        )
+
+    violations = _validate_changes(gated, safety) if gated else []
+    if violations:
+        # Refused before the branch exists, so nothing needs cleaning up.
+        log.warning(
+            "Fix for issue #%d rejected by policy: %s",
+            issue.id, "; ".join(violations),
+        )
+        return IssueResolutionResult(
+            issue.id, "failed", error="Policy: " + "; ".join(violations),
+        )
+
     if dry_run:
         log.info("[dry-run] Would apply fix for issue #%d: %s", issue.id, fix_data.get("explanation"))
         return IssueResolutionResult(issue.id, "success", description=fix_data.get("explanation"))
@@ -149,18 +239,11 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
         original_branch = git_ops.current_branch(repo_root)
         git_ops.create_branch(repo_root, branch_name)
 
-        affected_files = []
-        for change in fix_data.get("changes", []):
-            f_path = repo_root / change["file_path"]
-            f_path.parent.mkdir(parents=True, exist_ok=True)
-            f_path.write_text(change["new_content"], encoding="utf-8")
-            affected_files.append(change["file_path"])
-
-        for test in fix_data.get("new_tests", []):
-            f_path = repo_root / test["file_path"]
-            f_path.parent.mkdir(parents=True, exist_ok=True)
-            f_path.write_text(test["content"], encoding="utf-8")
-            affected_files.append(test["file_path"])
+        # Through apply_changes, not a local write loop. The policy checks
+        # above are lexical and cannot see a symlink; apply_changes resolves
+        # each path and refuses one that lands outside the repository.
+        apply_changes(gated, repo_root, safety)
+        affected_files = [c.file_path for c in gated]
 
         # Run tests
         test_res = test_runner.run_tests(repo_root)

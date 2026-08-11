@@ -396,3 +396,38 @@ def test_clear_caps_history():
     # The oldest entry should have been dropped
     assert state["community_improvement_history"][0]["task_id"] == "old-1"
     assert state["community_improvement_history"][-1]["task_id"] == "abc12345"
+
+
+def test_the_community_flow_routes_generated_code_through_the_gate(
+    monkeypatch, tmp_path
+):
+    """This flow turns a public suggestion into code. It does not validate
+    anything itself -- it hands the changes to validate_improvement, so what
+    matters is that the symbol it reaches for is the gated one."""
+    from ouroboros import community_improvement, improvement
+    from ouroboros.improvement import CodeChange, ImprovementTask
+    from ouroboros.test_runner import RunnerOutcome
+
+    applied = []
+    monkeypatch.setattr(
+        improvement, "apply_changes", lambda *a, **kw: applied.append(a) or True
+    )
+    monkeypatch.setattr(
+        improvement, "run_tests",
+        lambda *a, **kw: RunnerOutcome(passed=1, failed=0, errors=0, returncode=0),
+    )
+
+    result = community_improvement.validate_improvement(
+        ImprovementTask("t1", "fix_bug", "d", [], "e"),
+        [CodeChange(
+            file_path="src/ouroboros/x.py",
+            original_content="",
+            new_content="import pickle\n",
+            description="from a stranger",
+        )],
+        tmp_path,
+    )
+
+    assert applied == [], "a public suggestion reached apply"
+    assert result.status == "failed"
+    assert "pickle" in result.details

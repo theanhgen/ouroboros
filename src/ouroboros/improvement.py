@@ -80,21 +80,41 @@ IMMUTABLE_FILES = frozenset({
 })
 
 
+PYTHON_SUFFIXES = frozenset({".py", ".pyi", ".pyw"})
+
+
+def _is_python_source(file_path: str, content: str = "") -> bool:
+    """Whether this change should be read as Python.
+
+    By suffix, or by shebang for an extensionless script. Not "try to parse
+    it and see": a Markdown or JSON change is not source, and reporting it as
+    unparseable would block legitimate work.
+    """
+    # Trailing spaces and dots are stripped by some filesystems on write, so
+    # "foo.py " can land as "foo.py" -- judge it as the file it will become.
+    trimmed = file_path.rstrip(" .")
+    if Path(trimmed).suffix.lower() in PYTHON_SUFFIXES:
+        return True
+
+    first_line = content.split("\n", 1)[0] if content else ""
+    return first_line.startswith("#!") and "python" in first_line.lower()
+
+
 def _is_path_allowed(file_path: str, config: SafetyConfig) -> bool:
-    """Check if a file path is allowed for modification."""
-    # Check forbidden paths (match by filename)
-    basename = Path(file_path).name
-    if basename in IMMUTABLE_FILES:
+    """Check if a file path is allowed for modification.
+
+    Both halves come from policies, so this gate and
+    validate_modification_scope cannot drift apart -- they did, and the raw
+    prefix compare here accepted "src/../../etc/passwd" as being under "src/".
+    """
+    from .policies import is_forbidden_modification_path, is_within_allowed_paths
+
+    if Path(file_path).name in IMMUTABLE_FILES:
         return False
-    if basename in config.forbidden_modification_paths:
+    if is_forbidden_modification_path(file_path, config.forbidden_modification_paths):
         return False
 
-    # Check allowed paths (match by prefix)
-    for allowed in config.allowed_modification_paths:
-        if file_path.startswith(allowed):
-            return True
-
-    return False
+    return is_within_allowed_paths(file_path, config.allowed_modification_paths)
 
 
 def _validate_changes(changes: List[CodeChange], config: SafetyConfig) -> List[str]:
@@ -102,6 +122,8 @@ def _validate_changes(changes: List[CodeChange], config: SafetyConfig) -> List[s
 
     Returns a list of violation messages (empty = valid).
     """
+    from .policies import validate_import_policy
+
     violations = []
 
     if len(changes) > config.max_changed_files_per_pr:
@@ -113,6 +135,17 @@ def _validate_changes(changes: List[CodeChange], config: SafetyConfig) -> List[s
     for change in changes:
         if not _is_path_allowed(change.file_path, config):
             violations.append(f"Forbidden file modification: {change.file_path}")
+
+        # Only Python is parseable, and a JSON or Markdown change reported as
+        # unparseable would be a false positive, not a finding. Stubs and .pyw
+        # count, and the suffix is lowercased because a case-insensitive
+        # filesystem makes "x.PY" the same file as "x.py".
+        if _is_python_source(change.file_path, change.new_content):
+            violations.extend(
+                validate_import_policy(
+                    change.file_path, change.new_content, config
+                )
+            )
 
         total_lines += _count_changed_lines(
             change.original_content, change.new_content
@@ -257,14 +290,53 @@ def generate_changes(
     return changes, usage
 
 
-def apply_changes(changes: List[CodeChange], repo_root: Path) -> None:
-    """Write changes to disk. Raises on forbidden paths."""
-    config = SafetyConfig()
+def _resolved_inside(repo_root: Path, file_path: str, config: SafetyConfig) -> Path:
+    """Resolve a change path and re-judge what it actually names.
+
+    The policy checks are lexical, which cannot see a symlink: a component
+    pointing outside the tree satisfies every prefix rule while naming a file
+    somewhere else. Only the filesystem can answer that, and only here, where
+    repo_root is known.
+
+    Landing inside the repository is not sufficient either. A symlink at
+    src/ouroboros/link.py pointing to src/ouroboros/config.py resolves to a
+    path that is inside and passes every name-based check, while the write
+    goes to the agent's own SafetyConfig. So the resolved path is put back
+    through the same gate as the one that was asked for.
+    """
+    root = repo_root.resolve()
+    full_path = (repo_root / file_path).resolve()
+
+    if full_path != root and root not in full_path.parents:
+        raise PermissionError(
+            f"Path escapes the repository: {file_path} -> {full_path}"
+        )
+
+    resolved_relative = full_path.relative_to(root).as_posix()
+    if not _is_path_allowed(resolved_relative, config):
+        raise PermissionError(
+            f"Path resolves to a forbidden file: {file_path} -> {resolved_relative}"
+        )
+    return full_path
+
+
+def apply_changes(
+    changes: List[CodeChange],
+    repo_root: Path,
+    config: SafetyConfig | None = None,
+) -> None:
+    """Write changes to disk. Raises on forbidden paths.
+
+    Takes the config the caller validated against. Defaulting to a fresh
+    SafetyConfig meant a caller with custom allowed paths passed validation and
+    was then refused at the write.
+    """
+    config = config or SafetyConfig()
     for change in changes:
         if not _is_path_allowed(change.file_path, config):
             raise PermissionError(f"Cannot modify forbidden file: {change.file_path}")
 
-        full_path = repo_root / change.file_path
+        full_path = _resolved_inside(repo_root, change.file_path, config)
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(change.new_content, encoding="utf-8")
 
@@ -360,7 +432,7 @@ def _retry_with_root_cause(
         return None
 
     try:
-        apply_changes(retry_changes, repo_root)
+        apply_changes(retry_changes, repo_root, config)
     except PermissionError:
         return None
 
@@ -440,7 +512,7 @@ def validate_improvement(
 
     # Apply changes
     try:
-        apply_changes(changes, repo_root)
+        apply_changes(changes, repo_root, config)
     except PermissionError as e:
         log.error("Permission denied: %s", e)
         result.details = str(e)
