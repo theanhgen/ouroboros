@@ -38,6 +38,12 @@ _COMMENTS_IN_SQLITE = "_comments_in_sqlite"
 _COMMENT_MIGRATION = "comment_history_v1"
 MAX_SELF_UPGRADES = 50
 MAX_COMMUNITY_HISTORY = 20
+MAX_KNOWLEDGE_PENDING = 200
+KNOWLEDGE_BATCH_SIZE = 5
+# A batch that always fails sits at the head of the queue forever, and nothing
+# behind it is ever extracted. Bound the retries rather than the queue.
+MAX_EXTRACTION_ATTEMPTS = 3
+MAX_PENDING_CONTENT_CHARS = 2000
 
 
 def _handle_shutdown(signum: int, _frame: Any) -> None:
@@ -365,6 +371,7 @@ def _default_state() -> Dict[str, Any]:
         "self_question_log": [],
         "comment_history": [],
         "seen_post_ids": [],
+        "knowledge_pending": [],
         "community_improvement": None,
         "community_improvement_history": [],
         "last_community_improvement_start": None,
@@ -535,11 +542,124 @@ def record_comment(state: Dict[str, Any], entry: Dict[str, Any]) -> None:
     state.setdefault("comment_history", []).append(entry)
 
 
+def _queue_for_extraction(state: Dict[str, Any], posts: List[Dict[str, Any]]) -> int:
+    """Queue posts for knowledge extraction. Returns how many were added.
+
+    seen_post_ids answers "already displayed"; this answers "already
+    considered for an insight". One list did both, so the per-cycle LLM budget
+    silently doubled as a cap on how many posts were ever looked at: with ten
+    posts a fetch, the sixth uncommented one was checkpointed as seen without
+    reaching extraction, and later cycles filter on seen, so it never came
+    back.
+    """
+    pending = state.setdefault("knowledge_pending", [])
+    known = {entry.get("id") for entry in pending}
+    added = 0
+    for post in posts:
+        pid = post.get("id")
+        if not pid or pid in known:
+            continue
+        known.add(pid)
+        pending.append({
+            "id": pid,
+            "title": post.get("title", ""),
+            "content": (post.get("content") or "")[:MAX_PENDING_CONTENT_CHARS],
+            "attempts": 0,
+        })
+        added += 1
+
+    excess = len(pending) - MAX_KNOWLEDGE_PENDING
+    if excess > 0:
+        dropped = pending[:excess]
+        del pending[:excess]
+        # Named, not silent: a dropped post is one the agent will never learn
+        # from, and that is the bug this queue exists to fix.
+        log.warning(
+            "[knowledge-base] Queue over %d; dropped %d oldest: %s",
+            MAX_KNOWLEDGE_PENDING, len(dropped),
+            ", ".join(str(e.get("id")) for e in dropped),
+        )
+    return added
+
+
+def _drain_extraction_queue(
+    state: Dict[str, Any], client: Any, limit: int = KNOWLEDGE_BATCH_SIZE
+) -> List[Dict[str, Any]]:
+    """Extract insights for the head of the queue and return the entries.
+
+    A post leaves the queue once it has a decision: an insight, or a batch
+    that ran and found none. extract_insights_batch returns None only when the
+    call failed, so a transient failure leaves the posts queued rather than
+    dropping them.
+    """
+    from . import llm  # local, matching the rest of this module
+
+    pending = state.get("knowledge_pending") or []
+    if not pending:
+        return []
+
+    batch = pending[:limit]
+    insights = llm.extract_insights_batch(client, batch)
+
+    if not isinstance(insights, list):
+        # None is the failure sentinel; anything else non-list means the reply
+        # did not parse, and either way we cannot say these posts were read.
+        for entry in batch:
+            entry["attempts"] = int(entry.get("attempts", 0) or 0) + 1
+        spent = [e for e in batch if e["attempts"] >= MAX_EXTRACTION_ATTEMPTS]
+        if spent:
+            ids = {e.get("id") for e in spent}
+            state["knowledge_pending"] = [
+                e for e in pending if e.get("id") not in ids
+            ]
+            log.warning(
+                "[knowledge-base] Giving up on %d post(s) after %d attempts: %s",
+                len(spent), MAX_EXTRACTION_ATTEMPTS,
+                ", ".join(str(e.get("id")) for e in spent),
+            )
+        else:
+            log.info(
+                "[knowledge-base] Extraction failed; %d post(s) stay queued",
+                len(batch),
+            )
+        return []
+
+    entries: List[Dict[str, Any]] = []
+    now = int(time.time())
+    for item in insights:
+        if not isinstance(item, dict):
+            continue
+        try:
+            idx = int(item.get("post_index", -1))
+        except (TypeError, ValueError):
+            continue
+        if not 0 <= idx < len(batch):
+            continue
+        insight = item.get("insight") or ""
+        if not insight:
+            continue
+        entries.append({
+            "post_id": batch[idx].get("id"),
+            "post_title": batch[idx].get("title", ""),
+            "insight": insight,
+            "tags": item.get("tags", []),
+            "ts": now,
+            "source": "extraction",
+        })
+
+    state["knowledge_pending"] = pending[len(batch):]
+    log.info(
+        "[knowledge-base] Extracted %d insight(s) from %d post(s), %d queued",
+        len(entries), len(batch), len(state["knowledge_pending"]),
+    )
+    return entries
+
+
 def _record_knowledge(state: Dict[str, Any], entries: List[Dict[str, Any]]) -> None:
     """Persist knowledge entries, queueing the batch if the write fails.
 
-    The source posts are added to seen_post_ids before this runs, so a lost
-    batch is never regenerated -- later cycles skip those posts entirely.
+    The source posts have left the extraction queue by the time this runs, so
+    a lost batch is never regenerated.
     """
     from .knowledge_base import add_entries
 
@@ -610,6 +730,10 @@ def _trim_state(state: Dict[str, Any]) -> None:
     seen = state.get("seen_post_ids", [])
     if len(seen) > MAX_SEEN_POST_IDS:
         state["seen_post_ids"] = seen[-MAX_SEEN_POST_IDS:]
+
+    queued = state.get("knowledge_pending", [])
+    if len(queued) > MAX_KNOWLEDGE_PENDING:
+        state["knowledge_pending"] = queued[-MAX_KNOWLEDGE_PENDING:]
 
     _trim_comment_history(state, limit=MAX_COMMENT_HISTORY)
     _trim_self_question_log(state)
@@ -1083,12 +1207,19 @@ def run_loop() -> int:
                         state["last_comment_time"] = int(time.time())
                         last_comment_time = state["last_comment_time"]
 
+                # Insertion order matters: the cap is meant to keep the most
+                # recent ids, and list(set) order is arbitrary -- trimming that
+                # dropped ids at random, so old posts resurfaced as new. The
+                # cap also disagreed with _trim_state's, which then reapplied
+                # its own arbitrary slice.
+                seen_order = list(state.get("seen_post_ids", []))
                 for post in new_posts:
                     pid = post.get("id")
-                    if pid:
+                    if pid and pid not in seen:
                         seen.add(pid)
+                        seen_order.append(pid)
 
-                state["seen_post_ids"] = list(seen)[-500:]
+                state["seen_post_ids"] = seen_order[-MAX_SEEN_POST_IDS:]
                 state["last_check"] = int(time.time())
 
                 # -- Engagement tracking --
@@ -1108,7 +1239,11 @@ def run_loop() -> int:
                             log.exception("Engagement tracking failed")
 
                 # -- Knowledge base population --
-                if cfg.enable_knowledge_base and new_posts:
+                # Drain even with no new posts: the queue outlives the cycle
+                # that filled it, which is the whole point of having one.
+                if cfg.enable_knowledge_base and (
+                    new_posts or state.get("knowledge_pending")
+                ):
                     try:
                         from .knowledge_base import add_entries
 
@@ -1131,27 +1266,16 @@ def run_loop() -> int:
                                     "source": "comment",
                                 })
 
-                        # Remaining posts: batch extract via LLM
-                        overflow = [
+                        # Everything not commented on joins a durable queue.
+                        # The per-cycle LLM budget now bounds how many are
+                        # processed per pass, not how many are ever considered.
+                        _queue_for_extraction(state, [
                             p for p in new_posts
                             if p.get("id") not in commented_post_ids
-                        ]
-                        if overflow:
-                            batch_insights = llm.extract_insights_batch(
-                                openai_client, overflow[:5],
-                            )
-                            if batch_insights:
-                                for item in batch_insights:
-                                    idx = item.get("post_index", 0)
-                                    if 0 <= idx < len(overflow):
-                                        kb_entries.append({
-                                            "post_id": overflow[idx].get("id"),
-                                            "post_title": overflow[idx].get("title", ""),
-                                            "insight": item.get("insight", ""),
-                                            "tags": item.get("tags", []),
-                                            "ts": int(time.time()),
-                                            "source": "extraction",
-                                        })
+                        ])
+                        kb_entries.extend(
+                            _drain_extraction_queue(state, openai_client)
+                        )
 
                         if kb_entries:
                             _record_knowledge(state, kb_entries)

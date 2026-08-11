@@ -455,3 +455,219 @@ def test_load_state_unreadable_does_not_reset_to_default(tmp_path):
                 load_state()
 
     assert json.loads(state_file.read_text())["seen_post_ids"] == ["a"]
+
+
+# -- feed visibility is not knowledge processing (#67) -----------------------
+
+def _posts(n, start=1):
+    return [
+        {"id": f"p{i}", "title": f"t{i}", "content": f"c{i}"}
+        for i in range(start, start + n)
+    ]
+
+
+def test_posts_beyond_the_batch_budget_stay_queued_rather_than_being_dropped():
+    """The bug: with ten posts a fetch, the sixth uncommented one was marked
+    seen without ever reaching extraction, and never came back."""
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    added = moltbook._queue_for_extraction(state, _posts(10))
+    assert added == 10
+    assert len(state["knowledge_pending"]) == 10
+
+    with mock.patch.object(
+        llm_mod, "extract_insights_batch",
+        return_value=[{"post_index": 0, "insight": "i0", "tags": []}],
+    ):
+        entries = moltbook._drain_extraction_queue(state, object())
+
+    assert [e["post_id"] for e in entries] == ["p1"]
+    # The five that were processed are gone; the other five are still waiting.
+    assert [e["id"] for e in state["knowledge_pending"]] == [
+        "p6", "p7", "p8", "p9", "p10"
+    ]
+
+
+def test_the_queue_drains_across_cycles_until_empty():
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(state, _posts(12))
+    seen_batches = []
+
+    def record(_client, batch, *a, **kw):
+        seen_batches.append([p["id"] for p in batch])
+        return []
+
+    with mock.patch.object(llm_mod, "extract_insights_batch", side_effect=record):
+        for _ in range(3):
+            moltbook._drain_extraction_queue(state, object())
+
+    assert seen_batches == [
+        ["p1", "p2", "p3", "p4", "p5"],
+        ["p6", "p7", "p8", "p9", "p10"],
+        ["p11", "p12"],
+    ]
+    assert state["knowledge_pending"] == []
+
+
+def test_a_batch_that_found_nothing_still_clears_the_queue():
+    """[] means the extraction ran and found nothing -- a decision. Only None
+    means it failed."""
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(state, _posts(3))
+    with mock.patch.object(llm_mod, "extract_insights_batch", return_value=[]):
+        assert moltbook._drain_extraction_queue(state, object()) == []
+    assert state["knowledge_pending"] == []
+
+
+def test_a_failed_extraction_leaves_the_posts_queued():
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(state, _posts(3))
+    with mock.patch.object(llm_mod, "extract_insights_batch", return_value=None):
+        assert moltbook._drain_extraction_queue(state, object()) == []
+
+    assert [e["id"] for e in state["knowledge_pending"]] == ["p1", "p2", "p3"]
+    assert [e["attempts"] for e in state["knowledge_pending"]] == [1, 1, 1]
+
+
+def test_an_unparseable_reply_counts_as_a_failure_not_a_decision():
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(state, _posts(2))
+    with mock.patch.object(llm_mod, "extract_insights_batch", return_value="nonsense"):
+        assert moltbook._drain_extraction_queue(state, object()) == []
+    assert len(state["knowledge_pending"]) == 2
+
+
+def test_a_permanently_failing_batch_does_not_block_the_queue_forever():
+    """Without an attempt cap the head of a FIFO queue that always fails means
+    nothing behind it is ever extracted."""
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(state, _posts(7))
+
+    with mock.patch.object(llm_mod, "extract_insights_batch", return_value=None):
+        for _ in range(moltbook.MAX_EXTRACTION_ATTEMPTS):
+            moltbook._drain_extraction_queue(state, object())
+
+    # The poisoned head is dropped; what was behind it survives.
+    assert [e["id"] for e in state["knowledge_pending"]] == ["p6", "p7"]
+
+    with mock.patch.object(
+        llm_mod, "extract_insights_batch",
+        return_value=[{"post_index": 1, "insight": "i7", "tags": []}],
+    ):
+        entries = moltbook._drain_extraction_queue(state, object())
+    assert [e["post_id"] for e in entries] == ["p7"]
+
+
+def test_queueing_the_same_post_twice_does_not_duplicate_it():
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(state, _posts(3))
+    assert moltbook._queue_for_extraction(state, _posts(3)) == 0
+    assert [e["id"] for e in state["knowledge_pending"]] == ["p1", "p2", "p3"]
+
+
+def test_the_queue_is_bounded_and_says_what_it_dropped(caplog):
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    with caplog.at_level("WARNING"):
+        moltbook._queue_for_extraction(
+            state, _posts(moltbook.MAX_KNOWLEDGE_PENDING + 3)
+        )
+    assert len(state["knowledge_pending"]) == moltbook.MAX_KNOWLEDGE_PENDING
+    # Oldest go first, and the drop is named rather than silent.
+    assert [e["id"] for e in state["knowledge_pending"][:2]] == ["p4", "p5"]
+    assert "dropped 3 oldest" in caplog.text
+
+
+def test_queued_post_content_is_capped():
+    """The queue is persisted with the rest of state; an unbounded copy of
+    every post body would bloat it."""
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(
+        state, [{"id": "big", "title": "t", "content": "x" * 50_000}]
+    )
+    assert len(state["knowledge_pending"][0]["content"]) == (
+        moltbook.MAX_PENDING_CONTENT_CHARS
+    )
+
+
+def test_a_post_with_no_id_is_not_queued():
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    assert moltbook._queue_for_extraction(state, [{"title": "no id"}]) == 0
+    assert state["knowledge_pending"] == []
+
+
+def test_draining_an_empty_queue_makes_no_llm_call():
+    from ouroboros import llm as llm_mod, moltbook
+
+    with mock.patch.object(llm_mod, "extract_insights_batch") as call:
+        assert moltbook._drain_extraction_queue({}, object()) == []
+    call.assert_not_called()
+
+
+def test_out_of_range_and_malformed_insight_items_are_ignored():
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(state, _posts(2))
+    with mock.patch.object(
+        llm_mod, "extract_insights_batch",
+        return_value=[
+            {"post_index": 99, "insight": "out of range"},
+            {"post_index": "nope", "insight": "unparseable index"},
+            "not a dict",
+            {"post_index": 0, "insight": ""},          # empty insight
+            {"post_index": 1, "insight": "kept", "tags": ["t"]},
+        ],
+    ):
+        entries = moltbook._drain_extraction_queue(state, object())
+
+    assert [e["post_id"] for e in entries] == ["p2"]
+    assert state["knowledge_pending"] == []
+
+
+def test_trim_state_keeps_the_most_recent_seen_ids_in_order():
+    """The cap is meant to keep recent ids. The old code sliced list(set(...)),
+    whose order is arbitrary, so it discarded at random and old posts came
+    back as new."""
+    from ouroboros import moltbook
+
+    ids = [f"p{i}" for i in range(moltbook.MAX_SEEN_POST_IDS + 25)]
+    state = {"seen_post_ids": list(ids)}
+    moltbook._trim_state(state)
+
+    assert state["seen_post_ids"] == ids[-moltbook.MAX_SEEN_POST_IDS:]
+    assert state["seen_post_ids"][-1] == ids[-1]
+
+
+def test_trim_state_bounds_the_extraction_queue():
+    from ouroboros import moltbook
+
+    state = {
+        "knowledge_pending": [
+            {"id": f"p{i}", "title": "", "content": "", "attempts": 0}
+            for i in range(moltbook.MAX_KNOWLEDGE_PENDING + 10)
+        ]
+    }
+    moltbook._trim_state(state)
+    assert len(state["knowledge_pending"]) == moltbook.MAX_KNOWLEDGE_PENDING
+    assert state["knowledge_pending"][-1]["id"] == (
+        f"p{moltbook.MAX_KNOWLEDGE_PENDING + 9}"
+    )
