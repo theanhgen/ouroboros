@@ -455,9 +455,11 @@ def cmd_backlog_clean(_args: argparse.Namespace) -> int:
     from .llm import make_client, load_openai_key
     print("Organizing backlog semantically...")
     client = make_client(load_openai_key())
-    organize_backlog(get_repo_root(), client)
-    print("Done.")
-    return 0
+    result = organize_backlog(get_repo_root(), client)
+    print(result.summary())
+    # Non-zero on failure: the command used to print "Done." whether the
+    # organizer had succeeded or been rejected outright.
+    return 0 if result.ok else 1
 
 
 def build_parser() -> argparse.ArgumentParser:

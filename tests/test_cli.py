@@ -370,3 +370,33 @@ def test_a_valid_interval_survives_the_round_trip_to_the_loader(tmp_path):
     written = _parse_config_value("60")
     assert int(written) == 60
     assert RunnerConfig(interval_seconds=int(written)).interval_seconds == 60
+
+
+@patch("ouroboros.llm.make_client")
+@patch("ouroboros.llm.load_openai_key", return_value="sk-test")
+@patch("ouroboros.codebase.get_repo_root", return_value="/repo")
+@patch("ouroboros.backlog.organize_backlog")
+def test_cmd_backlog_organize_reports_failure(mock_org, _root, _key, _client, capsys):
+    """It used to print "Done." whether the organizer had succeeded or been
+    rejected outright."""
+    from ouroboros.backlog import OrganizeResult
+    from ouroboros.cli import cmd_backlog_clean
+
+    mock_org.return_value = OrganizeResult(ok=False, reason="no decision for: b2")
+
+    assert cmd_backlog_clean(argparse.Namespace()) == 1
+    assert "no decision for: b2" in capsys.readouterr().out
+
+
+@patch("ouroboros.llm.make_client")
+@patch("ouroboros.llm.load_openai_key", return_value="sk-test")
+@patch("ouroboros.codebase.get_repo_root", return_value="/repo")
+@patch("ouroboros.backlog.organize_backlog")
+def test_cmd_backlog_organize_reports_success(mock_org, _root, _key, _client, capsys):
+    from ouroboros.backlog import OrganizeResult
+    from ouroboros.cli import cmd_backlog_clean
+
+    mock_org.return_value = OrganizeResult(ok=True, kept=3, deleted=1, merged=0)
+
+    assert cmd_backlog_clean(argparse.Namespace()) == 0
+    assert "3 kept" in capsys.readouterr().out

@@ -4,6 +4,7 @@ import json
 import logging
 import time
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -135,7 +136,7 @@ def format_backlog_for_llm(items: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def _valid_organizer_fields(entry: Dict[str, Any]) -> bool:
+def _valid_entry_fields(entry: Dict[str, Any]) -> bool:
     """Check the field values an organizer entry may set.
 
     A null or wrongly typed value here is written straight into the queue: a
@@ -160,7 +161,118 @@ def _valid_organizer_fields(entry: Dict[str, Any]) -> bool:
     return True
 
 
-def organize_backlog(repo_root: Path, client: Any, model: str = DEFAULT_OPENAI_MODEL) -> None:
+def _valid_organizer_fields(sections: Dict[str, List[Dict[str, Any]]]) -> bool:
+    return all(
+        _valid_entry_fields(entry)
+        for name in ("keep", "merge")
+        for entry in sections[name]
+    )
+
+
+@dataclass
+class OrganizeResult:
+    """What organize_backlog did, so a caller can report it."""
+
+    ok: bool
+    reason: str = ""
+    kept: int = 0
+    deleted: int = 0
+    merged: int = 0
+
+    def summary(self) -> str:
+        if not self.ok:
+            return f"Backlog unchanged: {self.reason}"
+        return (
+            f"Backlog organized: {self.kept} kept, {self.deleted} deleted, "
+            f"{self.merged} merged"
+        )
+
+
+_ORGANIZER_SYSTEM_PROMPT = (
+    "You are a Backlog Manager. Clean up a list of pending tasks.\n\n"
+    "Decide an explicit outcome for EVERY task id you are given. Reply with "
+    "JSON:\n"
+    "{\n"
+    '  "keep":   [{"id": "abc", "priority": 8, "desc": "...", "type": "..."}],\n'
+    '  "delete": [{"id": "def", "reason": "duplicate of abc"}],\n'
+    '  "merge":  [{"sources": ["ghi", "jkl"], "desc": "...", '
+    '"type": "refactor", "priority": 7}]\n'
+    "}\n\n"
+    "Rules:\n"
+    "- Every id in the input MUST appear exactly once, in keep, in delete, or "
+    "in one merge's sources. A response that misses an id is rejected whole.\n"
+    "- In 'keep', only include a field you are changing; omit the rest.\n"
+    "- 'merge' replaces its sources with one new task, so 'desc' is required.\n"
+    "- Delete only genuine duplicates or obsolete tasks, and say why."
+)
+
+
+def _validate_organizer_response(
+    data: Any, reviewed: set
+) -> "tuple[Optional[Dict[str, Any]], str]":
+    """Check a response accounts for every id exactly once.
+
+    The previous protocol expressed deletion by omission, which made a
+    truncated reply indistinguishable from a deliberate prune: a model that
+    echoed three of ten tasks silently deleted the other seven. Requiring an
+    explicit outcome per id turns that into a validation failure.
+    """
+    if not isinstance(data, dict):
+        return None, "response is not an object"
+
+    sections = {}
+    for name in ("keep", "delete", "merge"):
+        value = data.get(name, [])
+        if value is None:
+            value = []
+        if not isinstance(value, list):
+            return None, f"'{name}' is not a list"
+        if not all(isinstance(entry, dict) for entry in value):
+            return None, f"'{name}' contains a non-object entry"
+        sections[name] = value
+
+    seen: Dict[str, str] = {}
+    for name in ("keep", "delete"):
+        for entry in sections[name]:
+            item_id = entry.get("id")
+            if not item_id:
+                return None, f"a '{name}' entry has no id"
+            if item_id in seen:
+                return None, f"{item_id} appears in both {seen[item_id]} and {name}"
+            seen[item_id] = name
+
+    for entry in sections["merge"]:
+        sources = entry.get("sources")
+        if not isinstance(sources, list) or len(set(sources)) < 2:
+            # A one-source "merge" combines nothing; it would just replace the
+            # task with a fresh id and attempts back to zero, slipping past the
+            # three-attempt abandonment rule.
+            return None, "a 'merge' entry needs at least two distinct sources"
+        if not str(entry.get("desc") or "").strip():
+            return None, "a 'merge' entry has no description"
+        for item_id in sources:
+            if item_id in seen:
+                return None, f"{item_id} appears in both {seen[item_id]} and merge"
+            seen[item_id] = "merge"
+
+    unknown = set(seen) - reviewed
+    if unknown:
+        return None, f"unknown ids: {', '.join(sorted(unknown))}"
+
+    missing = reviewed - set(seen)
+    if missing:
+        # The whole point: an incomplete reply is a failure, not a deletion.
+        return None, f"no decision for: {', '.join(sorted(missing))}"
+
+    if not _valid_organizer_fields(sections):
+        return None, "a field value is out of range or the wrong type"
+
+    return sections, ""
+
+
+def organize_backlog(
+    repo_root: Path, client: Any, model: str = DEFAULT_OPENAI_MODEL
+) -> OrganizeResult:
     """Use an LLM to prune, merge, and prioritize the backlog."""
     items = load_backlog(repo_root)
     pending = [i for i in items if i.get("status") == "pending"]
@@ -168,7 +280,28 @@ def organize_backlog(repo_root: Path, client: Any, model: str = DEFAULT_OPENAI_M
         # Returning only when `items` is empty still sent "[]" to the model
         # for a backlog of nothing but done and failed records, and anything
         # it invented was persisted as new pending work.
-        return
+        return OrganizeResult(ok=True, reason="nothing pending")
+
+    # Records with no id cannot be referred to in the response, so they cannot
+    # be given an outcome. They are left untouched rather than blocking the
+    # whole run.
+    # Across every record, not just the pending ones. Reconciliation removes
+    # by id, so a pending task sharing an id with a done one would take the
+    # completed record with it. add_item takes an unchecked eight-character
+    # uuid prefix, so a collision is unlikely rather than impossible.
+    all_ids = [i["id"] for i in items if i.get("id")]
+    duplicates = {i for i in all_ids if all_ids.count(i) > 1}
+    if duplicates:
+        return OrganizeResult(
+            ok=False,
+            reason=f"duplicate backlog ids: {', '.join(sorted(duplicates))}",
+        )
+
+    addressable = [i for i in pending if i.get("id")]
+
+    pending_by_id = {i["id"]: i for i in addressable}
+    if not pending_by_id:
+        return OrganizeResult(ok=True, reason="no identifiable pending tasks")
 
     # .get throughout: a hand-edited or legacy record missing a key would
     # otherwise raise out of this function, which is supposed to log and leave
@@ -180,152 +313,143 @@ def organize_backlog(repo_root: Path, client: Any, model: str = DEFAULT_OPENAI_M
             "desc": i.get("description"),
             "priority": i.get("priority"),
         }
-        for i in pending
+        for i in pending_by_id.values()
     ], indent=2)
 
-    system = (
-        "You are a Backlog Manager. Your goal is to clean up a list of pending tasks.\n"
-        "1. Identify duplicates and merge them.\n"
-        "2. Group small related bugs into a single 'refactor' task if they share a file.\n"
-        "3. Update priorities (1-10) based on perceived impact.\n\n"
-        "Output JSON with a single key 'items', a list of updated task objects."
-    )
-    
     user = f"Current Pending Backlog:\n{backlog_text}\n\nPlease organize this backlog."
-    
+
     from .llm import chat_completion
 
     try:
         # Inside the try: this function's contract is to log and leave the
         # backlog alone on failure. chat_completion happens to swallow its own
         # errors today, so the call only looked safe out here.
-        content, _ = chat_completion(client, system, user, model=model)
+        content, _ = chat_completion(
+            client, _ORGANIZER_SYSTEM_PROMPT, user, model=model
+        )
         if "{" in content:
-            content = content[content.find("{"):content.rfind("}")+1]
+            content = content[content.find("{"):content.rfind("}") + 1]
         data = json.loads(content)
-        if not isinstance(data, dict) or not isinstance(data.get("items"), list):
-            log.warning("Backlog organizer returned no usable 'items'; leaving backlog alone")
-            return
-        new_items = data["items"]
-        if not new_items:
-            # Omission is how this protocol expresses pruning, so an empty
-            # list is indistinguishable from a truncated reply -- and it would
-            # delete every pending item. Refuse rather than guess.
-            log.warning("Backlog organizer returned an empty list; leaving backlog alone")
-            return
+    except Exception as exc:
+        log.warning("Backlog organizer call failed: %s", exc)
+        return OrganizeResult(ok=False, reason=str(exc))
 
-        # Updates resolve against pending records only. Searching every record
-        # let an invented id collide with a done or failed one, mutating
-        # history in place and appending it twice.
-        pending_by_id = {i["id"]: i for i in pending if i.get("id")}
+    reviewed = set(pending_by_id)
+    sections, error = _validate_organizer_response(data, reviewed)
+    if sections is None:
+        log.warning("Backlog organizer response rejected: %s", error)
+        return OrganizeResult(ok=False, reason=error)
 
-        # Validate the whole response before touching anything, so a single
-        # bad entry cannot leave the backlog half-rewritten.
-        seen_ids = set()
-        for ni in new_items:
-            if not isinstance(ni, dict):
-                log.warning("Backlog organizer returned a non-object entry; leaving backlog alone")
-                return
+    result = OrganizeResult(
+        ok=True,
+        kept=len(sections["keep"]),
+        deleted=len(sections["delete"]),
+        merged=len(sections["merge"]),
+    )
 
-            item_id = ni.get("id")
-            if item_id is not None:
-                if item_id in seen_ids:
-                    # mark_done stops at the first match, so a duplicate would
-                    # stay pending and be worked twice.
-                    log.warning("Backlog organizer repeated id %r; leaving backlog alone", item_id)
-                    return
-                seen_ids.add(item_id)
+    def _apply(current: List[Dict[str, Any]]) -> None:
+        """Reconcile against the file as it is now, not the snapshot.
 
-            if item_id not in pending_by_id and not str(ni.get("desc") or "").strip():
-                # Neither an update to something real nor a usable new task.
-                log.warning("Backlog organizer returned an unusable entry (%r); leaving backlog alone", ni)
-                return
+        The model call above takes seconds to minutes. Anything committed in
+        the meantime is live state and wins: the organizer's view of those
+        records is stale by definition.
+        """
+        def _still_pending(item: Dict[str, Any]) -> bool:
+            return item.get("status") == "pending"
 
-            if not _valid_organizer_fields(ni):
-                log.warning("Backlog organizer returned bad field values (%r); leaving backlog alone", ni)
-                return
+        def _semantically_unchanged(item: Dict[str, Any]) -> bool:
+            """Do the fields the organizer reasoned about still match?
 
-        def _apply(current: List[Dict[str, Any]]) -> None:
-            """Reconcile against the file as it is now, not the snapshot.
-
-            The model call above takes seconds to minutes. Anything committed
-            in the meantime is live state and wins: the organizer's view of
-            those records is stale by definition. Only pending records it saw,
-            which are still pending and still present, are its to change.
+            attempts and completed_at are bookkeeping and may move freely. But
+            if a concurrent keep changed the description or type, a task the
+            model called a duplicate may no longer be one, and a destructive
+            decision about it is stale.
             """
-            reviewed = set(pending_by_id)
-            responded = {ni.get("id") for ni in new_items if ni.get("id")}
-            live_by_id = {i.get("id"): i for i in current if i.get("id")}
+            snapshot = pending_by_id.get(item.get("id"))
+            if snapshot is None:
+                return False
+            return all(
+                item.get(field) == snapshot.get(field)
+                for field in ("task_type", "description", "priority")
+            )
 
-            def _prunable(item: Dict[str, Any]) -> bool:
-                """Only prune a record the organizer saw and nobody has touched.
+        def _removable(item_id: Any) -> bool:
+            live = live_now.get(item_id)
+            return (
+                live is not None
+                and item_id in reviewed
+                and _still_pending(live)
+                and _semantically_unchanged(live)
+            )
 
-                "still pending" is not "unchanged": mark_failed increments
-                attempts without leaving the pending state, and dropping that
-                record would discard the failure history the retry logic
-                depends on.
-                """
-                item_id = item.get("id")
-                if item_id not in reviewed or item_id in responded:
-                    return False
-                return item == pending_by_id.get(item_id)
+        live_now = {i.get("id"): i for i in current if i.get("id")}
 
-            kept = [item for item in current if not _prunable(item)]
-            live_ids = {i.get("id") for i in kept if i.get("id")}
+        drop_ids = {e["id"] for e in sections["delete"] if _removable(e["id"])}
 
-            for ni in new_items:
-                item_id = ni.get("id")
-                live = live_by_id.get(item_id) if item_id else None
+        # A merge is all-or-nothing. Removing only the sources that survived
+        # would leave the completed one in place and add a replacement that
+        # duplicates it.
+        applied_merges = [
+            entry for entry in sections["merge"]
+            if all(_removable(sid) for sid in entry["sources"])
+        ]
+        for entry in applied_merges:
+            drop_ids.update(entry["sources"])
 
-                if live is not None and item_id in reviewed:
-                    if live.get("status") != "pending":
-                        # Completed or abandoned while the model ran. Applying
-                        # the response would resurrect finished work.
-                        continue
-                    # Apply to the live object, so a concurrent mark_failed's
-                    # incremented attempts survive. An explicit null or blank
-                    # is an omission, not an instruction to clear the field.
-                    for key, field in (("type", "task_type"),
-                                       ("desc", "description"),
-                                       ("priority", "priority")):
-                        value = ni.get(key)
-                        if value is None:
-                            continue
-                        if isinstance(value, str) and not value.strip():
-                            continue
-                        live[field] = value
+        kept = [item for item in current if item.get("id") not in drop_ids]
+        live_by_id = {i.get("id"): i for i in kept if i.get("id")}
+        live_ids = set(live_by_id)
+
+        for entry in sections["keep"]:
+            live = live_by_id.get(entry["id"])
+            if live is None or not _still_pending(live):
+                # Removed or finished while the model ran. Not ours.
+                continue
+            if not _semantically_unchanged(live):
+                # Another writer rewrote it. The organizer's version of these
+                # fields is stale, and applying it would undo that edit.
+                # A concurrent mark_failed still passes: attempts is not one of
+                # the fields compared.
+                continue
+            # Field level, not record level: a concurrent mark_failed bumps
+            # attempts without changing anything the organizer decides, so its
+            # priority or wording change should still apply. Bookkeeping
+            # fields -- attempts, status, created_at -- are never written here.
+            for key, field in (("type", "task_type"), ("desc", "description"),
+                               ("priority", "priority")):
+                value = entry.get(key)
+                if value is None:
                     continue
-
-                if item_id in reviewed:
-                    # Shown to the organizer but gone from the file: another
-                    # writer removed it while the model ran. Recreating it
-                    # would resurrect the task with its attempts reset.
+                if isinstance(value, str) and not value.strip():
+                    # A blank string is an omission, not an instruction to
+                    # clear a field nothing else can recover.
                     continue
+                live[field] = value
 
-                # Genuinely new. That includes an entry whose id the organizer
-                # was never shown -- only pending items go into the prompt, so
-                # such an id is invented, and it must not overwrite whatever
-                # record happens to hold it.
-                if not item_id or item_id in live_ids:
-                    item_id = str(uuid.uuid4())[:8]
-                live_ids.add(item_id)
-                kept.append({
-                    "id": item_id,
-                    "task_type": ni.get("type") or "refactor",
-                    "description": ni.get("desc", ""),
-                    "priority": ni.get("priority") or 5,
-                    # Never model-controlled: status="done" on a new entry
-                    # would delete the omitted records and leave nothing
-                    # pending to replace them.
-                    "status": "pending",
-                    "source": "backlog_organizer",
-                    "created_at": time.time(),
-                    "attempts": 0,
-                })
+        for entry in applied_merges:
+            item_id = str(uuid.uuid4())[:8]
+            while item_id in live_ids:
+                item_id = str(uuid.uuid4())[:8]
+            live_ids.add(item_id)
+            kept.append({
+                "id": item_id,
+                "task_type": entry.get("type") or "refactor",
+                "description": entry["desc"],
+                "priority": entry.get("priority") or 5,
+                # Never model-controlled.
+                "status": "pending",
+                "source": "backlog_organizer",
+                "created_at": time.time(),
+                "attempts": 0,
+            })
 
-            current[:] = kept
+        current[:] = kept
 
+    try:
         _update_backlog(repo_root, _apply)
-        log.info("Backlog organized semantically.")
-    except Exception:
+    except Exception as exc:
         log.exception("Backlog organization failed")
+        return OrganizeResult(ok=False, reason=str(exc))
+
+    log.info("%s", result.summary())
+    return result
