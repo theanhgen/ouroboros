@@ -567,25 +567,19 @@ def _queue_for_extraction(state: Dict[str, Any], posts: List[Dict[str, Any]]) ->
             "attempts": 0,
         })
         added += 1
-
-    excess = len(pending) - MAX_KNOWLEDGE_PENDING
-    if excess > 0:
-        dropped = pending[:excess]
-        del pending[:excess]
-        # Named, not silent: a dropped post is one the agent will never learn
-        # from, and that is the bug this queue exists to fix.
-        log.warning(
-            "[knowledge-base] Queue over %d; dropped %d oldest: %s",
-            MAX_KNOWLEDGE_PENDING, len(dropped),
-            ", ".join(str(e.get("id")) for e in dropped),
-        )
+    # The cap is enforced in _trim_state, at save time. Evicting here would
+    # drop the head of the queue -- the exact batch about to be drained.
     return added
 
 
 def _drain_extraction_queue(
     state: Dict[str, Any], client: Any, limit: int = KNOWLEDGE_BATCH_SIZE
-) -> List[Dict[str, Any]]:
-    """Extract insights for the head of the queue and return the entries.
+) -> "tuple[List[Dict[str, Any]], List[Any]]":
+    """Extract insights for the head of the queue.
+
+    Returns (entries, processed_ids). The caller records the entries and then
+    calls _release_extracted with the ids -- the queue is not the record, so a
+    post may only leave it once its insight is somewhere durable.
 
     A post leaves the queue once it has a decision: an insight, or a batch
     that ran and found none. extract_insights_batch returns None only when the
@@ -596,10 +590,18 @@ def _drain_extraction_queue(
 
     pending = state.get("knowledge_pending") or []
     if not pending:
-        return []
+        return [], []
 
     batch = pending[:limit]
-    insights = llm.extract_insights_batch(client, batch)
+    try:
+        insights = llm.extract_insights_batch(client, batch)
+    except Exception:
+        # extract_insights_batch returns None on failure today, but the
+        # queue's guarantee that it cannot wedge should not depend on that
+        # staying true: an escaping exception would leave attempts at zero and
+        # retry the same head forever.
+        log.warning("[knowledge-base] Extraction raised", exc_info=True)
+        insights = None
 
     if not isinstance(insights, list):
         # None is the failure sentinel; anything else non-list means the reply
@@ -622,7 +624,7 @@ def _drain_extraction_queue(
                 "[knowledge-base] Extraction failed; %d post(s) stay queued",
                 len(batch),
             )
-        return []
+        return [], []
 
     entries: List[Dict[str, Any]] = []
     now = int(time.time())
@@ -647,12 +649,28 @@ def _drain_extraction_queue(
             "source": "extraction",
         })
 
-    state["knowledge_pending"] = pending[len(batch):]
     log.info(
         "[knowledge-base] Extracted %d insight(s) from %d post(s), %d queued",
-        len(entries), len(batch), len(state["knowledge_pending"]),
+        len(entries), len(batch), len(pending) - len(batch),
     )
-    return entries
+    return entries, [e.get("id") for e in batch]
+
+
+def _release_extracted(state: Dict[str, Any], post_ids: List[Any]) -> None:
+    """Drop posts from the queue once their insights are accounted for.
+
+    Called after _record_knowledge, which either persists the batch or queues
+    it in the durable outbox -- so by then the insight cannot be lost. Removing
+    them inside the drain instead left a window where an exception between
+    extracting and recording lost both.
+    """
+    if not post_ids:
+        return
+    done = set(post_ids)
+    state["knowledge_pending"] = [
+        entry for entry in state.get("knowledge_pending", [])
+        if entry.get("id") not in done
+    ]
 
 
 def _record_knowledge(state: Dict[str, Any], entries: List[Dict[str, Any]]) -> None:
@@ -733,7 +751,17 @@ def _trim_state(state: Dict[str, Any]) -> None:
 
     queued = state.get("knowledge_pending", [])
     if len(queued) > MAX_KNOWLEDGE_PENDING:
+        # Named, not silent: a dropped post is one the agent will never learn
+        # from, which is the bug this queue exists to fix. The newest are kept
+        # -- reaching the cap means being a long way behind, and by then a
+        # fresh post is worth more than one from twenty hours ago.
+        dropped = queued[:-MAX_KNOWLEDGE_PENDING]
         state["knowledge_pending"] = queued[-MAX_KNOWLEDGE_PENDING:]
+        log.warning(
+            "[knowledge-base] Queue over %d; dropped %d oldest: %s",
+            MAX_KNOWLEDGE_PENDING, len(dropped),
+            ", ".join(str(e.get("id")) for e in dropped),
+        )
 
     _trim_comment_history(state, limit=MAX_COMMENT_HISTORY)
     _trim_self_question_log(state)
@@ -1273,12 +1301,16 @@ def run_loop() -> int:
                             p for p in new_posts
                             if p.get("id") not in commented_post_ids
                         ])
-                        kb_entries.extend(
-                            _drain_extraction_queue(state, openai_client)
+                        extracted, processed_ids = _drain_extraction_queue(
+                            state, openai_client
                         )
+                        kb_entries.extend(extracted)
 
                         if kb_entries:
                             _record_knowledge(state, kb_entries)
+                        # Only now: _record_knowledge has either written the
+                        # entries or queued them in the outbox.
+                        _release_extracted(state, processed_ids)
                     except Exception:
                         log.exception("Knowledge base population failed")
 
