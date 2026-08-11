@@ -763,3 +763,57 @@ def test_a_post_is_not_released_if_recording_never_ran():
         # _release_extracted is never reached.
 
     assert [e["id"] for e in state["knowledge_pending"]] == ["p1", "p2"]
+
+
+def test_the_cap_never_evicts_a_batch_that_is_mid_extraction():
+    """_record_knowledge saves on a write failure, and save_state trims -- with
+    the batch still queued, because release comes after recording. Evicting it
+    there would lose an insight already paid for."""
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(
+        state, _posts(moltbook.MAX_KNOWLEDGE_PENDING + 20)
+    )
+
+    def trim_midway(_client, batch, *a, **kw):
+        # Stand in for the save_state that _record_knowledge performs.
+        moltbook._trim_state(state)
+        return [{"post_index": 0, "insight": "i", "tags": []}]
+
+    with mock.patch.object(
+        llm_mod, "extract_insights_batch", side_effect=trim_midway
+    ):
+        entries, processed = moltbook._drain_extraction_queue(state, object())
+
+    assert processed == ["p1", "p2", "p3", "p4", "p5"]
+    still_queued = {e["id"] for e in state["knowledge_pending"]}
+    assert set(processed) <= still_queued, "the in-flight batch was evicted"
+
+    moltbook._release_extracted(state, processed)
+    assert not (set(processed) & {e["id"] for e in state["knowledge_pending"]})
+    assert len(state["knowledge_pending"]) <= moltbook.MAX_KNOWLEDGE_PENDING
+
+
+def test_a_failed_batch_stops_being_in_flight():
+    """Otherwise a batch that failed would be immune to the cap forever."""
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(state, _posts(3))
+    with mock.patch.object(llm_mod, "extract_insights_batch", return_value=None):
+        moltbook._drain_extraction_queue(state, object())
+
+    assert not any(e.get("in_flight") for e in state["knowledge_pending"])
+
+
+def test_release_does_not_purge_entries_whose_id_is_missing():
+    """None in the released set would match every id-less entry at once."""
+    from ouroboros import moltbook
+
+    state = {"knowledge_pending": [
+        {"id": "keep", "title": "", "content": "", "attempts": 0},
+        {"title": "no id at all", "content": "", "attempts": 0},
+    ]}
+    moltbook._release_extracted(state, [None])
+    assert len(state["knowledge_pending"]) == 2

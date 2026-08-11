@@ -593,6 +593,11 @@ def _drain_extraction_queue(
         return [], []
 
     batch = pending[:limit]
+    for entry in batch:
+        # _record_knowledge saves state on a write failure, and save_state
+        # trims -- with the batch still queued, since release comes after
+        # recording. Nothing in flight may be evicted underneath us.
+        entry["in_flight"] = True
     try:
         insights = llm.extract_insights_batch(client, batch)
     except Exception:
@@ -608,6 +613,8 @@ def _drain_extraction_queue(
         # did not parse, and either way we cannot say these posts were read.
         for entry in batch:
             entry["attempts"] = int(entry.get("attempts", 0) or 0) + 1
+        for entry in batch:
+            entry.pop("in_flight", None)
         spent = [e for e in batch if e["attempts"] >= MAX_EXTRACTION_ATTEMPTS]
         if spent:
             ids = {e.get("id") for e in spent}
@@ -664,9 +671,12 @@ def _release_extracted(state: Dict[str, Any], post_ids: List[Any]) -> None:
     them inside the drain instead left a window where an exception between
     extracting and recording lost both.
     """
-    if not post_ids:
+    # A None in here would match every entry whose id is missing and purge
+    # them all. _queue_for_extraction never admits one, but the invariant
+    # belongs where the deletion happens.
+    done = {pid for pid in post_ids if pid is not None}
+    if not done:
         return
-    done = set(post_ids)
     state["knowledge_pending"] = [
         entry for entry in state.get("knowledge_pending", [])
         if entry.get("id") not in done
@@ -751,17 +761,24 @@ def _trim_state(state: Dict[str, Any]) -> None:
 
     queued = state.get("knowledge_pending", [])
     if len(queued) > MAX_KNOWLEDGE_PENDING:
-        # Named, not silent: a dropped post is one the agent will never learn
-        # from, which is the bug this queue exists to fix. The newest are kept
-        # -- reaching the cap means being a long way behind, and by then a
-        # fresh post is worth more than one from twenty hours ago.
-        dropped = queued[:-MAX_KNOWLEDGE_PENDING]
-        state["knowledge_pending"] = queued[-MAX_KNOWLEDGE_PENDING:]
-        log.warning(
-            "[knowledge-base] Queue over %d; dropped %d oldest: %s",
-            MAX_KNOWLEDGE_PENDING, len(dropped),
-            ", ".join(str(e.get("id")) for e in dropped),
-        )
+        # A batch mid-extraction is never a candidate: it is about to be
+        # released, and evicting it would lose an insight already paid for.
+        in_flight = [e for e in queued if e.get("in_flight")]
+        rest = [e for e in queued if not e.get("in_flight")]
+        room = max(0, MAX_KNOWLEDGE_PENDING - len(in_flight))
+        dropped = rest[:-room] if room else rest
+        if dropped:
+            # Named, not silent: a dropped post is one the agent never learns
+            # from, which is the bug this queue exists to fix. The oldest go
+            # first -- the drain already took the head this cycle, and by the
+            # time the cap bites, a fresh post is worth more than one from
+            # twenty hours ago.
+            log.warning(
+                "[knowledge-base] Queue over %d; dropped %d oldest: %s",
+                MAX_KNOWLEDGE_PENDING, len(dropped),
+                ", ".join(str(e.get("id")) for e in dropped),
+            )
+        state["knowledge_pending"] = in_flight + (rest[-room:] if room else [])
 
     _trim_comment_history(state, limit=MAX_COMMENT_HISTORY)
     _trim_self_question_log(state)
@@ -1311,6 +1328,18 @@ def run_loop() -> int:
                         # Only now: _record_knowledge has either written the
                         # entries or queued them in the outbox.
                         _release_extracted(state, processed_ids)
+                        if processed_ids:
+                            # Checkpoint rather than waiting for the end of the
+                            # cycle: a crash in between would re-extract a
+                            # batch already recorded, paying for the LLM call
+                            # twice and duplicating the entries.
+                            try:
+                                save_state(state)
+                            except Exception:
+                                log.warning(
+                                    "Could not checkpoint the extraction queue",
+                                    exc_info=True,
+                                )
                     except Exception:
                         log.exception("Knowledge base population failed")
 
