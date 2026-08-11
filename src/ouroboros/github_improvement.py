@@ -159,12 +159,19 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
     for test in fix_data.get("new_tests", []):
         proposed.append((test.get("file_path", ""), test.get("content", "")))
 
+    from .policies import is_safe_relative_path
+
     gated = []
     for path, content in proposed:
-        try:
-            original = (repo_root / path).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            original = ""
+        original = ""
+        # Only read inside the tree. `repo_root / "/etc/passwd"` is
+        # "/etc/passwd", and gathering size accounting is not a reason to open
+        # a file the change is about to be refused for naming.
+        if is_safe_relative_path(path):
+            try:
+                original = (repo_root / path).read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                original = ""
         gated.append(
             CodeChange(
                 file_path=path,

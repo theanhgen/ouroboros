@@ -461,3 +461,82 @@ def test_scope_judges_the_same_normalised_path_as_the_forbidden_check():
     assert list(validate_modification_scope(["src/ouroboros/../x.py"])), (
         "escaping the allowed prefix was accepted"
     )
+
+
+# -- the two gates are one implementation ------------------------------------
+
+ADVERSARIAL_PATHS = [
+    ("src/ouroboros/x.py", True),
+    ("./src/ouroboros/x.py", True),
+    ("src/ouroboros/./x.py", True),
+    ("tests/test_x.py", True),
+    ("docs/wiki/x.md", True),
+    # Traversal that satisfies a prefix by string comparison while naming a
+    # file outside the repository.
+    ("src/../../etc/passwd", False),
+    ("src/ouroboros/../../../etc/passwd", False),
+    # `repo_root / "/etc/passwd"` is "/etc/passwd".
+    ("/etc/passwd", False),
+    ("//etc/passwd", False),
+    ("C:\\Windows\\x.py", False),
+    ("src\\..\\..\\etc\\passwd", False),
+    ("..", False),
+    (".", False),
+    ("", False),
+    # Immutable.
+    ("src/ouroboros/config.py", False),
+    ("config.py", False),
+    # A prefix must not claim a sibling that merely starts with the same text.
+    ("src/ouroborosevil/x.py", False),
+]
+
+
+@pytest.mark.parametrize(("path", "expected"), ADVERSARIAL_PATHS)
+def test_both_gates_reach_the_same_verdict(path, expected):
+    """They were separate implementations kept in step by hand, and drifted:
+    validate_modification_scope normalised the path and _is_path_allowed
+    compared raw strings, so "src/../../etc/passwd" was refused by one and
+    accepted by the other."""
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import _is_path_allowed
+    from ouroboros.policies import validate_modification_scope
+
+    config = SafetyConfig()
+    allowed = _is_path_allowed(path, config)
+    in_scope = not list(validate_modification_scope([path], config))
+
+    assert allowed == in_scope, (
+        f"_is_path_allowed={allowed} but scope-clean={in_scope} for {path!r}"
+    )
+    assert allowed is expected
+
+
+def test_a_traversal_change_never_reaches_apply(monkeypatch, tmp_path):
+    from ouroboros import improvement
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import CodeChange, ImprovementTask
+    from ouroboros.test_runner import RunnerOutcome
+
+    applied = []
+    monkeypatch.setattr(
+        improvement, "apply_changes", lambda *a, **kw: applied.append(a) or True
+    )
+    monkeypatch.setattr(
+        improvement, "run_tests",
+        lambda *a, **kw: RunnerOutcome(passed=1, failed=0, errors=0, returncode=0),
+    )
+
+    result = improvement.validate_improvement(
+        ImprovementTask("t1", "fix_bug", "d", [], "e"),
+        [CodeChange(
+            file_path="src/../../etc/cron.d/x",
+            original_content="",
+            new_content="* * * * * root sh\n",
+            description="d",
+        )],
+        tmp_path,
+        config=SafetyConfig(),
+    )
+
+    assert applied == []
+    assert result.status == "failed"

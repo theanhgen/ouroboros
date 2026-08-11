@@ -1,5 +1,6 @@
 import ast
 from dataclasses import dataclass
+import ntpath
 import posixpath
 from pathlib import Path, PurePosixPath
 from typing import List, Optional, Tuple
@@ -62,6 +63,45 @@ def _normalised(file_path: str) -> PurePosixPath:
     return PurePosixPath(posixpath.normpath(file_path.replace("\\", "/")))
 
 
+def is_safe_relative_path(file_path: str) -> bool:
+    """Whether a path stays inside the tree it is resolved against.
+
+    An absolute path is not "under" anything: `repo_root / "/etc/passwd"`
+    discards repo_root entirely. A path that normalises to a leading ".."
+    climbs out. Both must be refused outright rather than pattern-matched,
+    because "src/../../etc/passwd" satisfies a "src/" prefix by string
+    comparison while naming a file two levels above the repository.
+    """
+    if not file_path:
+        return False
+    cleaned = file_path.replace("\\", "/")
+    if posixpath.isabs(cleaned) or ntpath.isabs(cleaned):
+        return False
+    normalised = _normalised(cleaned)
+    return not (normalised.parts and normalised.parts[0] == "..")
+
+
+def is_within_allowed_paths(
+    file_path: str,
+    allowed_paths: Tuple[str, ...],
+) -> bool:
+    """Whether a path is under one of the allowed prefixes.
+
+    The single implementation behind both gates. They used to check this
+    separately -- one normalised and one did not -- which is how they came to
+    disagree about "src/../../etc/passwd".
+    """
+    if not is_safe_relative_path(file_path):
+        return False
+
+    candidate = _normalised(file_path)
+    for prefix in allowed_paths:
+        allowed = _normalised(prefix)
+        if candidate == allowed or allowed in candidate.parents:
+            return True
+    return False
+
+
 def is_forbidden_modification_path(
     file_path: str,
     forbidden_paths: Tuple[str, ...],
@@ -108,6 +148,12 @@ def validate_modification_scope(
     for file_path in file_paths:
         basename = Path(file_path).name
 
+        if not is_safe_relative_path(file_path):
+            violations.append(
+                f"Unsafe path: {file_path} (must be relative and inside the tree)"
+            )
+            continue
+
         # Check forbidden files
         if is_forbidden_modification_path(
             file_path, config.forbidden_modification_paths
@@ -115,15 +161,9 @@ def validate_modification_scope(
             violations.append(f"Forbidden file: {file_path} ({basename} is immutable)")
             continue
 
-        # Check allowed path prefixes, against the same normalised form the
-        # forbidden check used, so one path is not judged by two standards.
-        normalised = _normalised(file_path)
-        allowed = any(
-            normalised == _normalised(prefix)
-            or _normalised(prefix) in normalised.parents
-            for prefix in config.allowed_modification_paths
-        )
-        if not allowed:
+        if not is_within_allowed_paths(
+            file_path, config.allowed_modification_paths
+        ):
             violations.append(
                 f"Out of scope: {file_path} (must be under {config.allowed_modification_paths})"
             )

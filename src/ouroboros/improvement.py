@@ -88,22 +88,20 @@ def _is_python_source(file_path: str) -> bool:
 
 
 def _is_path_allowed(file_path: str, config: SafetyConfig) -> bool:
-    """Check if a file path is allowed for modification."""
-    from .policies import is_forbidden_modification_path
+    """Check if a file path is allowed for modification.
+
+    Both halves come from policies, so this gate and
+    validate_modification_scope cannot drift apart -- they did, and the raw
+    prefix compare here accepted "src/../../etc/passwd" as being under "src/".
+    """
+    from .policies import is_forbidden_modification_path, is_within_allowed_paths
 
     if Path(file_path).name in IMMUTABLE_FILES:
         return False
-    # Shared with policies.validate_modification_scope so the two gates cannot
-    # disagree about what is immutable.
     if is_forbidden_modification_path(file_path, config.forbidden_modification_paths):
         return False
 
-    # Check allowed paths (match by prefix)
-    for allowed in config.allowed_modification_paths:
-        if file_path.startswith(allowed):
-            return True
-
-    return False
+    return is_within_allowed_paths(file_path, config.allowed_modification_paths)
 
 
 def _validate_changes(changes: List[CodeChange], config: SafetyConfig) -> List[str]:
