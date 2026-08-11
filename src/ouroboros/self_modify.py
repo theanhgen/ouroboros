@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class SelfModificationError(RuntimeError):
@@ -40,73 +40,42 @@ def modify_config(updates: Dict[str, Any], config_type: str = "safety") -> None:
         raise ValueError(f"Unknown config_type: {config_type}")
 
 
-# Config keys that only an operator may set.
-#
-# The comment-upgrade path feeds LLM-extracted key/value pairs from public
-# comments straight into modify_runner_config, and both
-# enable_comment_based_upgrades and auto_apply_config_suggestions default to
-# True. Anything that redirects model traffic, names a credential, or widens
-# the agent's own permissions therefore has to be refused on that path: a
-# suggested reviewer_base_url would send the reviewer credential and the full
-# proposed diff to a host chosen by a commenter, whose reply then decides
-# whether the change is approved.
-OPERATOR_ONLY_CONFIG_KEYS = frozenset({
-    # Endpoint redirection -- exfiltration of credentials and source.
-    "reviewer_base_url",
-    "local_model_base_url",
-    # Credentials.
-    "reviewer_api_key",
-    "ollama_api_key",
-    "telegram_bot_token",
-    "telegram_chat_id",
-    # Model and backend routing -- chooses who sees the code.
-    "reviewer_model",
-    "reviewer_backend",
-    "identify_backend",
-    "plan_backend",
-    "generator_backend",
-    "generator_model",
-    "improvement_model",
-    "issue_scouting_model",
-    "self_improve_model",
-    "local_model",
-    # Permission widening, including over this mechanism itself.
-    "auto_apply_config_suggestions",
-    "dry_run",
-    # Destination and behaviour selectors, as opposed to rate tuning: where the
-    # agent publishes, and whether it publishes at all.
-    "default_submolt",
-    "post_after_self_question",
-})
-
-# Every "enable_*" flag is operator-only. They are the switches that turn on
-# automation which writes outside this process -- pushing branches, opening
-# PRs and issues, posting comments, editing the wiki -- so a commenter must not
-# be able to flip one on. Matching by prefix rather than by name means a flag
-# added later is operator-only on arrival instead of settable from a comment
-# until someone remembers to list it.
-OPERATOR_ONLY_CONFIG_PREFIXES = ("enable_",)
-
-
-def is_operator_only_config_key(key: str) -> bool:
-    """Return True if key may only be set by an operator, not suggested."""
-    return key in OPERATOR_ONLY_CONFIG_KEYS or key.startswith(
-        OPERATOR_ONLY_CONFIG_PREFIXES
-    )
-
-
 def filter_untrusted_config_updates(
-    updates: Dict[str, Any],
-) -> tuple[Dict[str, Any], list]:
-    """Split updates into (applicable, rejected_keys) for an untrusted source.
+    updates: Dict[str, Any], current: Optional[Dict[str, Any]] = None
+) -> "tuple[Dict[str, Any], list]":
+    """Split updates into (applicable, rejected) for a public suggestion.
 
-    Used for config changes suggested by public comments. Operator-driven
-    paths such as the CLI call modify_runner_config directly and are not
-    filtered.
+    An allowlist with bounds, not a deny-list. Under a deny-list every field
+    added to RunnerConfig was suggestible until someone remembered to close
+    it; now a new field is operator-only until someone opens it. See
+    config_schema.COMMENT_SUGGESTIBLE_FIELDS.
+
+    Rejected entries come back as "key: reason" so the loop can log why.
     """
-    safe = {k: v for k, v in updates.items() if not is_operator_only_config_key(k)}
-    rejected = sorted(k for k in updates if is_operator_only_config_key(k))
-    return safe, rejected
+    from . import config_schema
+
+    if current is None:
+        from .moltbook import load_runner_config
+
+        try:
+            current = vars(load_runner_config())
+        except Exception as exc:
+            # Fail closed. Without the current values the direction rule
+            # silently does nothing, so a decrease that should be refused
+            # would be applied.
+            return {}, [f"*: current configuration unreadable ({exc})"]
+
+    safe: Dict[str, Any] = {}
+    rejected = []
+    for key, value in updates.items():
+        value, error = config_schema.coerce_suggestion(key, value)
+        if error is None:
+            error = config_schema.validate_suggestion(key, value, current.get(key))
+        if error:
+            rejected.append(f"{key}: {error}")
+        else:
+            safe[key] = value
+    return safe, sorted(rejected)
 
 
 def modify_runner_config(updates: Dict[str, Any]) -> None:
