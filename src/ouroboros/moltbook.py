@@ -592,6 +592,12 @@ def _drain_extraction_queue(
     if not pending:
         return [], []
 
+    for entry in pending:
+        # The loop is single-threaded, so nothing is legitimately in flight
+        # when a drain starts. Clearing first means a mark left behind by an
+        # interrupted cycle cannot outlive it.
+        entry.pop("in_flight", None)
+
     batch = pending[:limit]
     for entry in batch:
         # _record_knowledge saves state on a write failure, and save_state
@@ -683,20 +689,30 @@ def _release_extracted(state: Dict[str, Any], post_ids: List[Any]) -> None:
     ]
 
 
-def _record_knowledge(state: Dict[str, Any], entries: List[Dict[str, Any]]) -> None:
+def _record_knowledge(
+    state: Dict[str, Any],
+    entries: List[Dict[str, Any]],
+    processed_ids: Optional[List[Any]] = None,
+) -> None:
     """Persist knowledge entries, queueing the batch if the write fails.
 
-    The source posts have left the extraction queue by the time this runs, so
-    a lost batch is never regenerated.
+    Releases processed_ids from the extraction queue in the same step. The two
+    have to be one step: the failure path saves state, and if the queue still
+    held the posts at that moment, a crash straight after would leave the disk
+    holding both the insights in the outbox and the posts still pending --
+    extracting and recording them a second time on restart.
     """
     from .knowledge_base import add_entries
 
     try:
         add_entries(entries)
         log.info("[knowledge-base] Added %d entries", len(entries))
+        _release_extracted(state, processed_ids or [])
     except Exception:
         log.warning("Could not persist knowledge entries; queued", exc_info=True)
         state.setdefault("knowledge_outbox", []).extend(entries)
+        # The outbox owns them now, so the queue must let go before the save.
+        _release_extracted(state, processed_ids or [])
         try:
             save_state(state)
         except Exception:
@@ -1324,10 +1340,13 @@ def run_loop() -> int:
                         kb_entries.extend(extracted)
 
                         if kb_entries:
-                            _record_knowledge(state, kb_entries)
-                        # Only now: _record_knowledge has either written the
-                        # entries or queued them in the outbox.
-                        _release_extracted(state, processed_ids)
+                            # Releases the batch itself, once the entries are
+                            # either written or in the durable outbox.
+                            _record_knowledge(state, kb_entries, processed_ids)
+                        else:
+                            # A batch that ran and found nothing is still a
+                            # decision, so the posts still leave the queue.
+                            _release_extracted(state, processed_ids)
                         if processed_ids:
                             # Checkpoint rather than waiting for the end of the
                             # cycle: a crash in between would re-extract a

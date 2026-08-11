@@ -738,14 +738,22 @@ def test_a_failed_knowledge_write_outboxes_the_entries_and_releases_the_posts():
     ):
         entries, processed = moltbook._drain_extraction_queue(state, object())
 
+    seen_on_disk = {}
+
+    def capture(st):
+        seen_on_disk["pending"] = [e["id"] for e in st.get("knowledge_pending", [])]
+        seen_on_disk["outbox"] = [e["insight"] for e in st.get("knowledge_outbox", [])]
+
     with mock.patch(
         "ouroboros.knowledge_base.add_entries", side_effect=OSError("disk full")
-    ), mock.patch.object(moltbook, "save_state"):
-        moltbook._record_knowledge(state, entries)
-    moltbook._release_extracted(state, processed)
+    ), mock.patch.object(moltbook, "save_state", side_effect=capture):
+        moltbook._record_knowledge(state, entries, processed)
 
     assert [e["insight"] for e in state["knowledge_outbox"]] == ["i1"]
     assert state["knowledge_pending"] == []
+    # The point: what reached disk cannot hold the posts *and* their insights.
+    # A crash right after would otherwise extract and record them twice.
+    assert seen_on_disk == {"pending": [], "outbox": ["i1"]}
 
 
 def test_a_post_is_not_released_if_recording_never_ran():
@@ -817,3 +825,39 @@ def test_release_does_not_purge_entries_whose_id_is_missing():
     ]}
     moltbook._release_extracted(state, [None])
     assert len(state["knowledge_pending"]) == 2
+
+
+def test_a_successful_write_releases_the_batch_in_the_same_step():
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(state, _posts(2))
+    with mock.patch.object(
+        llm_mod, "extract_insights_batch",
+        return_value=[{"post_index": 0, "insight": "i1", "tags": []}],
+    ):
+        entries, processed = moltbook._drain_extraction_queue(state, object())
+
+    with mock.patch("ouroboros.knowledge_base.add_entries") as add:
+        moltbook._record_knowledge(state, entries, processed)
+
+    add.assert_called_once()
+    assert state["knowledge_pending"] == []
+
+
+def test_a_stale_in_flight_mark_does_not_outlive_the_cycle():
+    """If a cycle is interrupted between extracting and releasing, the mark is
+    left behind. It must not make those entries immune to the cap forever."""
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {"knowledge_pending": [
+        {"id": "stale", "title": "", "content": "", "attempts": 0,
+         "in_flight": True},
+        {"id": "fresh", "title": "", "content": "", "attempts": 0},
+    ]}
+    with mock.patch.object(llm_mod, "extract_insights_batch", return_value=[]):
+        _, processed = moltbook._drain_extraction_queue(state, object())
+
+    assert processed == ["stale", "fresh"]
+    moltbook._release_extracted(state, processed)
+    assert state["knowledge_pending"] == []
