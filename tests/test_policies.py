@@ -657,3 +657,59 @@ def test_a_path_shaped_entry_does_not_claim_every_file_of_that_name():
 
     # The shipped config uses bare names, which still match anywhere.
     assert is_forbidden_modification_path("tests/config.py", ("config.py",))
+
+
+def test_a_symlink_inside_the_repo_cannot_reach_an_immutable_file(tmp_path):
+    """Landing inside the repository is not enough. link.py resolves to
+    config.py, which is inside and passes every name-based check, while the
+    write goes to the agent's own SafetyConfig."""
+    import os
+
+    from ouroboros.improvement import CodeChange, apply_changes
+
+    repo = tmp_path / "repo"
+    pkg = repo / "src" / "ouroboros"
+    pkg.mkdir(parents=True)
+    (pkg / "config.py").write_text("ALLOW_SELF_MODIFICATION = False\n")
+    os.symlink(pkg / "config.py", pkg / "link.py")
+
+    with pytest.raises(PermissionError, match="forbidden"):
+        apply_changes([CodeChange(
+            file_path="src/ouroboros/link.py",
+            original_content="",
+            new_content="ALLOW_SELF_MODIFICATION = True\n",
+            description="d",
+        )], repo)
+
+    assert (pkg / "config.py").read_text() == "ALLOW_SELF_MODIFICATION = False\n"
+
+
+def test_apply_changes_uses_the_config_it_was_validated_against(tmp_path):
+    """It built its own SafetyConfig, so a caller with custom allowed paths
+    passed validation and was then refused at the write."""
+    from dataclasses import replace
+
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import CodeChange, apply_changes
+
+    repo = tmp_path / "repo"
+    (repo / "custom").mkdir(parents=True)
+    config = replace(SafetyConfig(), allowed_modification_paths=("custom/",))
+
+    apply_changes([CodeChange(
+        file_path="custom/x.py",
+        original_content="",
+        new_content="VALUE = 1\n",
+        description="d",
+    )], repo, config)
+
+    assert (repo / "custom" / "x.py").read_text() == "VALUE = 1\n"
+
+
+def test_a_trailing_slash_entry_is_a_directory_not_a_filename():
+    """normpath strips it, after which "some_dir/" looks like a bare filename
+    and would block every file named some_dir in the tree."""
+    from ouroboros.policies import is_forbidden_modification_path
+
+    assert is_forbidden_modification_path("some_dir/x.py", ("some_dir/",))
+    assert not is_forbidden_modification_path("tests/some_dir", ("some_dir/",))

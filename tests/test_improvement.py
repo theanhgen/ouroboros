@@ -500,3 +500,15 @@ def test_an_extensionless_non_python_file_is_still_not_parsed():
         SafetyConfig(),
     )
     assert not [v for v in violations if "Unparseable" in v or "import" in v.lower()]
+
+
+def test_a_trailing_space_does_not_hide_a_python_file():
+    """Some filesystems strip it on write, so "foo.py " lands as "foo.py"."""
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import _validate_changes
+
+    violations = _validate_changes(
+        [_change(path="src/ouroboros/foo.py ", new="import pickle\n")],
+        SafetyConfig(),
+    )
+    assert any("pickle" in v for v in violations), violations

@@ -201,7 +201,7 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
         # Through apply_changes, not a local write loop. The policy checks
         # above are lexical and cannot see a symlink; apply_changes resolves
         # each path and refuses one that lands outside the repository.
-        apply_changes(gated, repo_root)
+        apply_changes(gated, repo_root, safety)
         affected_files = [c.file_path for c in gated]
 
         # Run tests

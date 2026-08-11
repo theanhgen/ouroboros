@@ -90,7 +90,10 @@ def _is_python_source(file_path: str, content: str = "") -> bool:
     it and see": a Markdown or JSON change is not source, and reporting it as
     unparseable would block legitimate work.
     """
-    if Path(file_path).suffix.lower() in PYTHON_SUFFIXES:
+    # Trailing spaces and dots are stripped by some filesystems on write, so
+    # "foo.py " can land as "foo.py" -- judge it as the file it will become.
+    trimmed = file_path.rstrip(" .")
+    if Path(trimmed).suffix.lower() in PYTHON_SUFFIXES:
         return True
 
     first_line = content.split("\n", 1)[0] if content else ""
@@ -287,31 +290,53 @@ def generate_changes(
     return changes, usage
 
 
-def _resolved_inside(repo_root: Path, file_path: str) -> Path:
-    """Resolve a change path and prove it lands inside the repository.
+def _resolved_inside(repo_root: Path, file_path: str, config: SafetyConfig) -> Path:
+    """Resolve a change path and re-judge what it actually names.
 
     The policy checks are lexical, which cannot see a symlink: a component
     pointing outside the tree satisfies every prefix rule while naming a file
-    somewhere else entirely. Only the filesystem can answer that, and only
-    here, where repo_root is known.
+    somewhere else. Only the filesystem can answer that, and only here, where
+    repo_root is known.
+
+    Landing inside the repository is not sufficient either. A symlink at
+    src/ouroboros/link.py pointing to src/ouroboros/config.py resolves to a
+    path that is inside and passes every name-based check, while the write
+    goes to the agent's own SafetyConfig. So the resolved path is put back
+    through the same gate as the one that was asked for.
     """
-    full_path = (repo_root / file_path).resolve()
     root = repo_root.resolve()
+    full_path = (repo_root / file_path).resolve()
+
     if full_path != root and root not in full_path.parents:
         raise PermissionError(
             f"Path escapes the repository: {file_path} -> {full_path}"
         )
+
+    resolved_relative = full_path.relative_to(root).as_posix()
+    if not _is_path_allowed(resolved_relative, config):
+        raise PermissionError(
+            f"Path resolves to a forbidden file: {file_path} -> {resolved_relative}"
+        )
     return full_path
 
 
-def apply_changes(changes: List[CodeChange], repo_root: Path) -> None:
-    """Write changes to disk. Raises on forbidden paths."""
-    config = SafetyConfig()
+def apply_changes(
+    changes: List[CodeChange],
+    repo_root: Path,
+    config: SafetyConfig | None = None,
+) -> None:
+    """Write changes to disk. Raises on forbidden paths.
+
+    Takes the config the caller validated against. Defaulting to a fresh
+    SafetyConfig meant a caller with custom allowed paths passed validation and
+    was then refused at the write.
+    """
+    config = config or SafetyConfig()
     for change in changes:
         if not _is_path_allowed(change.file_path, config):
             raise PermissionError(f"Cannot modify forbidden file: {change.file_path}")
 
-        full_path = _resolved_inside(repo_root, change.file_path)
+        full_path = _resolved_inside(repo_root, change.file_path, config)
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(change.new_content, encoding="utf-8")
 
@@ -407,7 +432,7 @@ def _retry_with_root_cause(
         return None
 
     try:
-        apply_changes(retry_changes, repo_root)
+        apply_changes(retry_changes, repo_root, config)
     except PermissionError:
         return None
 
@@ -487,7 +512,7 @@ def validate_improvement(
 
     # Apply changes
     try:
-        apply_changes(changes, repo_root)
+        apply_changes(changes, repo_root, config)
     except PermissionError as e:
         log.error("Permission denied: %s", e)
         result.details = str(e)

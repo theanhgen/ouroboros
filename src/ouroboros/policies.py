@@ -140,10 +140,13 @@ def is_forbidden_modification_path(
     # Only a bare filename matches by basename anywhere in the tree. An entry
     # with directories in it names one file, so "src/ouroboros/config.py"
     # must not also claim "tests/config.py".
+    # Judged before normalisation: normpath strips the trailing slash off
+    # "some_dir/", which would then look like a bare filename and block every
+    # file named some_dir anywhere in the tree.
     bare_names = {
         _comparison_key(entry).name
         for entry in forbidden_paths
-        if len(_comparison_key(entry).parts) == 1
+        if "/" not in entry.replace("\\", "/")
     }
     if candidate.name in bare_names:
         return True
