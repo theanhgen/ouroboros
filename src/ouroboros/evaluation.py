@@ -5,7 +5,7 @@ import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from . import git_ops
 from .codebase import get_repo_root
@@ -15,7 +15,7 @@ from .storage import (
     MetricRecord,
     OuroborosStorage,
     load_json_file,
-    save_json_file,
+    update_json_file,
 )
 
 log = logging.getLogger(__name__)
@@ -99,9 +99,18 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
     except Exception:
         log.warning("Could not persist improvement to storage; keeping JSON copy",
                     exc_info=True)
-        legacy = _load_legacy_history(repo_root)
-        legacy.append(record.to_dict())
-        save_json_file(path, legacy)
+        # Transactional: this is the durability fallback, so a concurrent
+        # writer must not drop the record it is meant to be preserving.
+        def _append(history: Any) -> None:
+            # _load_legacy_history tolerates {}, null, a string or a number as
+            # "no history". Appending to one of those raises, and this is the
+            # path that exists to keep the record when the database cannot.
+            if not isinstance(history, list):
+                history = []
+            history.append(record.to_dict())
+            return history
+
+        update_json_file(path, _append, default=[], replace=True)
         _history_storage(repo_root).mark_migration_pending(_HISTORY_MIGRATION)
 
     # Persist to SQLite
