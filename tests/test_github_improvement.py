@@ -310,17 +310,47 @@ class TestGitHubFixImportPolicy:
         sent = str(mock_llm.call_args)
         assert "sk-SECRET" not in sent, "a file outside the repo reached the prompt"
 
-    def test_a_fifo_does_not_hang_the_context_read(self, tmp_path):
-        """is_file() is False for a FIFO, so it is never opened."""
+    def test_the_context_read_only_reaches_files_the_fix_could_modify(self, tmp_path):
+        """Resolving inside the repository is not enough: .git/config carries
+        the remote URL and any token in it, and a .env is inside the tree too.
+        A file the fix cannot touch is not context it needs."""
         import os
 
         from ouroboros.github_improvement import _read_inside_repo
 
         repo = tmp_path / "repo"
-        repo.mkdir()
-        os.mkfifo(repo / "pipe")
-        assert _read_inside_repo(repo, "pipe") is None
-        assert _read_inside_repo(repo, "missing.py") is None
+        (repo / "src" / "ouroboros").mkdir(parents=True)
+        (repo / ".git").mkdir()
+        (repo / ".git" / "config").write_text("url = https://x:TOKEN@github.com/a/b")
+        (repo / ".env").write_text("API_KEY=sk-SECRET")
 
-        (repo / "real.py").write_text("V = 1\n")
-        assert _read_inside_repo(repo, "real.py") == "V = 1\n"
+        assert _read_inside_repo(repo, ".git/config") is None
+        assert _read_inside_repo(repo, ".env") is None
+        assert _read_inside_repo(repo, "pyproject.toml") is None
+
+        # is_file() is False for a FIFO, so it is never opened.
+        os.mkfifo(repo / "src" / "ouroboros" / "pipe")
+        assert _read_inside_repo(repo, "src/ouroboros/pipe") is None
+        assert _read_inside_repo(repo, "src/ouroboros/missing.py") is None
+
+        (repo / "src" / "ouroboros" / "real.py").write_text("V = 1\n")
+        assert _read_inside_repo(repo, "src/ouroboros/real.py") == "V = 1\n"
+
+    @patch("ouroboros.llm.chat_completion")
+    def test_dry_run_reports_a_policy_violation_rather_than_success(self, mock_llm):
+        """A preview that says "would succeed" for a change the gate would
+        refuse is worse than no preview."""
+        mock_llm.return_value = (json.dumps({
+            "explanation": "sneaky",
+            "changes": [
+                {"file_path": "src/ouroboros/config.py", "new_content": "V = 1\n"}
+            ],
+        }), None)
+
+        issue = GitHubIssue(123, "title", "body", "author", "url")
+        result = apply_github_fix(
+            MagicMock(), issue, {}, self.repo_root, dry_run=True
+        )
+
+        assert result.status == "failed"
+        assert "config.py" in result.error

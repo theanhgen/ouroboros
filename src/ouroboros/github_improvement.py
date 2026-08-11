@@ -108,12 +108,21 @@ def _read_inside_repo(repo_root: Path, file_path: str) -> Optional[str]:
     way to get a credentials file quoted back out. A lexical check is not
     enough: a symlink component resolves elsewhere while looking local.
 
+    Restricted to the paths the agent is allowed to modify. Resolving inside
+    the repository is not enough on its own: .git/config carries the remote
+    URL and any token embedded in it, and a .env is inside the tree too. "Read
+    only what you may write" is the bound that makes sense here -- a file the
+    fix cannot touch is not context it needs.
+
     is_file() is what keeps a FIFO or a character device from hanging the
     process or reading forever.
     """
-    from .policies import is_safe_relative_path
+    from .config import SafetyConfig
+    from .policies import is_within_allowed_paths
 
-    if not is_safe_relative_path(file_path):
+    if not is_within_allowed_paths(
+        file_path, SafetyConfig().allowed_modification_paths
+    ):
         return None
     try:
         root = repo_root.resolve()
@@ -172,10 +181,6 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
     except json.JSONDecodeError:
         return IssueResolutionResult(issue.id, "failed", error="Failed to parse fix JSON")
 
-    if dry_run:
-        log.info("[dry-run] Would apply fix for issue #%d: %s", issue.id, fix_data.get("explanation"))
-        return IssueResolutionResult(issue.id, "success", description=fix_data.get("explanation"))
-
     # This flow writes files directly instead of going through
     # validate_improvement, so it had no policy gate at all: file_path comes
     # from a model reading a public issue, and `repo_root / "/etc/passwd"`
@@ -216,6 +221,10 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
         return IssueResolutionResult(
             issue.id, "failed", error="Policy: " + "; ".join(violations),
         )
+
+    if dry_run:
+        log.info("[dry-run] Would apply fix for issue #%d: %s", issue.id, fix_data.get("explanation"))
+        return IssueResolutionResult(issue.id, "success", description=fix_data.get("explanation"))
 
     # Apply changes on a new branch
     branch_name = git_ops.make_branch_name(f"fix_issue_{issue.id}")
