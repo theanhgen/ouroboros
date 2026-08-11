@@ -277,6 +277,23 @@ def generate_changes(
     return changes, usage
 
 
+def _resolved_inside(repo_root: Path, file_path: str) -> Path:
+    """Resolve a change path and prove it lands inside the repository.
+
+    The policy checks are lexical, which cannot see a symlink: a component
+    pointing outside the tree satisfies every prefix rule while naming a file
+    somewhere else entirely. Only the filesystem can answer that, and only
+    here, where repo_root is known.
+    """
+    full_path = (repo_root / file_path).resolve()
+    root = repo_root.resolve()
+    if full_path != root and root not in full_path.parents:
+        raise PermissionError(
+            f"Path escapes the repository: {file_path} -> {full_path}"
+        )
+    return full_path
+
+
 def apply_changes(changes: List[CodeChange], repo_root: Path) -> None:
     """Write changes to disk. Raises on forbidden paths."""
     config = SafetyConfig()
@@ -284,7 +301,7 @@ def apply_changes(changes: List[CodeChange], repo_root: Path) -> None:
         if not _is_path_allowed(change.file_path, config):
             raise PermissionError(f"Cannot modify forbidden file: {change.file_path}")
 
-        full_path = repo_root / change.file_path
+        full_path = _resolved_inside(repo_root, change.file_path)
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(change.new_content, encoding="utf-8")
 

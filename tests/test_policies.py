@@ -540,3 +540,107 @@ def test_a_traversal_change_never_reaches_apply(monkeypatch, tmp_path):
 
     assert applied == []
     assert result.status == "failed"
+
+
+# -- the gate answers "which file", not "are these strings equal" ------------
+
+@pytest.mark.parametrize("path", [
+    "src/ouroboros/CONFIG.PY",
+    "src/ouroboros/Config.Py",
+    "src/ouroboros/config.PY",
+])
+def test_a_forbidden_file_cannot_be_reached_by_changing_its_case(path):
+    """APFS and NTFS are case-insensitive, so this opens the real config.py
+    while comparing unequal to it."""
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import _is_path_allowed
+    from ouroboros.policies import is_forbidden_modification_path
+
+    config = SafetyConfig()
+    assert is_forbidden_modification_path(
+        path, config.forbidden_modification_paths
+    )
+    assert _is_path_allowed(path, config) is False
+
+
+def test_a_forbidden_directory_cannot_be_reached_by_changing_its_case():
+    from ouroboros.policies import is_forbidden_modification_path
+
+    assert is_forbidden_modification_path(
+        "SRC/Ouroboros/Internal/x.py", ("src/ouroboros/internal/",)
+    )
+
+
+def test_decomposed_unicode_matches_its_composed_twin():
+    """macOS hands back NFD; a forbidden entry written NFC would miss it."""
+    import unicodedata
+
+    from ouroboros.policies import is_forbidden_modification_path
+
+    composed = unicodedata.normalize("NFC", "café.py")
+    decomposed = unicodedata.normalize("NFD", "café.py")
+    assert composed != decomposed
+    assert is_forbidden_modification_path(f"src/{decomposed}", (composed,))
+
+
+def test_a_null_byte_is_not_a_path():
+    """pathlib accepts it and the OS call then raises ValueError, which a
+    caller does not expect from a path check."""
+    from ouroboros.policies import is_safe_relative_path
+
+    assert is_safe_relative_path("src/ouroboros/x.py\x00.md") is False
+
+
+def test_the_two_immutable_lists_cannot_drift_apart():
+    """improvement.IMMUTABLE_FILES and SafetyConfig.forbidden_modification_paths
+    are maintained by hand and consulted by different gates. They are equal
+    today; this fails the moment they are not."""
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import IMMUTABLE_FILES
+
+    assert set(IMMUTABLE_FILES) == set(SafetyConfig().forbidden_modification_paths)
+
+
+# -- the filesystem answers what a lexical check cannot ----------------------
+
+def test_a_symlinked_component_cannot_be_written_through(tmp_path):
+    """Every prefix rule is satisfied lexically; only resolving the path shows
+    it lands outside the repository."""
+    import os
+
+    from ouroboros.improvement import CodeChange, apply_changes
+
+    repo = tmp_path / "repo"
+    (repo / "src" / "ouroboros").mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    victim = outside / "secret.py"
+    victim.write_text("original\n")
+
+    os.symlink(outside, repo / "src" / "ouroboros" / "link")
+
+    change = CodeChange(
+        file_path="src/ouroboros/link/secret.py",
+        original_content="",
+        new_content="OWNED = 1\n",
+        description="d",
+    )
+    with pytest.raises(PermissionError, match="escapes the repository"):
+        apply_changes([change], repo)
+
+    assert victim.read_text() == "original\n"
+
+
+def test_an_ordinary_change_still_writes(tmp_path):
+    from ouroboros.improvement import CodeChange, apply_changes
+
+    repo = tmp_path / "repo"
+    (repo / "src" / "ouroboros").mkdir(parents=True)
+    apply_changes([CodeChange(
+        file_path="src/ouroboros/new_thing.py",
+        original_content="",
+        new_content="VALUE = 1\n",
+        description="d",
+    )], repo)
+
+    assert (repo / "src" / "ouroboros" / "new_thing.py").read_text() == "VALUE = 1\n"

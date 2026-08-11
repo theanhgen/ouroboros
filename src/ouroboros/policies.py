@@ -2,6 +2,7 @@ import ast
 from dataclasses import dataclass
 import ntpath
 import posixpath
+import unicodedata
 from pathlib import Path, PurePosixPath
 from typing import List, Optional, Tuple
 
@@ -63,6 +64,22 @@ def _normalised(file_path: str) -> PurePosixPath:
     return PurePosixPath(posixpath.normpath(file_path.replace("\\", "/")))
 
 
+def _comparison_key(file_path: str) -> PurePosixPath:
+    """The form two paths are compared in.
+
+    Case-folded and NFC-normalised, because the question these gates answer is
+    "which file on disk does this name", not "are these strings equal". APFS
+    and NTFS are case-insensitive, so "src/ouroboros/CONFIG.PY" opens the
+    forbidden config.py while comparing unequal to it; macOS also hands back
+    decomposed unicode, so an NFD name misses its NFC twin.
+
+    On a case-sensitive filesystem this over-matches -- Config.py is genuinely
+    a different file there -- which for a deny list is the safe direction.
+    """
+    text = unicodedata.normalize("NFC", file_path)
+    return PurePosixPath(posixpath.normpath(text.replace("\\", "/")).casefold())
+
+
 def is_safe_relative_path(file_path: str) -> bool:
     """Whether a path stays inside the tree it is resolved against.
 
@@ -72,7 +89,9 @@ def is_safe_relative_path(file_path: str) -> bool:
     because "src/../../etc/passwd" satisfies a "src/" prefix by string
     comparison while naming a file two levels above the repository.
     """
-    if not file_path:
+    if not file_path or "\x00" in file_path:
+        # A null byte is not a path. pathlib accepts it and the OS call then
+        # raises ValueError, which callers do not expect from a path check.
         return False
     cleaned = file_path.replace("\\", "/")
     if posixpath.isabs(cleaned) or ntpath.isabs(cleaned):
@@ -94,9 +113,9 @@ def is_within_allowed_paths(
     if not is_safe_relative_path(file_path):
         return False
 
-    candidate = _normalised(file_path)
+    candidate = _comparison_key(file_path)
     for prefix in allowed_paths:
-        allowed = _normalised(prefix)
+        allowed = _comparison_key(prefix)
         if candidate == allowed or allowed in candidate.parents:
             return True
     return False
@@ -117,12 +136,13 @@ def is_forbidden_modification_path(
     prefix entry. Matching is on whole path components, so "policies.py" does
     not also claim "policies.pyx" and "src/a" does not claim "src/ab".
     """
-    candidate = _normalised(file_path)
-    if candidate.name in forbidden_paths:
+    candidate = _comparison_key(file_path)
+    folded_names = {_comparison_key(entry).name for entry in forbidden_paths}
+    if candidate.name in folded_names:
         return True
 
     for forbidden_path in forbidden_paths:
-        target = _normalised(forbidden_path)
+        target = _comparison_key(forbidden_path)
         if candidate == target or target in candidate.parents:
             return True
     return False

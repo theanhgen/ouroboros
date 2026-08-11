@@ -170,7 +170,7 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
         if is_safe_relative_path(path):
             try:
                 original = (repo_root / path).read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
+            except (OSError, UnicodeDecodeError, ValueError):
                 original = ""
         gated.append(
             CodeChange(
