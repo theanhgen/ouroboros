@@ -137,8 +137,15 @@ def is_forbidden_modification_path(
     not also claim "policies.pyx" and "src/a" does not claim "src/ab".
     """
     candidate = _comparison_key(file_path)
-    folded_names = {_comparison_key(entry).name for entry in forbidden_paths}
-    if candidate.name in folded_names:
+    # Only a bare filename matches by basename anywhere in the tree. An entry
+    # with directories in it names one file, so "src/ouroboros/config.py"
+    # must not also claim "tests/config.py".
+    bare_names = {
+        _comparison_key(entry).name
+        for entry in forbidden_paths
+        if len(_comparison_key(entry).parts) == 1
+    }
+    if candidate.name in bare_names:
         return True
 
     for forbidden_path in forbidden_paths:

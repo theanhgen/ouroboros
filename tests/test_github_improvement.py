@@ -233,3 +233,35 @@ class TestGitHubFixImportPolicy:
 
         assert result.status == "failed"
         mock_write.assert_not_called()
+
+    @patch("ouroboros.llm.chat_completion")
+    def test_a_symlinked_component_cannot_be_written_through(self, mock_llm, tmp_path):
+        """This flow used its own write loop, so it did not get the resolution
+        check that apply_changes performs. It writes through apply_changes now."""
+        import os
+
+        repo = tmp_path / "repo"
+        (repo / "src" / "ouroboros").mkdir(parents=True)
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        victim = outside / "secret.py"
+        victim.write_text("original\n")
+        os.symlink(outside, repo / "src" / "ouroboros" / "link")
+
+        mock_llm.return_value = (json.dumps({
+            "explanation": "helpful",
+            "changes": [
+                {"file_path": "src/ouroboros/link/secret.py",
+                 "new_content": "OWNED = 1\n"}
+            ],
+        }), None)
+
+        issue = GitHubIssue(123, "title", "body", "author", "url")
+        with patch("ouroboros.git_ops.create_branch"), \
+             patch("ouroboros.git_ops.current_branch", return_value="main"), \
+             patch("ouroboros.git_ops.checkout_branch"), \
+             patch("ouroboros.git_ops.delete_branch"):
+            result = apply_github_fix(MagicMock(), issue, {}, repo)
+
+        assert result.status == "failed"
+        assert victim.read_text() == "original\n"

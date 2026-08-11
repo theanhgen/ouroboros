@@ -474,3 +474,29 @@ def test_the_retry_flow_refuses_a_blocked_change(monkeypatch, tmp_path):
 
     assert applied == [], "the retry applied a change the gate should refuse"
     assert result is None
+
+
+def test_an_extensionless_script_with_a_python_shebang_is_gated():
+    """Suffix alone misses a script named like a command."""
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import _validate_changes
+
+    violations = _validate_changes(
+        [_change(
+            path="src/ouroboros/runner",
+            new="#!/usr/bin/env python3\nimport pickle\n",
+        )],
+        SafetyConfig(),
+    )
+    assert any("pickle" in v for v in violations), violations
+
+
+def test_an_extensionless_non_python_file_is_still_not_parsed():
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import _validate_changes
+
+    violations = _validate_changes(
+        [_change(path="src/ouroboros/LICENSE", new="not code: import pickle")],
+        SafetyConfig(),
+    )
+    assert not [v for v in violations if "Unparseable" in v or "import" in v.lower()]

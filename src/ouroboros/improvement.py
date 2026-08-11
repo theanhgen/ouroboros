@@ -83,8 +83,18 @@ IMMUTABLE_FILES = frozenset({
 PYTHON_SUFFIXES = frozenset({".py", ".pyi", ".pyw"})
 
 
-def _is_python_source(file_path: str) -> bool:
-    return Path(file_path).suffix.lower() in PYTHON_SUFFIXES
+def _is_python_source(file_path: str, content: str = "") -> bool:
+    """Whether this change should be read as Python.
+
+    By suffix, or by shebang for an extensionless script. Not "try to parse
+    it and see": a Markdown or JSON change is not source, and reporting it as
+    unparseable would block legitimate work.
+    """
+    if Path(file_path).suffix.lower() in PYTHON_SUFFIXES:
+        return True
+
+    first_line = content.split("\n", 1)[0] if content else ""
+    return first_line.startswith("#!") and "python" in first_line.lower()
 
 
 def _is_path_allowed(file_path: str, config: SafetyConfig) -> bool:
@@ -127,7 +137,7 @@ def _validate_changes(changes: List[CodeChange], config: SafetyConfig) -> List[s
         # unparseable would be a false positive, not a finding. Stubs and .pyw
         # count, and the suffix is lowercased because a case-insensitive
         # filesystem makes "x.PY" the same file as "x.py".
-        if _is_python_source(change.file_path):
+        if _is_python_source(change.file_path, change.new_content):
             violations.extend(
                 validate_import_policy(
                     change.file_path, change.new_content, config

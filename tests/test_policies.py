@@ -644,3 +644,16 @@ def test_an_ordinary_change_still_writes(tmp_path):
     )], repo)
 
     assert (repo / "src" / "ouroboros" / "new_thing.py").read_text() == "VALUE = 1\n"
+
+
+def test_a_path_shaped_entry_does_not_claim_every_file_of_that_name():
+    """A bare "config.py" means "anywhere in the tree"; a path means that one
+    file, and must not blanket-block a same-named file elsewhere."""
+    from ouroboros.policies import is_forbidden_modification_path
+
+    entry = ("src/ouroboros/config.py",)
+    assert is_forbidden_modification_path("src/ouroboros/config.py", entry)
+    assert not is_forbidden_modification_path("tests/config.py", entry)
+
+    # The shipped config uses bare names, which still match anywhere.
+    assert is_forbidden_modification_path("tests/config.py", ("config.py",))

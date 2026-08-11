@@ -150,7 +150,7 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
     # scope, immutable files, change size and imports -- before anything is
     # written.
     from .config import SafetyConfig
-    from .improvement import CodeChange, _validate_changes
+    from .improvement import CodeChange, _validate_changes, apply_changes
 
     safety = SafetyConfig()
     proposed = []
@@ -198,18 +198,11 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
         original_branch = git_ops.current_branch(repo_root)
         git_ops.create_branch(repo_root, branch_name)
 
-        affected_files = []
-        for change in fix_data.get("changes", []):
-            f_path = repo_root / change["file_path"]
-            f_path.parent.mkdir(parents=True, exist_ok=True)
-            f_path.write_text(change["new_content"], encoding="utf-8")
-            affected_files.append(change["file_path"])
-
-        for test in fix_data.get("new_tests", []):
-            f_path = repo_root / test["file_path"]
-            f_path.parent.mkdir(parents=True, exist_ok=True)
-            f_path.write_text(test["content"], encoding="utf-8")
-            affected_files.append(test["file_path"])
+        # Through apply_changes, not a local write loop. The policy checks
+        # above are lexical and cannot see a symlink; apply_changes resolves
+        # each path and refuses one that lands outside the repository.
+        apply_changes(gated, repo_root)
+        affected_files = [c.file_path for c in gated]
 
         # Run tests
         test_res = test_runner.run_tests(repo_root)
