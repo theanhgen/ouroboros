@@ -396,3 +396,19 @@ def test_clear_caps_history():
     # The oldest entry should have been dropped
     assert state["community_improvement_history"][0]["task_id"] == "old-1"
     assert state["community_improvement_history"][-1]["task_id"] == "abc12345"
+
+
+def test_the_community_flow_gates_generated_code_through_the_same_check():
+    """It builds CodeChange objects from a public suggestion and hands them to
+    validate_improvement, which is where _validate_changes -- and so the import
+    policy -- applies. If it ever wrote files directly it would need its own
+    gate, as github_improvement does."""
+    import inspect
+
+    from ouroboros import community_improvement
+
+    source = inspect.getsource(community_improvement)
+    assert "validate_improvement(" in source
+    assert "write_text(" not in source, (
+        "this flow now writes directly and needs its own import gate"
+    )

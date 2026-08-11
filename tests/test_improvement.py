@@ -1,6 +1,8 @@
 """Tests for improvement engine."""
 
 import json
+
+import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -327,3 +329,107 @@ def test_validate_improvement_regression(mock_revert, mock_run_tests):
 
     assert result.status == "reverted"
     mock_revert.assert_called_once()
+
+
+# -- generated code is gated on imports before it is applied (#52) -----------
+
+def _change(path="src/ouroboros/thing.py", new="", old=""):
+    from ouroboros.improvement import CodeChange
+
+    return CodeChange(
+        file_path=path, original_content=old, new_content=new, description="d"
+    )
+
+
+def test_a_change_importing_a_blocked_module_is_refused():
+    """forbidden_import_modules had no call site, so the setting did nothing:
+    a CodeChange containing `import pickle` went straight to apply and test."""
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import _validate_changes
+
+    violations = _validate_changes(
+        [_change(new="import pickle\n\nDATA = 1\n")], SafetyConfig()
+    )
+    assert any("pickle" in v for v in violations), violations
+
+
+def test_a_clean_change_still_passes():
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import _validate_changes
+
+    assert _validate_changes(
+        [_change(new="import json\n\nDATA = 1\n")], SafetyConfig()
+    ) == []
+
+
+def test_a_dynamic_import_is_reported():
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import _validate_changes
+
+    violations = _validate_changes(
+        [_change(new="m = __import__('pickle')\n")], SafetyConfig()
+    )
+    assert any("Dynamic import" in v for v in violations), violations
+
+
+def test_non_python_changes_are_not_reported_as_unparseable():
+    """A JSON or Markdown change is not source; reporting it would be a false
+    positive that blocks legitimate work."""
+    from ouroboros.config import SafetyConfig
+    from ouroboros.improvement import _validate_changes
+
+    for path, body in (
+        ("docs/wiki/notes.md", "# not python at all: import pickle"),
+        ("config/sample.json", '{"a": 1}'),
+    ):
+        violations = _validate_changes([_change(path=path, new=body)], SafetyConfig())
+        # Scope is a separate gate; the claim here is only that nothing was
+        # handed to the parser.
+        assert not [
+            v for v in violations
+            if "Unparseable" in v or "import" in v.lower()
+        ], violations
+
+
+def test_the_retry_flow_uses_the_same_gate():
+    """_retry_with_root_cause validates through _validate_changes, so a retry
+    cannot launder a change the first attempt would have been refused."""
+    import inspect
+
+    from ouroboros import improvement
+
+    source = inspect.getsource(improvement._retry_with_root_cause)
+    assert "_validate_changes(" in source
+
+
+def test_blocked_code_never_reaches_apply(monkeypatch, tmp_path):
+    """The gate has to sit before anything is written, not after.
+
+    A baseline test run does happen first, but on the unmodified tree -- the
+    generated source has not been written at that point.
+    """
+    from ouroboros import improvement
+    from ouroboros.improvement import ImprovementTask, validate_improvement
+    from ouroboros.test_runner import RunnerOutcome
+
+    applied = []
+    runs = []
+    monkeypatch.setattr(
+        improvement, "apply_changes", lambda *a, **kw: applied.append(a) or True
+    )
+    monkeypatch.setattr(
+        improvement, "run_tests",
+        lambda *a, **kw: runs.append(bool(applied))
+        or RunnerOutcome(passed=1, failed=0, errors=0, returncode=0),
+    )
+
+    result = validate_improvement(
+        ImprovementTask("t1", "fix_bug", "d", [], "e"),
+        [_change(new="import ctypes\n")],
+        tmp_path,
+    )
+
+    assert applied == [], "the change was applied despite a policy violation"
+    assert runs == [False], "tests ran against the generated code"
+    assert result.status == "failed"
+    assert "ctypes" in result.details

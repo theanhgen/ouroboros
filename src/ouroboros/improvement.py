@@ -104,6 +104,8 @@ def _validate_changes(changes: List[CodeChange], config: SafetyConfig) -> List[s
 
     Returns a list of violation messages (empty = valid).
     """
+    from .policies import validate_import_policy
+
     violations = []
 
     if len(changes) > config.max_changed_files_per_pr:
@@ -115,6 +117,15 @@ def _validate_changes(changes: List[CodeChange], config: SafetyConfig) -> List[s
     for change in changes:
         if not _is_path_allowed(change.file_path, config):
             violations.append(f"Forbidden file modification: {change.file_path}")
+
+        # Only Python is parseable, and a JSON or Markdown change reported as
+        # unparseable would be a false positive, not a finding.
+        if change.file_path.endswith(".py"):
+            violations.extend(
+                validate_import_policy(
+                    change.file_path, change.new_content, config
+                )
+            )
 
         total_lines += _count_changed_lines(
             change.original_content, change.new_content

@@ -143,6 +143,40 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
         log.info("[dry-run] Would apply fix for issue #%d: %s", issue.id, fix_data.get("explanation"))
         return IssueResolutionResult(issue.id, "success", description=fix_data.get("explanation"))
 
+    # Gate the generated source before anything is written. This flow writes
+    # files directly rather than going through improvement.validate_improvement,
+    # so it needs its own check or forbidden_import_modules would not apply to
+    # it at all.
+    from .config import SafetyConfig
+    from .policies import validate_import_policy
+
+    safety = SafetyConfig()
+    import_violations = []
+    for change in fix_data.get("changes", []):
+        path = change.get("file_path", "")
+        if path.endswith(".py"):
+            import_violations.extend(
+                validate_import_policy(path, change.get("new_content", ""), safety)
+            )
+    for test in fix_data.get("new_tests", []):
+        path = test.get("file_path", "")
+        if path.endswith(".py"):
+            import_violations.extend(
+                validate_import_policy(path, test.get("content", ""), safety)
+            )
+
+    if import_violations:
+        # Checked before the branch exists, so a rejected fix leaves nothing
+        # behind to clean up.
+        log.warning(
+            "Fix for issue #%d rejected by import policy: %s",
+            issue.id, "; ".join(import_violations),
+        )
+        return IssueResolutionResult(
+            issue.id, "failed",
+            error="Import policy: " + "; ".join(import_violations),
+        )
+
     # Apply changes on a new branch
     branch_name = git_ops.make_branch_name(f"fix_issue_{issue.id}")
     try:
