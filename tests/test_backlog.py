@@ -209,7 +209,6 @@ def test_load_backlog_non_list_payload(tmp_path, payload):
     path.write_text(payload)
     assert load_backlog(tmp_path) == []
 
-
 # -- organize_backlog --------------------------------------------------------
 
 def _item(item_id, *, task_type="fix_bug", description="d", priority=5,
@@ -228,321 +227,126 @@ def _item(item_id, *, task_type="fix_bug", description="d", priority=5,
     return base
 
 
+def _response(keep=(), delete=(), merge=()):
+    return json.dumps({
+        "keep": list(keep), "delete": list(delete), "merge": list(merge),
+    })
+
+
 def _client_returning(payload):
-    """Patch chat_completion to return payload; organize_backlog imports it late."""
+    """Patch chat_completion; organize_backlog imports it late."""
     return patch("ouroboros.llm.chat_completion", return_value=(payload, None))
 
 
-def test_organize_backlog_no_op_on_empty(tmp_path):
-    with patch("ouroboros.llm.chat_completion") as chat:
-        organize_backlog(tmp_path, client=object())
-    chat.assert_not_called()
+# -- every id must get an explicit outcome -----------------------------------
 
+def test_a_complete_response_is_applied(tmp_path):
+    save_backlog(tmp_path, [_item("a1"), _item("b2"), _item("c3"), _item("d4")])
 
-def test_organize_backlog_updates_an_existing_item(tmp_path):
-    save_backlog(tmp_path, [_item("a1", description="old", priority=5)])
-
-    payload = json.dumps({"items": [
-        {"id": "a1", "type": "refactor", "desc": "new wording", "priority": 9}
-    ]})
+    payload = _response(
+        keep=[{"id": "a1", "priority": 9}],
+        delete=[{"id": "b2", "reason": "duplicate of a1"}],
+        merge=[{"sources": ["c3", "d4"], "desc": "merged", "priority": 7}],
+    )
     with _client_returning(payload):
-        organize_backlog(tmp_path, client=object())
+        result = organize_backlog(tmp_path, client=object())
+
+    assert result.ok
+    assert (result.kept, result.deleted, result.merged) == (1, 1, 1)
 
     items = load_backlog(tmp_path)
-    assert len(items) == 1
-    assert items[0]["id"] == "a1"
-    assert items[0]["task_type"] == "refactor"
-    assert items[0]["description"] == "new wording"
-    assert items[0]["priority"] == 9
-    # Untouched bookkeeping survives.
-    assert items[0]["created_at"] == 1000.0
-    assert items[0]["source"] == "test"
+    by_desc = {i["description"]: i for i in items}
+    assert set(by_desc) == {"d", "merged"}
+    assert by_desc["d"]["id"] == "a1"
+    assert by_desc["d"]["priority"] == 9
+    assert by_desc["merged"]["source"] == "backlog_organizer"
+    assert by_desc["merged"]["status"] == "pending"
 
 
-def test_organize_backlog_keeps_fields_the_model_omitted(tmp_path):
-    save_backlog(tmp_path, [_item("a1", task_type="add_test", description="keep me",
-                                  priority=3)])
+def test_an_incomplete_response_is_rejected_whole(tmp_path):
+    """The old protocol pruned by omission, so a truncated reply was
+    indistinguishable from a deliberate deletion of everything missing."""
+    original = [_item("a1"), _item("b2"), _item("c3")]
+    save_backlog(tmp_path, original)
 
-    with _client_returning(json.dumps({"items": [{"id": "a1"}]})):
-        organize_backlog(tmp_path, client=object())
+    with _client_returning(_response(keep=[{"id": "a1"}])):
+        result = organize_backlog(tmp_path, client=object())
 
-    item = load_backlog(tmp_path)[0]
-    assert item["task_type"] == "add_test"
-    assert item["description"] == "keep me"
-    assert item["priority"] == 3
+    assert not result.ok
+    assert "b2" in result.reason and "c3" in result.reason
+    assert load_backlog(tmp_path) == original
 
 
-def test_organize_backlog_creates_a_merged_epic(tmp_path):
-    """An id the model invented becomes a new item, not an update."""
-    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+def test_an_id_in_two_sections_is_rejected(tmp_path):
+    original = [_item("a1")]
+    save_backlog(tmp_path, original)
 
-    payload = json.dumps({"items": [
-        {"id": "epic1", "type": "refactor", "desc": "Merge a1 and b2", "priority": 8}
-    ]})
+    payload = _response(keep=[{"id": "a1"}], delete=[{"id": "a1", "reason": "x"}])
     with _client_returning(payload):
-        organize_backlog(tmp_path, client=object())
+        result = organize_backlog(tmp_path, client=object())
 
-    items = load_backlog(tmp_path)
-    assert [i["id"] for i in items] == ["epic1"]
-    assert items[0]["source"] == "backlog_organizer"
-    assert items[0]["status"] == "pending"
-    assert items[0]["attempts"] == 0
+    assert not result.ok
+    assert load_backlog(tmp_path) == original
 
 
-def test_organize_backlog_drops_pruned_items(tmp_path):
-    """Anything the model leaves out of its reply is pruned."""
-    save_backlog(tmp_path, [_item("a1"), _item("b2"), _item("c3")])
+def test_an_unknown_id_is_rejected(tmp_path):
+    """Only pending items go into the prompt, so any other id is invented."""
+    original = [_item("a1")]
+    save_backlog(tmp_path, original)
 
-    with _client_returning(json.dumps({"items": [{"id": "a1"}]})):
-        organize_backlog(tmp_path, client=object())
+    payload = _response(keep=[{"id": "a1"}, {"id": "invented"}])
+    with _client_returning(payload):
+        result = organize_backlog(tmp_path, client=object())
 
-    assert [i["id"] for i in load_backlog(tmp_path)] == ["a1"]
-
-
-def test_organize_backlog_never_touches_non_pending_items(tmp_path):
-    """Done and failed history must survive an organiser that ignores it."""
-    save_backlog(tmp_path, [
-        _item("done1", status="done"),
-        _item("failed1", status="failed"),
-        _item("pending1"),
-    ])
-
-    with _client_returning(json.dumps({"items": [{"id": "pending1"}]})):
-        organize_backlog(tmp_path, client=object())
-
-    ids = {i["id"] for i in load_backlog(tmp_path)}
-    assert ids == {"done1", "failed1", "pending1"}
+    assert not result.ok
+    assert "invented" in result.reason
+    assert load_backlog(tmp_path) == original
 
 
-def test_organize_backlog_only_sends_pending_items_to_the_model(tmp_path):
-    save_backlog(tmp_path, [_item("done1", status="done"), _item("p1")])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "",
+        "not json at all",
+        "{broken",
+        "null",
+        '{"keep": "not a list"}',
+        '{"keep": ["a string"]}',
+        '{"keep": [{}]}',                                    # no id
+        '{"merge": [{"sources": [], "desc": "x"}]}',         # no sources
+        '{"merge": [{"sources": ["a1"], "desc": ""}]}',      # no description
+        '{"keep": [{"id": "a1", "priority": 0}]}',           # out of range
+        '{"keep": [{"id": "a1", "priority": "high"}]}',      # wrong type
+    ],
+)
+def test_a_malformed_response_leaves_the_backlog_alone(tmp_path, payload):
+    original = [_item("a1")]
+    save_backlog(tmp_path, original)
 
-    with patch("ouroboros.llm.chat_completion",
-               return_value=(json.dumps({"items": [{"id": "p1"}]}), None)) as chat:
-        organize_backlog(tmp_path, client=object())
+    with _client_returning(payload):
+        result = organize_backlog(tmp_path, client=object())
 
-    prompt = chat.call_args.args[2]
-    assert "p1" in prompt
-    assert "done1" not in prompt
+    assert not result.ok
+    assert load_backlog(tmp_path) == original
 
 
-def test_organize_backlog_tolerates_prose_around_the_json(tmp_path):
+def test_prose_around_the_json_is_tolerated(tmp_path):
     save_backlog(tmp_path, [_item("a1", priority=1)])
 
-    payload = 'Sure! Here you go:\n```json\n{"items": [{"id": "a1", "priority": 7}]}\n```\n'
+    payload = 'Sure!\n```json\n' + _response(keep=[{"id": "a1", "priority": 7}]) + '\n```\n'
     with _client_returning(payload):
-        organize_backlog(tmp_path, client=object())
+        assert organize_backlog(tmp_path, client=object()).ok
 
     assert load_backlog(tmp_path)[0]["priority"] == 7
 
 
-@pytest.mark.parametrize("payload", ["", "not json at all", "{broken", "null"])
-def test_organize_backlog_leaves_the_backlog_alone_on_bad_output(tmp_path, payload):
-    """A malformed reply must not destroy the backlog."""
-    original = [_item("a1"), _item("b2")]
-    save_backlog(tmp_path, original)
+# -- what the organizer may and may not touch --------------------------------
 
-    with _client_returning(payload):
-        organize_backlog(tmp_path, client=object())
-
-    assert load_backlog(tmp_path) == original
-
-
-def test_organize_backlog_survives_a_model_error(tmp_path):
-    original = [_item("a1")]
-    save_backlog(tmp_path, original)
-
-    with patch("ouroboros.llm.chat_completion", side_effect=RuntimeError("api down")):
-        organize_backlog(tmp_path, client=object())
-
-    assert load_backlog(tmp_path) == original
-
-
-def test_organize_backlog_passes_the_model_through(tmp_path):
-    save_backlog(tmp_path, [_item("a1")])
-
-    with patch("ouroboros.llm.chat_completion",
-               return_value=(json.dumps({"items": [{"id": "a1"}]}), None)) as chat:
-        organize_backlog(tmp_path, client=object(), model="gpt-test")
-
-    assert chat.call_args.kwargs["model"] == "gpt-test"
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        '{"items": []}',            # truncated reply is indistinguishable from "delete all"
-        '{"other_key": [1]}',       # valid JSON, wrong shape
-        '{"items": "not a list"}',
-        '[{"id": "a1"}]',           # a bare list, not the documented object
-    ],
-)
-def test_organize_backlog_refuses_to_empty_the_backlog(tmp_path, payload):
-    """Omission is how this protocol prunes, so an empty list cannot be
-    distinguished from a truncated reply -- and acting on it deletes every
-    pending item."""
-    original = [_item("a1"), _item("b2")]
-    save_backlog(tmp_path, original)
-
-    with _client_returning(payload):
-        organize_backlog(tmp_path, client=object())
-
-    assert load_backlog(tmp_path) == original
-
-
-def test_organize_backlog_skips_a_backlog_with_nothing_pending(tmp_path):
-    """A history of done and failed records is not something to organise."""
-    save_backlog(tmp_path, [_item("d1", status="done"), _item("f1", status="failed")])
-
-    with patch("ouroboros.llm.chat_completion") as chat:
-        organize_backlog(tmp_path, client=object())
-
-    chat.assert_not_called()
-    assert {i["id"] for i in load_backlog(tmp_path)} == {"d1", "f1"}
-
-
-def test_organize_backlog_tolerates_a_sparse_record(tmp_path):
-    """A hand-edited or legacy record must not raise out of the organiser."""
-    save_backlog(tmp_path, [{"id": "a1", "status": "pending"}])
-
-    with _client_returning(json.dumps({"items": [{"id": "a1", "priority": 4}]})):
-        organize_backlog(tmp_path, client=object())
-
-    assert load_backlog(tmp_path)[0]["priority"] == 4
-
-
-def test_format_backlog_for_llm_is_empty_without_pending_items():
-    """Nothing pending means nothing to put in the prompt."""
-    from ouroboros.backlog import format_backlog_for_llm
-
-    assert format_backlog_for_llm([_item("d1", status="done")]) == ""
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        '{"items": [{}]}',                        # blank entry
-        '{"items": [{"priority": 3}]}',           # no id, no description
-        '{"items": [{"id": null, "desc": ""}]}',
-        '{"items": ["a string"]}',                # not even an object
-        '{"items": [{"id": "a1"}, {}]}',          # one good, one blank
-    ],
-)
-def test_organize_backlog_rejects_unusable_entries(tmp_path, payload):
-    """{"items": [{}]} passed the emptiness check and replaced the whole
-    pending backlog with one blank task."""
-    original = [_item("a1"), _item("b2")]
-    save_backlog(tmp_path, original)
-
-    with _client_returning(payload):
-        organize_backlog(tmp_path, client=object())
-
-    assert load_backlog(tmp_path) == original
-
-
-def test_organize_backlog_tolerates_a_record_without_status(tmp_path):
-    save_backlog(tmp_path, [{"id": "a1", "description": "d", "priority": 5}])
-
-    with _client_returning(json.dumps({"items": [{"id": "n1", "desc": "new"}]})):
-        organize_backlog(tmp_path, client=object())
-
-    # No pending records at all, so there was nothing to organise.
-    assert [i["id"] for i in load_backlog(tmp_path)] == ["a1"]
-
-
-def test_organize_backlog_keeps_a_record_it_cannot_identify(tmp_path):
-    """A pending record with no id cannot be referenced in the response.
-
-    Since the organizer prunes by omission, an unaddressable record would
-    otherwise be deleted every run purely because it has no id. Keeping it is
-    the safe direction, and it must not be merged into by an entry that also
-    has no id.
-    """
-    save_backlog(tmp_path, [{"status": "pending", "description": "keep", "priority": 5}])
-
-    with _client_returning(json.dumps({"items": [{"desc": "brand new"}]})):
-        organize_backlog(tmp_path, client=object())
-
-    items = load_backlog(tmp_path)
-    assert {i["description"] for i in items} == {"keep", "brand new"}
-    new = next(i for i in items if i["description"] == "brand new")
-    assert new["source"] == "backlog_organizer"
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        # Explicit nulls must not blank fields on an existing item.
-        '{"items": [{"id": "a1", "type": null, "desc": "", "priority": null}]}',
-        '{"items": [{"id": "a1", "priority": 0}]}',      # out of range
-        '{"items": [{"id": "a1", "priority": 11}]}',
-        '{"items": [{"id": "a1", "priority": "high"}]}',  # wrong type
-        '{"items": [{"id": "a1", "type": 42}]}',
-        '{"items": [{"id": "a1", "desc": 42}]}',
-    ],
-)
-def test_organize_backlog_rejects_bad_field_values(tmp_path, payload):
-    """A null priority makes get_pending raise while sorting."""
-    original = [_item("a1", description="keep", priority=5)]
-    save_backlog(tmp_path, original)
-
-    with _client_returning(payload):
-        organize_backlog(tmp_path, client=object())
-
-    assert load_backlog(tmp_path) == original
-
-
-def test_organize_backlog_rejects_duplicate_ids(tmp_path):
-    """mark_done stops at the first match, so a duplicate stays pending and
-    gets worked twice."""
-    original = [_item("a1"), _item("b2")]
-    save_backlog(tmp_path, original)
-
-    payload = json.dumps({"items": [{"id": "a1"}, {"id": "a1", "priority": 9}]})
-    with _client_returning(payload):
-        organize_backlog(tmp_path, client=object())
-
-    assert load_backlog(tmp_path) == original
-
-
-def test_organize_backlog_will_not_let_a_new_item_declare_itself_done(tmp_path):
-    """status="done" would delete the omitted records and leave nothing
-    pending to replace them."""
-    save_backlog(tmp_path, [_item("a1")])
-
-    payload = json.dumps({"items": [{"desc": "replacement", "status": "done"}]})
-    with _client_returning(payload):
-        organize_backlog(tmp_path, client=object())
-
-    items = load_backlog(tmp_path)
-    assert len(items) == 1
-    assert items[0]["status"] == "pending"
-
-
-def test_organize_backlog_will_not_rewrite_a_completed_record(tmp_path):
-    """An invented id colliding with history must not mutate it."""
-    done = _item("done1", status="done", description="original", priority=2)
-    save_backlog(tmp_path, [done, _item("p1")])
-
-    payload = json.dumps({"items": [{"id": "done1", "desc": "hijacked", "priority": 9}]})
-    with _client_returning(payload):
-        organize_backlog(tmp_path, client=object())
-
-    items = load_backlog(tmp_path)
-    survivor = next(i for i in items if i["id"] == "done1")
-    assert survivor == done, "the completed record must be untouched"
-    # The organizer's entry became a new pending task under a fresh id.
-    fresh = [i for i in items if i["id"] != "done1"]
-    assert len(fresh) == 1
-    assert fresh[0]["description"] == "hijacked"
-    assert fresh[0]["status"] == "pending"
-
-
-def test_organize_backlog_applies_only_supplied_fields(tmp_path):
+def test_only_supplied_fields_are_applied(tmp_path):
     save_backlog(tmp_path, [_item("a1", task_type="add_test",
                                   description="keep", priority=3)])
 
-    with _client_returning(json.dumps({"items": [{"id": "a1", "priority": 8}]})):
+    with _client_returning(_response(keep=[{"id": "a1", "priority": 8}])):
         organize_backlog(tmp_path, client=object())
 
     item = load_backlog(tmp_path)[0]
@@ -551,37 +355,261 @@ def test_organize_backlog_applies_only_supplied_fields(tmp_path):
     assert item["description"] == "keep"
 
 
-def test_organize_backlog_does_not_revert_a_concurrent_add(tmp_path):
-    """The model call takes seconds to minutes.
+def test_non_pending_items_are_never_sent_or_touched(tmp_path):
+    save_backlog(tmp_path, [
+        _item("done1", status="done"),
+        _item("failed1", status="abandoned"),
+        _item("p1"),
+    ])
 
-    Rebuilding the file from the snapshot taken before it would silently
-    revert anything committed in the meantime.
-    """
-    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+    with patch("ouroboros.llm.chat_completion",
+               return_value=(_response(keep=[{"id": "p1"}]), None)) as chat:
+        organize_backlog(tmp_path, client=object())
+
+    prompt = chat.call_args.args[2]
+    assert "done1" not in prompt and "failed1" not in prompt
+    assert {i["id"] for i in load_backlog(tmp_path)} == {"done1", "failed1", "p1"}
+
+
+def test_a_backlog_with_nothing_pending_is_skipped(tmp_path):
+    save_backlog(tmp_path, [_item("d1", status="done")])
+
+    with patch("ouroboros.llm.chat_completion") as chat:
+        result = organize_backlog(tmp_path, client=object())
+
+    chat.assert_not_called()
+    assert result.ok and result.kept == 0
+
+
+def test_a_record_without_an_id_is_left_alone(tmp_path):
+    """It cannot be referenced in the response, so it cannot be given an
+    outcome -- and must not block the run or be deleted for that."""
+    save_backlog(tmp_path, [
+        {"status": "pending", "description": "no id", "priority": 5},
+        _item("a1"),
+    ])
+
+    with _client_returning(_response(keep=[{"id": "a1"}])):
+        assert organize_backlog(tmp_path, client=object()).ok
+
+    assert {i.get("description") for i in load_backlog(tmp_path)} == {"no id", "d"}
+
+
+def test_a_sparse_record_does_not_raise(tmp_path):
+    save_backlog(tmp_path, [{"id": "a1", "status": "pending"}])
+
+    with _client_returning(_response(keep=[{"id": "a1", "priority": 4}])):
+        assert organize_backlog(tmp_path, client=object()).ok
+
+    assert load_backlog(tmp_path)[0]["priority"] == 4
+
+
+def test_the_model_call_failing_leaves_the_backlog_alone(tmp_path):
+    original = [_item("a1")]
+    save_backlog(tmp_path, original)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=RuntimeError("api down")):
+        result = organize_backlog(tmp_path, client=object())
+
+    assert not result.ok
+    assert load_backlog(tmp_path) == original
+
+
+# -- concurrency: live state wins over the organizer's stale view ------------
+
+def test_a_concurrent_add_survives(tmp_path):
+    save_backlog(tmp_path, [_item("a1")])
 
     def slow_model(*a, **k):
         add_item(tmp_path, "add_test", "added during the model call")
-        return (json.dumps({"items": [{"id": "a1"}, {"id": "b2"}]}), None)
+        return (_response(keep=[{"id": "a1"}]), None)
 
     with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
         organize_backlog(tmp_path, client=object())
 
-    descriptions = {i["description"] for i in load_backlog(tmp_path)}
-    assert "added during the model call" in descriptions
+    assert "added during the model call" in {
+        i["description"] for i in load_backlog(tmp_path)
+    }
 
 
-def test_organize_backlog_does_not_revert_a_concurrent_mark_done(tmp_path):
+def test_a_concurrent_failure_count_survives_a_keep(tmp_path):
+    save_backlog(tmp_path, [_item("a1")])
+
+    def slow_model(*a, **k):
+        mark_failed(tmp_path, "a1")
+        return (_response(keep=[{"id": "a1", "priority": 9}]), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    item = load_backlog(tmp_path)[0]
+    assert item["attempts"] == 1, "bookkeeping is never written by the organizer"
+    assert item["priority"] == 9, "an unrelated field change still applies"
+
+
+def test_a_concurrent_completion_is_not_deleted(tmp_path):
     save_backlog(tmp_path, [_item("a1"), _item("b2")])
 
     def slow_model(*a, **k):
         mark_done(tmp_path, "b2")
-        return (json.dumps({"items": [{"id": "a1"}]}), None)
+        return (_response(keep=[{"id": "a1"}],
+                          delete=[{"id": "b2", "reason": "stale"}]), None)
 
     with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
         organize_backlog(tmp_path, client=object())
 
     by_id = {i["id"]: i for i in load_backlog(tmp_path)}
-    assert by_id["b2"]["status"] == "done", "the completion must not be reverted"
+    assert by_id["b2"]["status"] == "done", "finished work must not be deleted"
+
+
+def test_a_merge_still_applies_after_a_concurrent_failure(tmp_path):
+    """A failure increment does not make two tasks stop being duplicates."""
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+
+    def slow_model(*a, **k):
+        mark_failed(tmp_path, "a1")
+        return (_response(merge=[{"sources": ["a1", "b2"], "desc": "merged"}]), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    assert {i["description"] for i in load_backlog(tmp_path)} == {"merged"}
+
+
+def test_a_merge_does_not_fire_if_another_writer_removed_the_sources(tmp_path):
+    """Inferring "removed" from absence would let this stale merge resurrect
+    work another writer had already replaced."""
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+
+    def slow_model(*a, **k):
+        save_backlog(tmp_path, [_item("replacement", description="already merged")])
+        return (_response(merge=[{"sources": ["a1", "b2"], "desc": "merged"}]), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    assert {i["description"] for i in load_backlog(tmp_path)} == {"already merged"}
+
+
+def test_a_merge_does_not_fire_if_the_sources_completed(tmp_path):
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+
+    def slow_model(*a, **k):
+        mark_done(tmp_path, "a1")
+        mark_done(tmp_path, "b2")
+        return (_response(merge=[{"sources": ["a1", "b2"], "desc": "merged"}]), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    items = load_backlog(tmp_path)
+    assert {i["status"] for i in items} == {"done"}
+    assert "merged" not in {i["description"] for i in items}
+
+
+def test_duplicate_pending_ids_abort_the_run(tmp_path):
+    """A dict keyed by id would hide one of them from the model, and then a
+    single decision would delete both."""
+    original = [_item("dup"), _item("dup", description="other")]
+    save_backlog(tmp_path, original)
+
+    with patch("ouroboros.llm.chat_completion") as chat:
+        result = organize_backlog(tmp_path, client=object())
+
+    chat.assert_not_called()
+    assert not result.ok
+    assert "dup" in result.reason
+    assert load_backlog(tmp_path) == original
+
+
+# -- the result is reportable ------------------------------------------------
+
+def test_result_summary_on_success():
+    from ouroboros.backlog import OrganizeResult
+
+    summary = OrganizeResult(ok=True, kept=2, deleted=1, merged=3).summary()
+    assert "2 kept" in summary and "1 deleted" in summary and "3 merged" in summary
+
+
+def test_result_summary_on_failure():
+    from ouroboros.backlog import OrganizeResult
+
+    assert "unchanged" in OrganizeResult(ok=False, reason="bad").summary()
+
+
+def test_a_merge_source_repeated_in_another_section_is_rejected(tmp_path):
+    original = [_item("a1"), _item("b2")]
+    save_backlog(tmp_path, original)
+
+    payload = _response(
+        keep=[{"id": "a1"}],
+        merge=[{"sources": ["a1", "b2"], "desc": "merged"}],
+    )
+    with _client_returning(payload):
+        result = organize_backlog(tmp_path, client=object())
+
+    assert not result.ok
+    assert "a1" in result.reason
+    assert load_backlog(tmp_path) == original
+
+
+def test_a_null_section_is_treated_as_empty(tmp_path):
+    """A model that omits a section entirely, or sends null, still has to
+    account for every id in the ones it does send."""
+    save_backlog(tmp_path, [_item("a1")])
+
+    with _client_returning(json.dumps({"keep": [{"id": "a1"}], "delete": None})):
+        assert organize_backlog(tmp_path, client=object()).ok
+
+
+def test_pending_records_without_ids_only(tmp_path):
+    """Nothing addressable, so there is nothing for the organizer to do."""
+    save_backlog(tmp_path, [{"status": "pending", "description": "no id"}])
+
+    with patch("ouroboros.llm.chat_completion") as chat:
+        result = organize_backlog(tmp_path, client=object())
+
+    chat.assert_not_called()
+    assert result.ok
+    assert len(load_backlog(tmp_path)) == 1
+
+
+def test_a_write_failure_is_reported_not_raised(tmp_path, monkeypatch):
+    save_backlog(tmp_path, [_item("a1")])
+
+    monkeypatch.setattr(
+        "ouroboros.backlog._update_backlog",
+        lambda root, mutate: (_ for _ in ()).throw(OSError("disk full")),
+    )
+
+    with _client_returning(_response(keep=[{"id": "a1"}])):
+        result = organize_backlog(tmp_path, client=object())
+
+    assert not result.ok
+    assert "disk full" in result.reason
+
+
+def test_a_keep_for_a_record_deleted_meanwhile_is_skipped(tmp_path):
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+
+    def slow_model(*a, **k):
+        save_backlog(tmp_path, [_item("b2")])  # a1 removed by another writer
+        return (_response(keep=[{"id": "a1", "priority": 9},
+                                {"id": "b2"}]), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    assert [i["id"] for i in load_backlog(tmp_path)] == ["b2"]
+
+
+# -- restored: not organizer tests, kept from before the protocol change -----
+
+def test_format_backlog_for_llm_is_empty_without_pending_items():
+    """Nothing pending means nothing to put in the prompt."""
+    from ouroboros.backlog import format_backlog_for_llm
+
+    assert format_backlog_for_llm([_item("d1", status="done")]) == ""
 
 
 @pytest.mark.parametrize(
@@ -604,89 +632,124 @@ def test_mutators_accept_a_legacy_bare_list_file(tmp_path, mutator):
     assert any(i["id"] == "old" for i in load_backlog(tmp_path))
 
 
-def test_organize_backlog_keeps_a_concurrent_failure_count(tmp_path):
-    """Applying the pre-model snapshot object would revert the increment."""
-    save_backlog(tmp_path, [_item("a1")])
-
-    def slow_model(*a, **k):
-        mark_failed(tmp_path, "a1")
-        return (json.dumps({"items": [{"id": "a1", "priority": 9}]}), None)
-
-    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
-        organize_backlog(tmp_path, client=object())
-
-    item = load_backlog(tmp_path)[0]
-    assert item["attempts"] == 1, "the concurrent failure must not be reverted"
-    assert item["priority"] == 9, "and the organizer's change still applies"
-
-
-def test_organize_backlog_does_not_resurrect_a_concurrent_completion(tmp_path):
-    """Appending the snapshot's pending clone would duplicate the id and put
-    finished work back in the queue."""
-    save_backlog(tmp_path, [_item("a1")])
+def test_a_merge_is_all_or_nothing(tmp_path):
+    """Removing only the surviving sources would leave the completed one in
+    place and add a replacement that duplicates it."""
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
 
     def slow_model(*a, **k):
         mark_done(tmp_path, "a1")
-        return (json.dumps({"items": [{"id": "a1", "desc": "resurrected"}]}), None)
+        return (_response(merge=[{"sources": ["a1", "b2"], "desc": "merged"}]), None)
 
     with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
         organize_backlog(tmp_path, client=object())
+
+    by_id = {i["id"]: i for i in load_backlog(tmp_path)}
+    assert set(by_id) == {"a1", "b2"}, "neither source may be removed"
+    assert by_id["a1"]["status"] == "done"
+    assert "merged" not in {i["description"] for i in by_id.values()}
+
+
+def test_a_delete_is_skipped_if_the_task_changed_meanwhile(tmp_path):
+    """A concurrent edit may have made a "duplicate" distinct."""
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+
+    def slow_model(*a, **k):
+        items = load_backlog(tmp_path)
+        for i in items:
+            if i["id"] == "b2":
+                i["description"] = "actually a different thing now"
+        save_backlog(tmp_path, items)
+        return (_response(keep=[{"id": "a1"}],
+                          delete=[{"id": "b2", "reason": "duplicate of a1"}]), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    by_id = {i["id"]: i for i in load_backlog(tmp_path)}
+    assert "b2" in by_id
+    assert by_id["b2"]["description"] == "actually a different thing now"
+
+
+def test_a_merge_is_skipped_if_a_source_changed_meanwhile(tmp_path):
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+
+    def slow_model(*a, **k):
+        items = load_backlog(tmp_path)
+        for i in items:
+            if i["id"] == "a1":
+                i["priority"] = 10
+        save_backlog(tmp_path, items)
+        return (_response(merge=[{"sources": ["a1", "b2"], "desc": "merged"}]), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    assert {i["id"] for i in load_backlog(tmp_path)} == {"a1", "b2"}
+
+
+@pytest.mark.parametrize(
+    "sources", [["a1"], ["a1", "a1"]],
+)
+def test_a_singleton_merge_is_rejected(tmp_path, sources):
+    """It combines nothing -- it just replaces the task with a fresh id and
+    attempts back to zero, slipping past the abandonment rule."""
+    original = [_item("a1", attempts=2)]
+    save_backlog(tmp_path, original)
+
+    payload = _response(merge=[{"sources": sources, "desc": "not really a merge"}])
+    with _client_returning(payload):
+        result = organize_backlog(tmp_path, client=object())
+
+    assert not result.ok
+    assert "two distinct sources" in result.reason
+    assert load_backlog(tmp_path) == original
+
+
+def test_a_merge_of_unchanged_sources_still_applies(tmp_path):
+    """The guards must not make a legitimate merge impossible."""
+    save_backlog(tmp_path, [_item("a1"), _item("b2"), _item("c3")])
+
+    payload = _response(
+        keep=[{"id": "c3"}],
+        merge=[{"sources": ["a1", "b2"], "desc": "merged", "priority": 8}],
+    )
+    with _client_returning(payload):
+        assert organize_backlog(tmp_path, client=object()).ok
 
     items = load_backlog(tmp_path)
-    assert len(items) == 1
-    assert items[0]["status"] == "done"
-    assert items[0]["description"] != "resurrected"
+    assert {i["description"] for i in items} == {"d", "merged"}
+    merged = next(i for i in items if i["description"] == "merged")
+    assert merged["priority"] == 8
 
 
-def test_organize_backlog_does_not_prune_a_concurrently_completed_record(tmp_path):
-    """Omitted from the response, but no longer pending, so not the
-    organizer's to remove."""
-    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+def test_a_keep_does_not_overwrite_a_concurrent_edit(tmp_path):
+    """The organizer's version of these fields is stale once someone else has
+    rewritten them."""
+    save_backlog(tmp_path, [_item("a1")])
 
     def slow_model(*a, **k):
-        mark_done(tmp_path, "b2")
-        return (json.dumps({"items": [{"id": "a1"}]}), None)
+        items = load_backlog(tmp_path)
+        items[0]["description"] = "edited by someone else"
+        save_backlog(tmp_path, items)
+        return (_response(keep=[{"id": "a1", "desc": "stale rewrite"}]), None)
 
     with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
         organize_backlog(tmp_path, client=object())
 
-    by_id = {i["id"]: i for i in load_backlog(tmp_path)}
-    assert by_id["b2"]["status"] == "done"
+    assert load_backlog(tmp_path)[0]["description"] == "edited by someone else"
 
 
-def test_organize_backlog_does_not_prune_a_concurrently_failed_record(tmp_path):
-    """"Still pending" is not "unchanged".
+def test_an_id_shared_with_a_completed_record_aborts_the_run(tmp_path):
+    """Reconciliation removes by id, so deleting the pending one would take
+    the completed record with it."""
+    original = [_item("x", status="done"), _item("x")]
+    save_backlog(tmp_path, original)
 
-    mark_failed increments attempts without leaving the pending state, and
-    pruning that record discards the failure history the retry logic uses.
-    """
-    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+    with patch("ouroboros.llm.chat_completion") as chat:
+        result = organize_backlog(tmp_path, client=object())
 
-    def slow_model(*a, **k):
-        mark_failed(tmp_path, "b2")
-        return (json.dumps({"items": [{"id": "a1"}]}), None)
-
-    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
-        organize_backlog(tmp_path, client=object())
-
-    by_id = {i["id"]: i for i in load_backlog(tmp_path)}
-    assert "b2" in by_id, "a record changed since the snapshot must not be pruned"
-    assert by_id["b2"]["attempts"] == 1
-
-
-def test_organize_backlog_does_not_recreate_a_record_removed_meanwhile(tmp_path):
-    """Another writer removed it while the model ran.
-
-    Recreating it from the response resurrects the task with its attempts
-    reset to zero.
-    """
-    save_backlog(tmp_path, [_item("a1", attempts=2)])
-
-    def slow_model(*a, **k):
-        save_backlog(tmp_path, [])  # another organizer prunes it
-        return (json.dumps({"items": [{"id": "a1", "desc": "back from the dead"}]}), None)
-
-    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
-        organize_backlog(tmp_path, client=object())
-
-    assert load_backlog(tmp_path) == []
+    chat.assert_not_called()
+    assert not result.ok
+    assert "x" in result.reason
+    assert len(load_backlog(tmp_path)) == 2
