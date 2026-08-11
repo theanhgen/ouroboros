@@ -93,16 +93,24 @@ _SUGGESTION_DIRECTION: Dict[str, str] = {
 # interval_seconds is a year, and a suggestion of that would park the agent
 # while passing the direction rule. Throttling alerts to a year would hide
 # that it had.
+# The rule: a suggestion may throttle, but never past the point where the
+# operator loses visibility or the agent loses the ability to receive the next
+# correction. Comments are the channel a bad suggestion gets undone through,
+# so throttling that channel has to stay bounded well inside a working day.
 _SUGGESTION_BOUNDS: Dict[str, Bounds] = {
     "interval_seconds": Bounds(60, 21_600),                    # 1 min - 6 h
-    "min_comment_interval_seconds": Bounds(60, 86_400),        # 1 min - 1 day
-    "telegram_error_min_interval_seconds": Bounds(60, 86_400),
+    "min_comment_interval_seconds": Bounds(60, 21_600),
+    # Alerts are the operator's window onto all of the above.
+    "telegram_error_min_interval_seconds": Bounds(60, 3_600),
     "min_post_interval_hours": Bounds(1, 168),                 # up to a week
     "self_question_hours": Bounds(1, 168),
-    "comment_check_interval_hours": Bounds(1, 168),
-    "improvement_interval_hours": Bounds(1, 336),              # up to a fortnight
-    "community_wait_hours": Bounds(1, 336),
-    "max_comments_per_cycle": Bounds(0, 10),
+    # How often suggestions are read at all -- including the one undoing this.
+    "comment_check_interval_hours": Bounds(1, 24),
+    "improvement_interval_hours": Bounds(1, 168),
+    "community_wait_hours": Bounds(1, 168),
+    # Floors at 1, not 0: the operator meaning of 0 is "do not comment", and a
+    # stranger silencing the agent outright is not a throttle.
+    "max_comments_per_cycle": Bounds(1, 10),
     "community_min_comments_for_early": Bounds(1, 50),
 }
 
@@ -200,6 +208,26 @@ def validate(key: str, value: Any) -> Optional[str]:
     return f"{key} must be text, got {value!r}"
 
 
+def coerce_suggestion(key: str, value: Any) -> Tuple[Any, Optional[str]]:
+    """Bring a JSON value from a comment to the type the field declares.
+
+    A model writes "600" or 600.0 as readily as 600. Left alone these are not
+    merely rejected: an int field holding a str is uncomparable, so the
+    direction rule below would skip rather than fail. Coerce first, then the
+    guard has something to compare.
+    """
+    types = field_types()
+    if key not in types:
+        return value, None  # validate_suggestion names the real problem
+
+    declared = types[key]
+    if isinstance(value, str) and not _is_bool_field(declared):
+        return parse_value(key, value)
+    if _is_int_field(declared) and isinstance(value, float) and value.is_integer():
+        return int(value), None
+    return value, None
+
+
 def validate_suggestion(key: str, value: Any, current: Any) -> Optional[str]:
     """Validate a change proposed by a public comment.
 
@@ -214,7 +242,12 @@ def validate_suggestion(key: str, value: Any, current: Any) -> Optional[str]:
         return error
 
     direction = _SUGGESTION_DIRECTION.get(key)
-    if direction and isinstance(current, int) and isinstance(value, int):
+    if direction:
+        # Fail closed. A current value that cannot be compared -- absent, None,
+        # a partial dict from a caller -- used to skip the check silently, so
+        # the decrease it exists to refuse went through on the bounds alone.
+        if not isinstance(current, int) or isinstance(current, bool):
+            return f"{key} cannot be checked against its current value ({current!r})"
         if direction == "increase" and value < current:
             return f"{key} may only be increased by a suggestion ({current} -> {value})"
         if direction == "decrease" and value > current:

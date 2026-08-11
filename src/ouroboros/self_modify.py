@@ -68,7 +68,9 @@ def filter_untrusted_config_updates(
     safe: Dict[str, Any] = {}
     rejected = []
     for key, value in updates.items():
-        error = config_schema.validate_suggestion(key, value, current.get(key))
+        value, error = config_schema.coerce_suggestion(key, value)
+        if error is None:
+            error = config_schema.validate_suggestion(key, value, current.get(key))
         if error:
             rejected.append(f"{key}: {error}")
         else:
