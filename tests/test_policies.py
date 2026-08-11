@@ -318,3 +318,112 @@ def test_validate_import_policy_does_not_flag_unrelated_same_named_call():
 def test_validate_import_policy_flags_builtins_qualified_loaders(source):
     violations = validate_import_policy("src/ouroboros/x.py", source)
     assert any("Dynamic import" in v for v in violations), source
+
+
+# -- the source describes the behaviour (#51) --------------------------------
+
+def test_the_guarded_modules_own_their_own_functions():
+    """These were rebound from __init__.py at package-import time, so reading
+    policies.py did not tell you what validate_modification_scope did."""
+    import inspect
+
+    from ouroboros import improvement, policies
+
+    for fn, expected in (
+        (policies.validate_modification_scope, "policies.py"),
+        (policies.validate_change_size, "policies.py"),
+        (improvement._is_path_allowed, "improvement.py"),
+    ):
+        assert inspect.getsourcefile(fn).endswith(expected), (
+            f"{fn.__name__} is defined in "
+            f"{inspect.getsourcefile(fn)}, not {expected}"
+        )
+
+
+def test_importing_the_package_mutates_nothing():
+    """Import-time rebinding made import order semantically significant."""
+    import ast
+    from pathlib import Path
+
+    import ouroboros
+
+    source = Path(ouroboros.__file__).read_text()
+    for node in ast.parse(source).body:
+        assert isinstance(node, (ast.Assign, ast.Expr, ast.Import, ast.ImportFrom)), (
+            f"__init__.py runs {type(node).__name__} at import time"
+        )
+        if isinstance(node, ast.Expr):
+            assert isinstance(node.value, ast.Constant), "no calls at import time"
+
+
+# -- one definition of what is immutable -------------------------------------
+
+def test_both_gates_agree_on_a_forbidden_path():
+    """They were kept aligned by patching both from outside. Sharing the helper
+    is what makes them unable to disagree."""
+    from dataclasses import replace
+
+    from ouroboros import improvement
+    from ouroboros.config import SafetyConfig
+    from ouroboros.policies import validate_modification_scope
+
+    config = replace(
+        SafetyConfig(),
+        forbidden_modification_paths=("src/ouroboros/policies.py",),
+        allowed_modification_paths=("src/",),
+    )
+    target = "src/ouroboros/policies.py"
+
+    assert improvement._is_path_allowed(target, config) is False
+    assert list(validate_modification_scope([target], config)), (
+        "the scope check let through what the improvement gate refused"
+    )
+
+
+def test_a_forbidden_prefix_covers_everything_under_it():
+    """The shipped config lists filenames; the prefix arm is what lets an
+    operator forbid a directory without naming every file in it."""
+    from ouroboros.policies import is_forbidden_modification_path
+
+    forbidden = ("src/ouroboros/internal/",)
+    assert is_forbidden_modification_path(
+        "src/ouroboros/internal/deep/thing.py", forbidden
+    )
+    assert not is_forbidden_modification_path("src/ouroboros/other.py", forbidden)
+
+
+def test_a_bare_filename_is_matched_anywhere_in_the_tree():
+    from ouroboros.policies import is_forbidden_modification_path
+
+    assert is_forbidden_modification_path("src/ouroboros/config.py", ("config.py",))
+    assert is_forbidden_modification_path("config.py", ("config.py",))
+    assert not is_forbidden_modification_path("src/settings.py", ("config.py",))
+
+
+# -- the decision carries what it was made against ---------------------------
+
+def test_policy_results_are_lists_of_violations_first():
+    """Every existing caller treats the return value as the violations."""
+    from ouroboros.policies import validate_change_size, validate_modification_scope
+
+    clean = validate_modification_scope(["src/ouroboros/x.py"])
+    assert clean == [] and not clean and clean.is_valid
+
+    over = validate_change_size(99, 9999)
+    assert len(over) == 2 and not over.is_valid
+    assert over.violations == list(over)
+
+
+def test_metrics_still_records_the_inputs_to_the_decision():
+    """The structured fields exist for this; a plain list would thin it."""
+    from ouroboros.metrics import _serialize_policy_result
+    from ouroboros.policies import validate_change_size, validate_modification_scope
+
+    size = _serialize_policy_result(validate_change_size(99, 9999))
+    assert {"num_files", "max_files", "num_lines", "max_lines"} <= set(size)
+
+    scope = _serialize_policy_result(
+        validate_modification_scope(["policies.py"])
+    )
+    assert {"file_paths", "allowed_prefixes", "forbidden_paths"} <= set(scope)
+    assert scope["is_valid"] is False

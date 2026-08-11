@@ -17,6 +17,59 @@ class PolicyError(RuntimeError):
     pass
 
 
+class _PolicyDecision(list):
+    """A list of violations that also carries what was decided and against what.
+
+    A list first, so every caller that treats the result as "the violations"
+    keeps working; the attributes exist because metrics records the inputs to
+    the decision, not only its outcome.
+    """
+
+    @property
+    def violations(self) -> List[str]:
+        return list(self)
+
+    @property
+    def is_valid(self) -> bool:
+        return len(self) == 0
+
+
+class ModificationScopeResult(_PolicyDecision):
+    def __init__(self, file_paths, allowed_prefixes, forbidden_paths, violations):
+        super().__init__(violations)
+        self.file_paths = list(file_paths)
+        self.allowed_prefixes = list(allowed_prefixes)
+        self.forbidden_paths = list(forbidden_paths)
+
+
+class ChangeSizeResult(_PolicyDecision):
+    def __init__(self, num_files, max_files, num_lines, max_lines, violations):
+        super().__init__(violations)
+        self.num_files = num_files
+        self.max_files = max_files
+        self.num_lines = num_lines
+        self.max_lines = max_lines
+
+
+def is_forbidden_modification_path(
+    file_path: str,
+    forbidden_paths: Tuple[str, ...],
+) -> bool:
+    """Whether a path is off limits for modification.
+
+    Entries may be a bare filename or a path prefix. The shipped config uses
+    filenames, so the prefix arm is what lets an operator forbid a directory
+    without listing every file in it.
+    """
+    if Path(file_path).name in forbidden_paths:
+        return True
+
+    return any(
+        file_path == forbidden_path or file_path.startswith(forbidden_path)
+        for forbidden_path in forbidden_paths
+    )
+
+
 def require_pr_only(is_pr_only: bool) -> None:
     if not is_pr_only:
         raise PolicyError("PR-only policy violated")
@@ -25,10 +78,11 @@ def require_pr_only(is_pr_only: bool) -> None:
 def validate_modification_scope(
     file_paths: List[str],
     config: SafetyConfig | None = None,
-) -> List[str]:
+) -> ModificationScopeResult:
     """Validate that all file paths are within allowed modification scope.
 
-    Returns a list of violation messages (empty = all paths valid).
+    The result is a list of violation messages (empty = all paths valid) that
+    also carries what was checked, for metrics.
     """
     config = config or SafetyConfig()
     violations = []
@@ -37,7 +91,9 @@ def validate_modification_scope(
         basename = Path(file_path).name
 
         # Check forbidden files
-        if basename in config.forbidden_modification_paths:
+        if is_forbidden_modification_path(
+            file_path, config.forbidden_modification_paths
+        ):
             violations.append(f"Forbidden file: {file_path} ({basename} is immutable)")
             continue
 
@@ -51,7 +107,12 @@ def validate_modification_scope(
                 f"Out of scope: {file_path} (must be under {config.allowed_modification_paths})"
             )
 
-    return violations
+    return ModificationScopeResult(
+        file_paths=file_paths,
+        allowed_prefixes=config.allowed_modification_paths,
+        forbidden_paths=config.forbidden_modification_paths,
+        violations=violations,
+    )
 
 
 def _imported_module_names(tree: ast.AST) -> List[Tuple[str, int]]:
@@ -205,10 +266,11 @@ def validate_change_size(
     num_files: int,
     num_lines: int,
     config: SafetyConfig | None = None,
-) -> List[str]:
+) -> ChangeSizeResult:
     """Validate that a change doesn't exceed size limits.
 
-    Returns a list of violation messages (empty = valid).
+    The result is a list of violation messages (empty = valid) that also
+    carries the limits it was measured against, for metrics.
     """
     config = config or SafetyConfig()
     violations = []
@@ -222,4 +284,10 @@ def validate_change_size(
             f"Too many lines: {num_lines} > {config.max_lines_changed_per_pr}"
         )
 
-    return violations
+    return ChangeSizeResult(
+        num_files=num_files,
+        max_files=config.max_changed_files_per_pr,
+        num_lines=num_lines,
+        max_lines=config.max_lines_changed_per_pr,
+        violations=violations,
+    )

@@ -82,11 +82,13 @@ IMMUTABLE_FILES = frozenset({
 
 def _is_path_allowed(file_path: str, config: SafetyConfig) -> bool:
     """Check if a file path is allowed for modification."""
-    # Check forbidden paths (match by filename)
-    basename = Path(file_path).name
-    if basename in IMMUTABLE_FILES:
+    from .policies import is_forbidden_modification_path
+
+    if Path(file_path).name in IMMUTABLE_FILES:
         return False
-    if basename in config.forbidden_modification_paths:
+    # Shared with policies.validate_modification_scope so the two gates cannot
+    # disagree about what is immutable.
+    if is_forbidden_modification_path(file_path, config.forbidden_modification_paths):
         return False
 
     # Check allowed paths (match by prefix)
