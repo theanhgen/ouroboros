@@ -68,15 +68,43 @@ COMMENT_SUGGESTIBLE_FIELDS = frozenset({
     "telegram_error_min_interval_seconds",
 })
 
-# Suggestions from a comment may only make the agent less active. An interval
-# can grow, a count can shrink. "Post less often" is reasonable advice from a
-# stranger; "poll ten times faster" is the thing the guard exists to prevent,
-# and this makes a hostile suggestion self-limiting rather than relying on the
-# bounds above to be tight enough.
-_LOWER_IS_MORE_ACTIVE = frozenset({
-    name for name in COMMENT_SUGGESTIBLE_FIELDS
-    if name.endswith(("_seconds", "_hours", "_minutes"))
-})
+# Which direction makes the agent less active, stated per field rather than
+# inferred from the name. A suffix heuristic got community_min_comments_for_early
+# backwards: it reads as a count, but lowering it makes the agent act *sooner*.
+#
+# "increase" = a suggestion may only raise it; "decrease" = only lower it.
+_SUGGESTION_DIRECTION: Dict[str, str] = {
+    "interval_seconds": "increase",
+    "min_comment_interval_seconds": "increase",
+    "min_post_interval_hours": "increase",
+    "self_question_hours": "increase",
+    "comment_check_interval_hours": "increase",
+    "improvement_interval_hours": "increase",
+    "community_wait_hours": "increase",
+    "telegram_error_min_interval_seconds": "increase",
+    "max_comments_per_cycle": "decrease",
+    # Lowering this triggers community analysis earlier, so it is the
+    # more-active direction despite reading like a capacity count.
+    "community_min_comments_for_early": "increase",
+}
+
+# Ceilings for a public suggestion, much tighter than the operator ones. "Less
+# active" taken far enough is "stopped": the operator ceiling on
+# interval_seconds is a year, and a suggestion of that would park the agent
+# while passing the direction rule. Throttling alerts to a year would hide
+# that it had.
+_SUGGESTION_BOUNDS: Dict[str, Bounds] = {
+    "interval_seconds": Bounds(60, 21_600),                    # 1 min - 6 h
+    "min_comment_interval_seconds": Bounds(60, 86_400),        # 1 min - 1 day
+    "telegram_error_min_interval_seconds": Bounds(60, 86_400),
+    "min_post_interval_hours": Bounds(1, 168),                 # up to a week
+    "self_question_hours": Bounds(1, 168),
+    "comment_check_interval_hours": Bounds(1, 168),
+    "improvement_interval_hours": Bounds(1, 336),              # up to a fortnight
+    "community_wait_hours": Bounds(1, 336),
+    "max_comments_per_cycle": Bounds(0, 10),
+    "community_min_comments_for_early": Bounds(1, 50),
+}
 
 
 # Accepted by `config modify` but not RunnerConfig fields: self_modify routes
@@ -102,6 +130,30 @@ def _is_bool_field(declared: Any) -> bool:
     return declared in ("bool", bool)
 
 
+def _is_float_field(declared: Any) -> bool:
+    return declared in ("float", float)
+
+
+# Fields the loader ignores when their replacement is present, so writing one
+# reports success and changes nothing. Still real dataclass fields with real
+# defaults -- the value is valid, the write is what is futile.
+_SUPERSEDED = {"self_improve_interval_hours": "improvement_interval_hours"}
+
+
+def settable_error(key: str) -> Optional[str]:
+    """Return an error if this key cannot usefully be written, whatever its value.
+
+    Separate from `validate` because a superseded field still holds a valid
+    value; it is only *setting* it that silently does nothing.
+    """
+    if key in _SUPERSEDED:
+        return (
+            f"{key} is deprecated and ignored when "
+            f"{_SUPERSEDED[key]} is set; use {_SUPERSEDED[key]} instead"
+        )
+    return None
+
+
 def validate(key: str, value: Any) -> Optional[str]:
     """Return an error message if key/value is not a valid config setting.
 
@@ -119,6 +171,13 @@ def validate(key: str, value: Any) -> Optional[str]:
     if _is_bool_field(declared):
         if not isinstance(value, bool):
             return f"{key} must be true or false"
+        return None
+
+    if _is_float_field(declared):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return f"{key} must be a number, got {value!r}"
+        if value <= 0:
+            return f"{key} must be positive, got {value}"
         return None
 
     if _is_int_field(declared):
@@ -150,15 +209,25 @@ def validate_suggestion(key: str, value: Any, current: Any) -> Optional[str]:
     if key not in COMMENT_SUGGESTIBLE_FIELDS:
         return f"{key} may only be changed by an operator"
 
-    error = validate(key, value)
+    error = settable_error(key) or validate(key, value)
     if error:
         return error
 
-    if isinstance(current, int) and isinstance(value, int):
-        if key in _LOWER_IS_MORE_ACTIVE and value < current:
+    direction = _SUGGESTION_DIRECTION.get(key)
+    if direction and isinstance(current, int) and isinstance(value, int):
+        if direction == "increase" and value < current:
             return f"{key} may only be increased by a suggestion ({current} -> {value})"
-        if key not in _LOWER_IS_MORE_ACTIVE and value > current:
+        if direction == "decrease" and value > current:
             return f"{key} may only be reduced by a suggestion ({current} -> {value})"
+
+    bounds = _SUGGESTION_BOUNDS.get(key)
+    if bounds and isinstance(value, int) and not isinstance(value, bool):
+        if bounds.minimum is not None and value < bounds.minimum:
+            return f"{key} may not be set below {bounds.minimum} by a suggestion"
+        if bounds.maximum is not None and value > bounds.maximum:
+            # "Less active" taken far enough is "stopped". The direction rule
+            # alone would wave through interval_seconds=31536000.
+            return f"{key} may not be set above {bounds.maximum} by a suggestion"
 
     return None
 
@@ -192,6 +261,12 @@ def parse_value(key: str, raw: str) -> Tuple[Any, Optional[str]]:
             return False, None
         return None, f"{key} must be true or false, got {raw!r}"
 
+    if _is_float_field(declared):
+        try:
+            return float(raw.strip()), None
+        except ValueError:
+            return None, f"{key} must be a number, got {raw!r}"
+
     if _is_int_field(declared):
         try:
             return int(raw.strip()), None
@@ -213,6 +288,8 @@ def describe(key: str) -> str:
     declared = types[key]
     if _is_bool_field(declared):
         return "true or false"
+    if _is_float_field(declared):
+        return "a positive number"
     if _is_int_field(declared):
         bounds = _BOUNDS.get(key, Bounds(1, None))
         if bounds.maximum is None:

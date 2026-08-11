@@ -196,3 +196,80 @@ def test_a_count_may_not_be_raised_by_a_suggestion():
 def test_out_of_range_and_wrong_typed_suggestions_are_refused(key, value):
     safe, _ = filter_untrusted_config_updates({key: value}, {key: 1800})
     assert safe == {}
+
+
+# -- a suggestion may not park the agent -------------------------------------
+
+def test_an_interval_may_not_be_raised_past_the_public_ceiling():
+    """The direction rule alone makes "less active" unbounded.
+
+    interval_seconds has an operator ceiling of a year, and a year is an
+    increase, so the direction rule waves it through -- a comment could stop
+    the agent for as long as it liked while every guard reported success.
+    """
+    safe, reason = _reject_reason(
+        {"interval_seconds": 31_536_000}, {"interval_seconds": 1800}
+    )
+    assert safe == {}
+    assert "may not be set above 21600" in reason
+
+
+def test_error_throttling_may_not_be_raised_to_a_year_by_a_suggestion():
+    """Silencing the alerts is how you hide having parked the agent."""
+    safe, _ = filter_untrusted_config_updates(
+        {"telegram_error_min_interval_seconds": 31_536_000},
+        {"telegram_error_min_interval_seconds": 300},
+    )
+    assert safe == {}
+
+
+def test_a_suggestion_may_still_throttle_within_the_ceiling():
+    safe, _ = filter_untrusted_config_updates(
+        {"interval_seconds": 7200}, {"interval_seconds": 1800}
+    )
+    assert safe == {"interval_seconds": 7200}
+
+
+# -- direction is declared, not guessed from the name ------------------------
+
+def test_lowering_the_early_analysis_threshold_is_refused():
+    """It reads like a capacity count, so a name-suffix heuristic classified it
+    as reduce-only -- but lowering it makes the agent analyse *sooner*."""
+    safe, reason = _reject_reason(
+        {"community_min_comments_for_early": 0},
+        {"community_min_comments_for_early": 5},
+    )
+    assert safe == {}
+    assert "only be increased" in reason
+
+
+def test_raising_the_early_analysis_threshold_is_allowed():
+    safe, _ = filter_untrusted_config_updates(
+        {"community_min_comments_for_early": 10},
+        {"community_min_comments_for_early": 5},
+    )
+    assert safe == {"community_min_comments_for_early": 10}
+
+
+# -- fail closed -------------------------------------------------------------
+
+def test_an_unreadable_current_config_rejects_every_suggestion(monkeypatch):
+    """Without the current values the direction rule silently passes everything,
+    so a decrease that should be refused would be applied."""
+    import ouroboros.moltbook as moltbook
+
+    def boom():
+        raise OSError("config unreadable")
+
+    monkeypatch.setattr(moltbook, "load_runner_config", boom)
+
+    safe, rejected = filter_untrusted_config_updates({"interval_seconds": 60})
+    assert safe == {}
+    assert any("unreadable" in r for r in rejected)
+
+
+def test_a_deprecated_alias_is_not_suggestible():
+    safe, _ = filter_untrusted_config_updates(
+        {"self_improve_interval_hours": 96}, {"self_improve_interval_hours": 48}
+    )
+    assert safe == {}

@@ -218,6 +218,9 @@ class RunnerConfig:
     community_wait_hours: int = 48
     community_min_comments_for_early: int = 3
     community_improvement_interval_hours: int = 72
+    # Read via getattr in community_improvement and set in the tracked
+    # agent.json, but never declared here, so nothing validated it.
+    community_post_interval_hours: float = 1.0
     # GitHub issue resolution
     enable_github_improvement: bool = False
     github_improvement_interval_hours: int = 12
@@ -328,6 +331,7 @@ def load_runner_config() -> RunnerConfig:
         community_wait_hours=int(data.get("community_wait_hours", 48)),
         community_min_comments_for_early=int(data.get("community_min_comments_for_early", 3)),
         community_improvement_interval_hours=int(data.get("community_improvement_interval_hours", 72)),
+        community_post_interval_hours=float(data.get("community_post_interval_hours", 1.0)),
         enable_github_improvement=bool(data.get("enable_github_improvement", False)),
         github_improvement_interval_hours=int(data.get("github_improvement_interval_hours", 12)),
         enable_issue_scouting=bool(data.get("enable_issue_scouting", False)),

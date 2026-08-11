@@ -100,7 +100,10 @@ def cmd_config_modify(args: argparse.Namespace) -> int:
             return 1
         key, raw = kv.split("=", 1)
 
-        parsed, error = config_schema.parse_value(key, raw)
+        error = config_schema.settable_error(key)
+        parsed = None
+        if error is None:
+            parsed, error = config_schema.parse_value(key, raw)
         if error is None:
             error = config_schema.validate(key, parsed)
         if error:

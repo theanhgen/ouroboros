@@ -59,8 +59,11 @@ def filter_untrusted_config_updates(
 
         try:
             current = vars(load_runner_config())
-        except Exception:
-            current = {}
+        except Exception as exc:
+            # Fail closed. Without the current values the direction rule
+            # silently does nothing, so a decrease that should be refused
+            # would be applied.
+            return {}, [f"*: current configuration unreadable ({exc})"]
 
     safe: Dict[str, Any] = {}
     rejected = []

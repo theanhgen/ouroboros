@@ -535,3 +535,46 @@ def test_credential_aliases_are_settable():
     from ouroboros.config_schema import validate
 
     assert validate("ollama_api_key", "secret") is None
+
+
+def test_every_tracked_config_key_is_a_known_setting():
+    """The checked-in config is the operator's worked example.
+
+    A key that lives there but is not a RunnerConfig field is either dead or
+    read behind a getattr default -- and the schema would reject an operator
+    setting the project itself ships.
+    """
+    import json
+    from pathlib import Path
+
+    from ouroboros.config_schema import field_types, validate
+
+    tracked = Path(__file__).resolve().parents[1] / "config" / "agent.json"
+    if not tracked.exists():
+        pytest.skip("no tracked sample config")
+
+    known = field_types()
+    for key, value in json.loads(tracked.read_text()).items():
+        assert key in known, f"{key} is in config/agent.json but not a setting"
+        assert validate(key, value) is None, f"{key}={value!r}"
+
+
+def test_setting_a_superseded_key_is_refused_rather_than_silently_ignored():
+    """The loader honours self_improve_interval_hours only when
+    improvement_interval_hours is absent, so writing it normally reports
+    success and changes nothing."""
+    from ouroboros.config_schema import settable_error
+
+    error = settable_error("self_improve_interval_hours")
+    assert error and "improvement_interval_hours" in error
+    assert settable_error("improvement_interval_hours") is None
+
+
+def test_a_float_field_parses_and_validates_as_a_float():
+    from ouroboros.config_schema import parse_value, validate
+
+    value, error = parse_value("community_post_interval_hours", "0.5")
+    assert (value, error) == (0.5, None)
+    assert validate("community_post_interval_hours", 0.5) is None
+    assert validate("community_post_interval_hours", 0) is not None
+    assert validate("community_post_interval_hours", "soon") is not None
