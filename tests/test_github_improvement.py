@@ -184,11 +184,17 @@ class TestGitHubFixImportPolicy:
         with patch("ouroboros.test_runner.run_tests") as mock_test, \
              patch("ouroboros.git_ops.current_branch", return_value="main"), \
              patch("ouroboros.git_ops.checkout_branch"), \
-             patch("ouroboros.git_ops.delete_branch"):
+             patch("ouroboros.git_ops.delete_branch"), \
+             patch("ouroboros.git_ops.commit_changes"), \
+             patch("ouroboros.git_ops.push_branch"), \
+             patch("ouroboros.git_ops.create_pr", return_value="http://pr/1"):
             mock_test.return_value = MagicMock(failed=0, errors=0)
             result = apply_github_fix(MagicMock(), issue, {}, self.repo_root)
 
-        assert "Import policy" not in (result.error or "")
+        # Asserting on the absence of a message prefix could not fail once the
+        # prefix changed. Assert the outcome instead -- which is what caught
+        # that the flow was not reaching the end at all.
+        assert result.status == "success", result.error
         mock_write.assert_called()
 
     @patch("ouroboros.git_ops.create_branch")
@@ -265,3 +271,56 @@ class TestGitHubFixImportPolicy:
 
         assert result.status == "failed"
         assert victim.read_text() == "original\n"
+
+    @patch("ouroboros.llm.chat_completion")
+    def test_issue_context_cannot_read_outside_the_repository(self, mock_llm, tmp_path):
+        """target_files comes from a model reading a public issue, and the
+        contents go into a prompt whose reply becomes a public PR -- so an
+        unguarded read here quotes a credentials file back out."""
+        repo = tmp_path / "repo"
+        (repo / "src" / "ouroboros").mkdir(parents=True)
+        secret = tmp_path / "credentials.json"
+        secret.write_text('{"api_key": "sk-SECRET"}')
+
+        mock_llm.return_value = (json.dumps({
+            "explanation": "e",
+            "changes": [
+                {"file_path": "src/ouroboros/a.py", "new_content": "V = 1\n"}
+            ],
+        }), None)
+
+        analysis = {"target_files": [
+            str(secret),                       # absolute: escapes repo_root
+            "../credentials.json",             # traversal
+            "src/ouroboros/nope.py",           # simply absent
+        ]}
+
+        with patch("ouroboros.test_runner.run_tests") as mock_test, \
+             patch("ouroboros.git_ops.current_branch", return_value="main"), \
+             patch("ouroboros.git_ops.create_branch"), \
+             patch("ouroboros.git_ops.checkout_branch"), \
+             patch("ouroboros.git_ops.delete_branch"), \
+             patch("ouroboros.git_ops.commit_changes"), \
+             patch("ouroboros.git_ops.push_branch"), \
+             patch("ouroboros.git_ops.create_pr", return_value="http://pr/1"):
+            mock_test.return_value = MagicMock(failed=0, errors=0)
+            apply_github_fix(MagicMock(), GitHubIssue(1, "t", "b", "a", "u"),
+                             analysis, repo)
+
+        sent = str(mock_llm.call_args)
+        assert "sk-SECRET" not in sent, "a file outside the repo reached the prompt"
+
+    def test_a_fifo_does_not_hang_the_context_read(self, tmp_path):
+        """is_file() is False for a FIFO, so it is never opened."""
+        import os
+
+        from ouroboros.github_improvement import _read_inside_repo
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        os.mkfifo(repo / "pipe")
+        assert _read_inside_repo(repo, "pipe") is None
+        assert _read_inside_repo(repo, "missing.py") is None
+
+        (repo / "real.py").write_text("V = 1\n")
+        assert _read_inside_repo(repo, "real.py") == "V = 1\n"

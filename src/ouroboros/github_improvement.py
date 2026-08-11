@@ -99,6 +99,34 @@ Codebase context (relevant files):
         return {}
 
 
+def _read_inside_repo(repo_root: Path, file_path: str) -> Optional[str]:
+    """Read a file only if it really is one, inside the repository.
+
+    Both paths this function guards come from a model reading a public issue.
+    `repo_root / "/etc/passwd"` is "/etc/passwd", and the contents go into a
+    prompt whose reply becomes a public PR -- so an unguarded read here is a
+    way to get a credentials file quoted back out. A lexical check is not
+    enough: a symlink component resolves elsewhere while looking local.
+
+    is_file() is what keeps a FIFO or a character device from hanging the
+    process or reading forever.
+    """
+    from .policies import is_safe_relative_path
+
+    if not is_safe_relative_path(file_path):
+        return None
+    try:
+        root = repo_root.resolve()
+        full = (repo_root / file_path).resolve()
+        if full != root and root not in full.parents:
+            return None
+        if not full.is_file():
+            return None
+        return full.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError, ValueError):
+        return None
+
+
 def apply_github_fix(
     client: Any,
     issue: GitHubIssue,
@@ -112,9 +140,14 @@ def apply_github_fix(
     target_files = analysis.get("target_files", [])
     file_contents = {}
     for f_rel in target_files:
-        f_path = repo_root / f_rel
-        if f_path.exists():
-            file_contents[f_rel] = read_file_raw(f_path)
+        contents = _read_inside_repo(repo_root, f_rel)
+        if contents is not None:
+            file_contents[f_rel] = contents
+        else:
+            log.warning(
+                "[github] Refusing to read %r for issue #%d context",
+                f_rel, issue.id,
+            )
 
     user_prompt = f"""
 Issue #{issue.id}: {issue.title}
@@ -159,19 +192,11 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
     for test in fix_data.get("new_tests", []):
         proposed.append((test.get("file_path", ""), test.get("content", "")))
 
-    from .policies import is_safe_relative_path
-
     gated = []
     for path, content in proposed:
-        original = ""
-        # Only read inside the tree. `repo_root / "/etc/passwd"` is
-        # "/etc/passwd", and gathering size accounting is not a reason to open
-        # a file the change is about to be refused for naming.
-        if is_safe_relative_path(path):
-            try:
-                original = (repo_root / path).read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError, ValueError):
-                original = ""
+        # Gathering size accounting is not a reason to open a file the change
+        # is about to be refused for naming.
+        original = _read_inside_repo(repo_root, path) or ""
         gated.append(
             CodeChange(
                 file_path=path,
