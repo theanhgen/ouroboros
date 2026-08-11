@@ -1268,6 +1268,11 @@ def run_loop() -> int:
                         state["last_comment_time"] = int(time.time())
                         last_comment_time = state["last_comment_time"]
 
+                # Nothing may save state between here and the extraction
+                # queueing below: a post recorded as seen but not yet queued is
+                # a post that is never extracted, which is the bug #67 is
+                # about. They reach disk in the same write.
+                #
                 # Insertion order matters: the cap is meant to keep the most
                 # recent ids, and list(set) order is arbitrary -- trimming that
                 # dropped ids at random, so old posts resurfaced as new. The
@@ -1347,18 +1352,22 @@ def run_loop() -> int:
                             # A batch that ran and found nothing is still a
                             # decision, so the posts still leave the queue.
                             _release_extracted(state, processed_ids)
-                        if processed_ids:
-                            # Checkpoint rather than waiting for the end of the
-                            # cycle: a crash in between would re-extract a
-                            # batch already recorded, paying for the LLM call
-                            # twice and duplicating the entries.
-                            try:
-                                save_state(state)
-                            except Exception:
-                                log.warning(
-                                    "Could not checkpoint the extraction queue",
-                                    exc_info=True,
-                                )
+                        # Checkpoint unconditionally rather than waiting for
+                        # the end of the cycle. A crash before this would
+                        # re-extract a batch already recorded, paying for the
+                        # call twice; it would also roll back the failure
+                        # bookkeeping -- attempt counts and posts given up on --
+                        # so a poisoned batch would get its three tries again
+                        # on every restart. This write is also what puts the
+                        # queue on disk alongside the seen_post_ids that
+                        # decided what entered it.
+                        try:
+                            save_state(state)
+                        except Exception:
+                            log.warning(
+                                "Could not checkpoint the extraction queue",
+                                exc_info=True,
+                            )
                     except Exception:
                         log.exception("Knowledge base population failed")
 

@@ -861,3 +861,20 @@ def test_a_stale_in_flight_mark_does_not_outlive_the_cycle():
     assert processed == ["stale", "fresh"]
     moltbook._release_extracted(state, processed)
     assert state["knowledge_pending"] == []
+
+
+def test_failure_bookkeeping_is_checkpointed_not_only_held_in_memory():
+    """Attempt counts and give-ups must survive a restart. If they only reached
+    disk at the end of the cycle, a poisoned batch would get three fresh tries
+    every time the process came back."""
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(state, _posts(2))
+    with mock.patch.object(llm_mod, "extract_insights_batch", return_value=None):
+        moltbook._drain_extraction_queue(state, object())
+
+    # What a save would write, not just what the object holds.
+    persisted = json.loads(json.dumps(state))
+    assert [e["attempts"] for e in persisted["knowledge_pending"]] == [1, 1]
+    assert not any(e.get("in_flight") for e in persisted["knowledge_pending"])
