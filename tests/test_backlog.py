@@ -9,6 +9,8 @@ import pytest
 from unittest.mock import patch
 
 from ouroboros.backlog import (
+    mark_done,
+    mark_failed,
     organize_backlog,
     load_backlog,
     save_backlog,
@@ -448,17 +450,23 @@ def test_organize_backlog_tolerates_a_record_without_status(tmp_path):
     assert [i["id"] for i in load_backlog(tmp_path)] == ["a1"]
 
 
-def test_organize_backlog_tolerates_a_record_without_an_id(tmp_path):
-    """A record with no id must not be merged into by an entry with no id."""
+def test_organize_backlog_keeps_a_record_it_cannot_identify(tmp_path):
+    """A pending record with no id cannot be referenced in the response.
+
+    Since the organizer prunes by omission, an unaddressable record would
+    otherwise be deleted every run purely because it has no id. Keeping it is
+    the safe direction, and it must not be merged into by an entry that also
+    has no id.
+    """
     save_backlog(tmp_path, [{"status": "pending", "description": "keep", "priority": 5}])
 
     with _client_returning(json.dumps({"items": [{"desc": "brand new"}]})):
         organize_backlog(tmp_path, client=object())
 
     items = load_backlog(tmp_path)
-    assert len(items) == 1
-    assert items[0]["description"] == "brand new"
-    assert items[0]["source"] == "backlog_organizer"
+    assert {i["description"] for i in items} == {"keep", "brand new"}
+    new = next(i for i in items if i["description"] == "brand new")
+    assert new["source"] == "backlog_organizer"
 
 
 @pytest.mark.parametrize(
@@ -541,3 +549,144 @@ def test_organize_backlog_applies_only_supplied_fields(tmp_path):
     assert item["priority"] == 8
     assert item["task_type"] == "add_test"
     assert item["description"] == "keep"
+
+
+def test_organize_backlog_does_not_revert_a_concurrent_add(tmp_path):
+    """The model call takes seconds to minutes.
+
+    Rebuilding the file from the snapshot taken before it would silently
+    revert anything committed in the meantime.
+    """
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+
+    def slow_model(*a, **k):
+        add_item(tmp_path, "add_test", "added during the model call")
+        return (json.dumps({"items": [{"id": "a1"}, {"id": "b2"}]}), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    descriptions = {i["description"] for i in load_backlog(tmp_path)}
+    assert "added during the model call" in descriptions
+
+
+def test_organize_backlog_does_not_revert_a_concurrent_mark_done(tmp_path):
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+
+    def slow_model(*a, **k):
+        mark_done(tmp_path, "b2")
+        return (json.dumps({"items": [{"id": "a1"}]}), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    by_id = {i["id"]: i for i in load_backlog(tmp_path)}
+    assert by_id["b2"]["status"] == "done", "the completion must not be reverted"
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda root: add_item(root, "fix_bug", "new"),
+        lambda root: mark_done(root, "old"),
+        lambda root: mark_failed(root, "old"),
+    ],
+)
+def test_mutators_accept_a_legacy_bare_list_file(tmp_path, mutator):
+    """load_backlog supports it, so the mutators must too -- calling .get on a
+    list raised AttributeError."""
+    path = tmp_path / "config" / "backlog.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps([_item("old")]))
+
+    mutator(tmp_path)
+
+    assert any(i["id"] == "old" for i in load_backlog(tmp_path))
+
+
+def test_organize_backlog_keeps_a_concurrent_failure_count(tmp_path):
+    """Applying the pre-model snapshot object would revert the increment."""
+    save_backlog(tmp_path, [_item("a1")])
+
+    def slow_model(*a, **k):
+        mark_failed(tmp_path, "a1")
+        return (json.dumps({"items": [{"id": "a1", "priority": 9}]}), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    item = load_backlog(tmp_path)[0]
+    assert item["attempts"] == 1, "the concurrent failure must not be reverted"
+    assert item["priority"] == 9, "and the organizer's change still applies"
+
+
+def test_organize_backlog_does_not_resurrect_a_concurrent_completion(tmp_path):
+    """Appending the snapshot's pending clone would duplicate the id and put
+    finished work back in the queue."""
+    save_backlog(tmp_path, [_item("a1")])
+
+    def slow_model(*a, **k):
+        mark_done(tmp_path, "a1")
+        return (json.dumps({"items": [{"id": "a1", "desc": "resurrected"}]}), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    items = load_backlog(tmp_path)
+    assert len(items) == 1
+    assert items[0]["status"] == "done"
+    assert items[0]["description"] != "resurrected"
+
+
+def test_organize_backlog_does_not_prune_a_concurrently_completed_record(tmp_path):
+    """Omitted from the response, but no longer pending, so not the
+    organizer's to remove."""
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+
+    def slow_model(*a, **k):
+        mark_done(tmp_path, "b2")
+        return (json.dumps({"items": [{"id": "a1"}]}), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    by_id = {i["id"]: i for i in load_backlog(tmp_path)}
+    assert by_id["b2"]["status"] == "done"
+
+
+def test_organize_backlog_does_not_prune_a_concurrently_failed_record(tmp_path):
+    """"Still pending" is not "unchanged".
+
+    mark_failed increments attempts without leaving the pending state, and
+    pruning that record discards the failure history the retry logic uses.
+    """
+    save_backlog(tmp_path, [_item("a1"), _item("b2")])
+
+    def slow_model(*a, **k):
+        mark_failed(tmp_path, "b2")
+        return (json.dumps({"items": [{"id": "a1"}]}), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    by_id = {i["id"]: i for i in load_backlog(tmp_path)}
+    assert "b2" in by_id, "a record changed since the snapshot must not be pruned"
+    assert by_id["b2"]["attempts"] == 1
+
+
+def test_organize_backlog_does_not_recreate_a_record_removed_meanwhile(tmp_path):
+    """Another writer removed it while the model ran.
+
+    Recreating it from the response resurrects the task with its attempts
+    reset to zero.
+    """
+    save_backlog(tmp_path, [_item("a1", attempts=2)])
+
+    def slow_model(*a, **k):
+        save_backlog(tmp_path, [])  # another organizer prunes it
+        return (json.dumps({"items": [{"id": "a1", "desc": "back from the dead"}]}), None)
+
+    with patch("ouroboros.llm.chat_completion", side_effect=slow_model):
+        organize_backlog(tmp_path, client=object())
+
+    assert load_backlog(tmp_path) == []

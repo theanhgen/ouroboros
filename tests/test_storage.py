@@ -14,6 +14,7 @@ from ouroboros.storage import (
     OuroborosStorage,
     load_json_file,
     save_json_file,
+    update_json_file,
 )
 
 
@@ -580,3 +581,159 @@ def test_record_fingerprint_is_stable_and_distinguishing():
     assert fp("a", "b") == fp("a", "b")
     assert fp("a", "b") != fp("b", "a")
     assert fp("a", None) != fp("a", "")
+
+
+# -- update_json_file: read-modify-write under one lock ----------------------
+
+def test_update_json_file_creates_from_the_default(tmp_path):
+    path = tmp_path / "x.json"
+
+    def add(data):
+        data["items"].append("a")
+
+    update_json_file(path, add, default={"items": []})
+    assert load_json_file(path) == {"items": ["a"]}
+
+
+def test_update_json_file_returns_what_mutate_returns(tmp_path):
+    path = tmp_path / "x.json"
+
+    def add(data):
+        entry = {"id": "1"}
+        data["items"].append(entry)
+        return entry
+
+    assert update_json_file(path, add, default={"items": []}) == {"id": "1"}
+
+
+def test_update_json_file_sees_existing_contents(tmp_path):
+    path = tmp_path / "x.json"
+    save_json_file(path, {"items": ["existing"]})
+
+    update_json_file(path, lambda d: d["items"].append("new"), default={"items": []})
+
+    assert load_json_file(path) == {"items": ["existing", "new"]}
+
+
+def test_update_json_file_recovers_from_a_corrupt_file(tmp_path):
+    path = tmp_path / "x.json"
+    path.write_text("{ not json")
+
+    update_json_file(path, lambda d: d["items"].append("a"), default={"items": []})
+
+    assert load_json_file(path) == {"items": ["a"]}
+
+
+def test_update_json_file_does_not_write_when_mutate_raises(tmp_path):
+    path = tmp_path / "x.json"
+    save_json_file(path, {"items": ["original"]})
+
+    def boom(data):
+        data["items"].append("half-applied")
+        raise ValueError("mutate failed")
+
+    with pytest.raises(ValueError):
+        update_json_file(path, boom, default={"items": []})
+
+    assert load_json_file(path) == {"items": ["original"]}
+    assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_concurrent_updates_do_not_lose_records(tmp_path):
+    """The whole point: load-then-save as separate calls loses most of them.
+
+    Measured on this codepath before the change: 8 of 60 appends survived.
+    """
+    import threading
+
+    path = tmp_path / "x.json"
+    errors = []
+
+    def writer(n):
+        try:
+            for i in range(15):
+                update_json_file(
+                    path,
+                    lambda d, v=f"{n}-{i}": d["items"].append(v),
+                    default={"items": []},
+                )
+        except Exception as exc:  # pragma: no cover
+            errors.append(exc)
+
+    threads = [threading.Thread(target=writer, args=(n,)) for n in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == []
+    items = load_json_file(path)["items"]
+    assert len(items) == 60
+    assert len(set(items)) == 60
+
+
+def test_save_json_file_still_works_alongside_updates(tmp_path):
+    """Both take the same lock, so they must not deadlock each other."""
+    path = tmp_path / "x.json"
+    save_json_file(path, {"items": []})
+    update_json_file(path, lambda d: d["items"].append("a"), default={"items": []})
+    save_json_file(path, {"items": ["replaced"]})
+    assert load_json_file(path) == {"items": ["replaced"]}
+
+
+def test_a_nested_lock_fails_fast_instead_of_hanging(tmp_path):
+    """flock is not re-entrant across descriptors, so a save inside an update
+    callback would block the agent forever on a lock it already holds."""
+    path = tmp_path / "x.json"
+
+    def nested(data):
+        save_json_file(tmp_path / "other.json", {"a": 1})
+
+    with pytest.raises(RuntimeError, match="re-entrant lock"):
+        update_json_file(path, nested, default={})
+
+
+def test_the_lock_is_released_after_the_guard_fires(tmp_path):
+    """A failed nested attempt must not leave the directory locked."""
+    path = tmp_path / "x.json"
+
+    with pytest.raises(RuntimeError):
+        update_json_file(
+            path, lambda d: save_json_file(path, {"a": 1}), default={}
+        )
+
+    save_json_file(path, {"recovered": True})
+    assert load_json_file(path) == {"recovered": True}
+
+
+def test_updates_are_serialised_across_processes(tmp_path):
+    """Threads share the GIL; the lock has to hold between processes too."""
+    import subprocess
+    import sys
+    import textwrap
+
+    path = tmp_path / "x.json"
+    save_json_file(path, {"items": []})
+
+    script = textwrap.dedent(f"""
+        import sys
+        sys.path.insert(0, {str(Path(__file__).resolve().parent.parent / "src")!r})
+        from ouroboros.storage import update_json_file
+        for i in range(25):
+            update_json_file(
+                {str(path)!r},
+                lambda d, v=f"{{sys.argv[1]}}-{{i}}": d["items"].append(v),
+                default={{"items": []}},
+            )
+    """)
+
+    procs = [
+        subprocess.Popen([sys.executable, "-c", script, str(n)])
+        for n in range(3)
+    ]
+    for proc in procs:
+        assert proc.wait(timeout=60) == 0
+
+    items = load_json_file(path)["items"]
+    assert len(items) == 75, f"lost {75 - len(items)} records across processes"
+    assert len(set(items)) == 75

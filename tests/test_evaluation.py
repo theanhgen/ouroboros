@@ -180,8 +180,10 @@ def test_history_write_is_atomic(tmp_path, monkeypatch):
 
     monkeypatch.setattr("ouroboros.storage.os.replace", failing_replace)
 
+    from ouroboros.storage import save_json_file
+
     with pytest.raises(OSError):
-        ev.save_json_file(path, [{"a": 1}])
+        save_json_file(path, [{"a": 1}])
 
     # The original file is untouched -- the partial write went to a temp file.
     assert path.read_text() == "[]"
@@ -304,3 +306,36 @@ def test_a_merged_pr_with_genuinely_no_feedback_still_finalises(tmp_path, monkey
             history = ev.check_pr_outcomes(tmp_path)
 
     assert history[0].outcome == "merged"
+
+
+@pytest.mark.parametrize("payload", ["{}", "null", '"a string"', "42", "[]"])
+def test_fallback_persists_over_any_legacy_history_shape(tmp_path, monkeypatch, payload):
+    """The fallback exists to keep a record the database refused.
+
+    _load_legacy_history tolerates these shapes as "no history", so appending
+    to one must not raise and lose the record instead.
+    """
+    import ouroboros.evaluation as ev
+    from ouroboros.improvement import ImprovementResult, ImprovementTask
+
+    hist = tmp_path / "config" / "improvement_history.json"
+    hist.parent.mkdir(parents=True)
+    hist.write_text(payload)
+
+    real = ev._history_storage(tmp_path)
+
+    class Broken:
+        def __getattr__(self, name):
+            return getattr(real, name)
+
+        def append_improvement(self, record):
+            raise OSError("disk full")
+
+    monkeypatch.setattr(ev, "_history_storage", lambda root=None: Broken())
+
+    task = ImprovementTask("t1", "fix_bug", "d", [], "e")
+    ev.record_improvement(
+        ImprovementResult(task=task, status="success", pr_url="https://x/1"), tmp_path
+    )
+
+    assert [r["task_id"] for r in json.loads(hist.read_text())] == ["t1"]

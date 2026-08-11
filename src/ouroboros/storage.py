@@ -7,9 +7,11 @@ import logging
 import os
 import sqlite3
 import tempfile
+import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from .codebase import get_repo_root
@@ -60,6 +62,69 @@ def load_json_file(
         return copy.deepcopy(default)
 
 
+_held_locks = threading.local()
+
+
+@contextmanager
+def _directory_lock(directory: Path):
+    """Hold an exclusive lock on a directory for the duration of the block.
+
+    The lock is on the directory rather than a lock file: several of these
+    targets live in the repository, and any extra file beside them shows up as
+    untracked, which stops the improvement loop.
+
+    Not re-entrant -- flock on a second descriptor blocks even within one
+    process. Nesting is detected and raises rather than hanging the agent
+    forever on a lock it holds itself.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    key = str(directory.resolve())
+    held = getattr(_held_locks, "paths", None)
+    if held is None:
+        held = _held_locks.paths = set()
+    if key in held:
+        raise RuntimeError(
+            f"re-entrant lock on {key}: a save inside an update callback would "
+            f"deadlock. Mutate the value the callback was given instead."
+        )
+
+    fd = os.open(str(directory), os.O_RDONLY)
+    held.add(key)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        held.discard(key)
+        os.close(fd)
+
+
+def _write_json_unlocked(
+    json_path: Path, data: Any, *, sort_keys: bool, indent: int
+) -> None:
+    """Write via a unique temp file and an atomic rename. Caller holds the lock.
+
+    The temp name is unique per writer: a fixed "<name>.tmp" is shared state,
+    so two processes writing the same target would truncate the same scratch
+    file and one could publish what the other was still writing.
+    """
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(json_path.parent), prefix=f".{json_path.name}.", suffix=".tmp"
+    )
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=indent, sort_keys=sort_keys)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, json_path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
 def save_json_file(
     path: Union[str, Path],
     data: Any,
@@ -67,50 +132,57 @@ def save_json_file(
     sort_keys: bool = False,
     indent: int = 2,
 ) -> None:
-    """Safely write JSON via a temp file, fsync, and atomic replace.
+    """Atomically replace a file's contents.
 
-    The temp file name is unique per writer. A fixed "<name>.tmp" is shared
-    state: two processes writing the same target would open and truncate the
-    same scratch file, and whichever renamed second could publish a file the
-    other was still writing.
-
-    The lock is taken on the containing directory rather than on a lock file.
-    Several of these targets live inside the repository, and any extra file
-    left beside them shows up as untracked -- commit_auto_state would not
-    stage it and git_ops.is_clean counts untracked as dirty, so every
-    subsequent improvement cycle would abort with a dirty worktree. Locking
-    the directory needs no file at all. It serialises every write in that
-    directory rather than just this one, which for a handful of small state
-    files is not worth a more precise scheme.
-
-    A failure anywhere before the rename removes the temp file, so a full disk
-    or a serialisation error does not leave scratch files accumulating.
+    For read-modify-write use update_json_file: loading, changing and saving
+    as separate steps lets a second process interleave between the load and
+    the save, and the later write silently discards the earlier one.
     """
     json_path = Path(path).expanduser()
-    json_path.parent.mkdir(parents=True, exist_ok=True)
+    with _directory_lock(json_path.parent):
+        _write_json_unlocked(json_path, data, sort_keys=sort_keys, indent=indent)
 
-    fd, tmp_name = tempfile.mkstemp(
-        dir=str(json_path.parent), prefix=f".{json_path.name}.", suffix=".tmp"
-    )
-    tmp_path = Path(tmp_name)
 
-    try:
-        dir_fd = os.open(str(json_path.parent), os.O_RDONLY)
+def update_json_file(
+    path: Union[str, Path],
+    mutate: Callable[[Any], Any],
+    *,
+    default: Any,
+    sort_keys: bool = False,
+    indent: int = 2,
+    replace: bool = False,
+) -> Any:
+    """Load, apply mutate, and write back, all under one lock.
+
+    save_json_file only serialises the write. Callers that load, append and
+    save as three steps -- adding a backlog item, recording an improvement --
+    can both read version N, each append a different record, and both write
+    successfully; the second write drops the first record with no error
+    anywhere.
+
+    ``mutate`` receives the loaded value and changes it in place. Whatever it
+    returns is returned from here, so a caller can hand back the record it
+    created without a second read.
+
+    With ``replace``, what mutate returns is written instead -- needed when the
+    root value itself has to change, such as normalising a corrupt document of
+    the wrong type before appending to it.
+    """
+    json_path = Path(path).expanduser()
+    with _directory_lock(json_path.parent):
         try:
-            fcntl.flock(dir_fd, fcntl.LOCK_EX)
-            try:
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=indent, sort_keys=sort_keys)
-                    f.flush()
-                    os.fsync(f.fileno())
-                os.replace(tmp_path, json_path)
-            finally:
-                fcntl.flock(dir_fd, fcntl.LOCK_UN)
-        finally:
-            os.close(dir_fd)
-    except BaseException:
-        tmp_path.unlink(missing_ok=True)
-        raise
+            with json_path.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            data = copy.deepcopy(default)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            log.warning("Corrupt %s; starting from the default", json_path)
+            data = copy.deepcopy(default)
+
+        result = mutate(data)
+        to_write = result if replace else data
+        _write_json_unlocked(json_path, to_write, sort_keys=sort_keys, indent=indent)
+        return result
 
 
 @dataclass
@@ -132,17 +204,26 @@ class MetricRecord:
 
 
 class OuroborosStorage:
-    def _connect(self) -> sqlite3.Connection:
-        """Open a connection with the declared foreign key actually enforced.
+    @contextmanager
+    def _connect(self):
+        """A connection that is committed on success and always closed.
 
-        SQLite defaults foreign_keys to OFF per connection, so the REFERENCES
-        clause on metrics was decorative: a MetricRecord for a cycle that does
-        not exist was accepted, counted by get_total_cost, and invisible to
-        get_recent_cycles, which reports a cost no cycle accounts for.
+        `with sqlite3.connect(...)` commits or rolls back but does not close,
+        so every call leaked a handle -- visible as ResourceWarnings, and on a
+        long-running agent as a growing descriptor count.
+
+        The PRAGMA is per connection: SQLite defaults foreign_keys to OFF, so
+        the REFERENCES clause on metrics was decorative. A MetricRecord for a
+        cycle that does not exist was accepted, counted by get_total_cost, and
+        invisible to get_recent_cycles -- a cost no cycle accounts for.
         """
         conn = sqlite3.connect(self.db_path)
-        conn.execute("PRAGMA foreign_keys = ON")
-        return conn
+        try:
+            conn.execute("PRAGMA foreign_keys = ON")
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def __init__(self, db_path: Optional[Path] = None):
         if db_path is None:
