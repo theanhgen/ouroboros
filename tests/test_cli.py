@@ -37,17 +37,23 @@ def test_cmd_config_show(mock_get, capsys):
 @patch("ouroboros.cli.modify_runner_config")
 def test_cmd_config_modify_success(mock_modify, mock_can, capsys):
     mock_can.return_value = True
-    args = argparse.Namespace(updates=["interval=60", "enable=true", "name=test"])
+    args = argparse.Namespace(updates=[
+        "interval_seconds=60", "enable_auto_merge=true", "reviewer_model=gpt-4o",
+    ])
     ret = cmd_config_modify(args)
     assert ret == 0
-    mock_modify.assert_called_once_with({"interval": 60, "enable": True, "name": "test"})
+    mock_modify.assert_called_once_with({
+        "interval_seconds": 60,
+        "enable_auto_merge": True,
+        "reviewer_model": "gpt-4o",
+    })
     captured = capsys.readouterr()
     assert "Updated runner config" in captured.out
 
 @patch("ouroboros.cli.can_self_modify")
 def test_cmd_config_modify_disabled(mock_can, capsys):
     mock_can.return_value = False
-    args = argparse.Namespace(updates=["k=v"])
+    args = argparse.Namespace(updates=["interval_seconds=30"])
     ret = cmd_config_modify(args)
     assert ret == 2
     captured = capsys.readouterr()
@@ -264,22 +270,25 @@ def test_cmd_config_modify_rejects_before_applying_earlier_valid_pairs(
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        ("k=true", True),
-        ("k=True", True),
-        ("k=false", False),
-        ("k=FALSE", False),
-        ("k=42", 42),
-        ("k=-42", -42),
-        ("k=1.5", "1.5"),   # not an int field, so left alone
-        ("k=text", "text"),
-        ("k=a=b", "a=b"),  # only the first separator splits
+        ("enable_auto_merge=true", {"enable_auto_merge": True}),
+        ("enable_auto_merge=True", {"enable_auto_merge": True}),
+        ("enable_auto_merge=false", {"enable_auto_merge": False}),
+        ("enable_auto_merge=off", {"enable_auto_merge": False}),
+        ("interval_seconds=42", {"interval_seconds": 42}),
+        ("reviewer_model=gpt-4o", {"reviewer_model": "gpt-4o"}),
+        # Only the first separator splits.
+        ("reviewer_base_url=https://x/v1?a=b",
+         {"reviewer_base_url": "https://x/v1?a=b"}),
+        ("improvement_types=fix_bug, add_test",
+         {"improvement_types": ["fix_bug", "add_test"]}),
     ],
 )
 @patch("ouroboros.cli.can_self_modify", return_value=True)
 @patch("ouroboros.cli.modify_runner_config")
 def test_cmd_config_modify_value_parsing(mock_modify, _can, raw, expected):
+    """The type comes from the field, not from guessing at the text."""
     assert cmd_config_modify(argparse.Namespace(updates=[raw])) == 0
-    assert mock_modify.call_args.args[0] == {"k": expected}
+    assert mock_modify.call_args.args[0] == expected
 
 
 @pytest.mark.parametrize(
@@ -351,24 +360,24 @@ def test_cmd_config_modify_accepts_a_valid_interval(mock_modify, _can):
     assert mock_modify.call_args.args[0] == {"interval_seconds": 60}
 
 
-def test_int_config_fields_are_read_from_the_dataclass():
+def test_the_schema_is_derived_from_the_dataclass():
     """Hardcoding the list would leave a new field unvalidated."""
-    from ouroboros.cli import _int_config_fields
+    from ouroboros import config_schema
 
-    fields = _int_config_fields()
-    assert "interval_seconds" in fields
-    assert "improvement_interval_hours" in fields
-    assert "reviewer_model" not in fields
-    assert "enable_auto_merge" not in fields
+    types = config_schema.field_types()
+    assert "interval_seconds" in types
+    assert "improvement_interval_hours" in types
+    assert "reviewer_model" in types
+    assert "enable_auto_merge" in types
 
 
-def test_a_valid_interval_survives_the_round_trip_to_the_loader(tmp_path):
+def test_a_valid_interval_survives_the_round_trip_to_the_loader():
     """The real check: what the CLI writes must be what the loader can read."""
-    from ouroboros.cli import _parse_config_value
+    from ouroboros.config_schema import parse_value
     from ouroboros.moltbook import RunnerConfig
 
-    written = _parse_config_value("60")
-    assert int(written) == 60
+    written, error = parse_value("interval_seconds", "60")
+    assert error is None
     assert RunnerConfig(interval_seconds=int(written)).interval_seconds == 60
 
 
@@ -400,3 +409,129 @@ def test_cmd_backlog_organize_reports_success(mock_org, _root, _key, _client, ca
 
     assert cmd_backlog_clean(argparse.Namespace()) == 0
     assert "3 kept" in capsys.readouterr().out
+
+
+# -- config_schema -----------------------------------------------------------
+
+def test_unknown_key_suggests_a_near_match():
+    from ouroboros.config_schema import validate
+
+    error = validate("interval_secnds", 60)
+    assert "unknown setting" in error
+    assert "interval_seconds" in error, "a silently ignored typo is the worst outcome"
+
+
+def test_a_typo_is_rejected_rather_than_silently_stored():
+    from ouroboros.config_schema import validate
+
+    assert validate("enabel_auto_merge", True) is not None
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("interval_seconds", 1800),
+        ("max_comments_per_cycle", 0),
+        ("oddities_digest_hour", 0),
+        ("oddities_digest_hour", 23),
+        ("enable_auto_merge", True),
+        ("reviewer_model", "gpt-4o"),
+        ("reviewer_base_url", ""),
+        ("improvement_types", ["fix_bug"]),
+    ],
+)
+def test_valid_settings_pass(key, value):
+    from ouroboros.config_schema import validate
+
+    assert validate(key, value) is None
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "why"),
+    [
+        ("interval_seconds", 0, "busy loop"),
+        ("interval_seconds", -1, "negative sleep"),
+        ("interval_seconds", 10**12, "parks the agent for millennia"),
+        ("oddities_digest_hour", 24, "not an hour of the day"),
+        ("oddities_digest_hour", -1, "not an hour of the day"),
+        ("max_comments_per_cycle", -1, "negative count"),
+        ("interval_seconds", True, "bool is an int subclass"),
+        ("interval_seconds", "1800", "a string for a numeric field"),
+        ("enable_auto_merge", 1, "an int for a boolean field"),
+        ("enable_auto_merge", "yes", "a string for a boolean field"),
+    ],
+)
+def test_invalid_settings_are_rejected(key, value, why):
+    from ouroboros.config_schema import validate
+
+    assert validate(key, value) is not None, why
+
+
+def test_every_int_field_has_a_positive_floor():
+    """A missing bounds entry must not mean "anything goes"."""
+    from dataclasses import fields
+
+    from ouroboros.config_schema import validate
+    from ouroboros.moltbook import RunnerConfig
+
+    for field in fields(RunnerConfig):
+        if field.type in ("int", int):
+            assert validate(field.name, -1) is not None, field.name
+
+
+def test_every_default_is_itself_valid():
+    """The shipped defaults must satisfy the schema that guards them."""
+    from dataclasses import fields
+
+    from ouroboros.config_schema import validate
+    from ouroboros.moltbook import RunnerConfig
+
+    cfg = RunnerConfig()
+    for field in fields(RunnerConfig):
+        value = getattr(cfg, field.name)
+        assert validate(field.name, value) is None, f"{field.name}={value!r}"
+
+
+@pytest.mark.parametrize(
+    ("key", "raw", "expected"),
+    [
+        ("interval_seconds", "60", 60),
+        ("enable_auto_merge", "true", True),
+        ("enable_auto_merge", "off", False),
+        ("reviewer_model", "gpt-4o", "gpt-4o"),
+        ("reviewer_base_url", "", ""),
+        ("improvement_types", "fix_bug, add_test", ["fix_bug", "add_test"]),
+        ("improvement_types", "", None),
+    ],
+)
+def test_parse_value_uses_the_declared_type(key, raw, expected):
+    from ouroboros.config_schema import parse_value
+
+    parsed, error = parse_value(key, raw)
+    assert error is None
+    assert parsed == expected
+
+
+@pytest.mark.parametrize(
+    ("key", "raw"),
+    [
+        ("interval_seconds", "1.5"),
+        ("interval_seconds", "abc"),
+        ("interval_seconds", ""),
+        ("enable_auto_merge", "maybe"),
+        ("nonexistent_field", "1"),
+    ],
+)
+def test_parse_value_reports_bad_input(key, raw):
+    from ouroboros.config_schema import parse_value
+
+    _parsed, error = parse_value(key, raw)
+    assert error is not None
+
+
+def test_credential_aliases_are_settable():
+    """ollama_api_key is not a RunnerConfig field, but config modify routes it
+    to credentials.json, so the schema has to know it."""
+    from ouroboros.config_schema import validate
+
+    assert validate("ollama_api_key", "secret") is None
