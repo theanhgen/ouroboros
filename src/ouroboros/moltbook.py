@@ -777,11 +777,22 @@ def _trim_state(state: Dict[str, Any]) -> None:
 
     queued = state.get("knowledge_pending", [])
     if len(queued) > MAX_KNOWLEDGE_PENDING:
-        # A batch mid-extraction is never a candidate: it is about to be
-        # released, and evicting it would lose an insight already paid for.
-        in_flight = [e for e in queued if e.get("in_flight")]
-        rest = [e for e in queued if not e.get("in_flight")]
-        room = max(0, MAX_KNOWLEDGE_PENDING - len(in_flight))
+        # Two kinds of entry are never candidates. A batch mid-extraction is
+        # about to be released, and evicting it would lose an insight already
+        # paid for. A batch part-way through its retries sits at the head, so
+        # the cap would drop it before the next attempt -- voiding the
+        # three-attempt rule precisely when it matters, since a sustained
+        # extraction outage is what saturates the queue in the first place.
+        #
+        # Only the head batch is ever retried, so this can protect at most one
+        # batch; the slice makes that a bound rather than an assumption.
+        def _protected(entry):
+            return entry.get("in_flight") or entry.get("attempts")
+
+        keep = [e for e in queued if _protected(e)][:KNOWLEDGE_BATCH_SIZE]
+        held = {id(e) for e in keep}
+        rest = [e for e in queued if id(e) not in held]
+        room = max(0, MAX_KNOWLEDGE_PENDING - len(keep))
         dropped = rest[:-room] if room else rest
         if dropped:
             # Named, not silent: a dropped post is one the agent never learns
@@ -794,7 +805,7 @@ def _trim_state(state: Dict[str, Any]) -> None:
                 MAX_KNOWLEDGE_PENDING, len(dropped),
                 ", ".join(str(e.get("id")) for e in dropped),
             )
-        state["knowledge_pending"] = in_flight + (rest[-room:] if room else [])
+        state["knowledge_pending"] = keep + (rest[-room:] if room else [])
 
     _trim_comment_history(state, limit=MAX_COMMENT_HISTORY)
     _trim_self_question_log(state)

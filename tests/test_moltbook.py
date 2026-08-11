@@ -863,10 +863,10 @@ def test_a_stale_in_flight_mark_does_not_outlive_the_cycle():
     assert state["knowledge_pending"] == []
 
 
-def test_failure_bookkeeping_is_checkpointed_not_only_held_in_memory():
-    """Attempt counts and give-ups must survive a restart. If they only reached
-    disk at the end of the cycle, a poisoned batch would get three fresh tries
-    every time the process came back."""
+def test_failure_bookkeeping_lands_in_state_and_survives_serialisation():
+    """Attempt counts have to reach disk for the give-up rule to mean anything
+    across a restart, so they must live in state and round-trip through JSON.
+    That run_loop checkpoints them is the caller's half; this is the data's."""
     from ouroboros import llm as llm_mod, moltbook
 
     state = {}
@@ -878,3 +878,53 @@ def test_failure_bookkeeping_is_checkpointed_not_only_held_in_memory():
     persisted = json.loads(json.dumps(state))
     assert [e["attempts"] for e in persisted["knowledge_pending"]] == [1, 1]
     assert not any(e.get("in_flight") for e in persisted["knowledge_pending"])
+
+
+def test_the_retry_rule_survives_a_saturated_queue():
+    """A sustained extraction outage is what saturates the queue, so the cap
+    and the retry rule collide exactly when retries matter. The cap used to
+    drop the failed batch off the head before its second attempt, making
+    MAX_EXTRACTION_ATTEMPTS dead letter under load."""
+    from ouroboros import llm as llm_mod, moltbook
+
+    state = {}
+    moltbook._queue_for_extraction(
+        state, _posts(moltbook.MAX_KNOWLEDGE_PENDING + 10)
+    )
+    head = ["p1", "p2", "p3", "p4", "p5"]
+
+    with mock.patch.object(llm_mod, "extract_insights_batch", return_value=None):
+        for expected in range(1, moltbook.MAX_EXTRACTION_ATTEMPTS):
+            moltbook._drain_extraction_queue(state, object())
+            moltbook._trim_state(state)
+            attempts = {
+                e["id"]: e["attempts"]
+                for e in state["knowledge_pending"] if e["id"] in head
+            }
+            assert attempts == dict.fromkeys(head, expected), (
+                f"the batch was evicted before attempt {expected + 1}"
+            )
+            assert len(state["knowledge_pending"]) <= (
+                moltbook.MAX_KNOWLEDGE_PENDING
+            )
+
+        # The last attempt retires them through the give-up path, not the cap.
+        moltbook._drain_extraction_queue(state, object())
+        moltbook._trim_state(state)
+
+    remaining = {e["id"] for e in state["knowledge_pending"]}
+    assert not (set(head) & remaining)
+    assert "p16" in remaining, "the cap shed unprotected entries, as intended"
+
+
+def test_the_retry_exemption_cannot_grow_beyond_one_batch():
+    """Otherwise a sustained outage would exempt the whole queue from the cap
+    and it would grow without bound."""
+    from ouroboros import moltbook
+
+    state = {"knowledge_pending": [
+        {"id": f"p{i}", "title": "", "content": "", "attempts": 1}
+        for i in range(moltbook.MAX_KNOWLEDGE_PENDING + 50)
+    ]}
+    moltbook._trim_state(state)
+    assert len(state["knowledge_pending"]) == moltbook.MAX_KNOWLEDGE_PENDING
