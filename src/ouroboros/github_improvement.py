@@ -118,16 +118,23 @@ def _read_inside_repo(repo_root: Path, file_path: str) -> Optional[str]:
     process or reading forever.
     """
     from .config import SafetyConfig
-    from .policies import is_within_allowed_paths
+    from .improvement import _is_path_allowed
 
-    if not is_within_allowed_paths(
-        file_path, SafetyConfig().allowed_modification_paths
-    ):
+    config = SafetyConfig()
+    # _is_path_allowed, not just the allowed prefixes: it also refuses the
+    # immutable files, so read and write answer to one rule.
+    if not _is_path_allowed(file_path, config):
         return None
     try:
         root = repo_root.resolve()
         full = (repo_root / file_path).resolve()
         if full != root and root not in full.parents:
+            return None
+        # Judge what it resolved to, not only what was asked for. A symlink at
+        # src/ouroboros/link pointing to .env lands inside the repository and
+        # satisfies every check on its own name -- the same hole the write
+        # path had before _resolved_inside re-judged the target.
+        if not _is_path_allowed(full.relative_to(root).as_posix(), config):
             return None
         if not full.is_file():
             return None

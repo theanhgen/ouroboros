@@ -354,3 +354,25 @@ class TestGitHubFixImportPolicy:
 
         assert result.status == "failed"
         assert "config.py" in result.error
+
+    def test_a_symlink_cannot_smuggle_a_secret_into_the_prompt(self, tmp_path):
+        """The same hole the write path had before it re-judged the resolved
+        target: a link under an allowed directory lands inside the repository
+        and satisfies every check on its own name."""
+        import os
+
+        from ouroboros.github_improvement import _read_inside_repo
+
+        repo = tmp_path / "repo"
+        pkg = repo / "src" / "ouroboros"
+        pkg.mkdir(parents=True)
+        (repo / ".env").write_text("API_KEY=sk-SECRET")
+        (pkg / "config.py").write_text("ALLOW_SELF_MODIFICATION = False")
+        os.symlink(repo / ".env", pkg / "link.py")
+
+        assert _read_inside_repo(repo, "src/ouroboros/link.py") is None
+        # Immutable files are refused too, so read and write answer one rule.
+        assert _read_inside_repo(repo, "src/ouroboros/config.py") is None
+
+        (pkg / "ok.py").write_text("VALUE = 1\n")
+        assert _read_inside_repo(repo, "src/ouroboros/ok.py") == "VALUE = 1\n"
