@@ -58,22 +58,81 @@ ERROR tests/test_foo.py::test_setup - RuntimeError: fixture failed
     assert fail.file == "tests/test_foo.py"
     assert fail.message == "RuntimeError: fixture failed"
 
-def test_parse_pytest_output_mixed_failures_and_errors():
+def test_parse_pytest_output_class_method_traceback():
     output = """
-FAILED tests/test_foo.py::test_bar - AssertionError: expected 1 got 2
-ERROR tests/test_bar.py::test_setup - RuntimeError: fixture failed
-2 passed, 1 failed, 1 error in 0.52s
+__________________________ TestClass.test_method ___________________________
+tests/test_foo.py:12: in test_method
+    assert actual
+E   AssertionError: class method failed
+=========================== short test summary info ============================
+FAILED tests/test_foo.py::TestClass::test_method - AssertionError: class method failed
+3 passed, 1 failed in 0.52s
 """
     result = _parse_pytest_output(output)
     assert result["failed"] == 1
+    assert len(result["failures"]) == 1
+    fail = result["failures"][0]
+    assert fail.test_name == "TestClass::test_method"
+    assert fail.file == "tests/test_foo.py"
+    assert fail.line == 12
+    assert "class method failed" in fail.traceback
+
+def test_parse_pytest_output_fixture_setup_error_traceback():
+    output = """
+_____________________ ERROR at setup of test_setup _____________________
+tests/test_foo.py:8: in bad_fixture
+    raise RuntimeError("setup failed")
+E   RuntimeError: setup failed
+=========================== short test summary info ============================
+ERROR tests/test_foo.py::test_setup - RuntimeError: setup failed
+3 passed, 1 error in 0.52s
+"""
+    result = _parse_pytest_output(output)
     assert result["errors"] == 1
-    assert len(result["failures"]) == 2
-    assert [fail.test_name for fail in result["failures"]] == ["test_bar", "test_setup"]
-    assert [fail.file for fail in result["failures"]] == ["tests/test_foo.py", "tests/test_bar.py"]
-    assert [fail.message for fail in result["failures"]] == [
-        "AssertionError: expected 1 got 2",
-        "RuntimeError: fixture failed",
-    ]
+    assert len(result["failures"]) == 1
+    fail = result["failures"][0]
+    assert fail.test_name == "test_setup"
+    assert fail.file == "tests/test_foo.py"
+    assert fail.line == 8
+    assert "setup failed" in fail.traceback
+
+def test_parse_pytest_output_fixture_teardown_error_traceback():
+    output = """
+__________________ ERROR at teardown of test_teardown __________________
+tests/test_foo.py:15: in bad_fixture
+    raise RuntimeError("teardown failed")
+E   RuntimeError: teardown failed
+=========================== short test summary info ============================
+ERROR tests/test_foo.py::test_teardown - RuntimeError: teardown failed
+3 passed, 1 error in 0.52s
+"""
+    result = _parse_pytest_output(output)
+    assert result["errors"] == 1
+    assert len(result["failures"]) == 1
+    fail = result["failures"][0]
+    assert fail.test_name == "test_teardown"
+    assert fail.file == "tests/test_foo.py"
+    assert fail.line == 15
+    assert "teardown failed" in fail.traceback
+
+def test_parse_pytest_output_class_fixture_error_traceback():
+    output = """
+_________________ ERROR at setup of TestClass.test_method _________________
+tests/test_foo.py:10: in bad_fixture
+    raise RuntimeError("fixture failed")
+E   RuntimeError: fixture failed
+=========================== short test summary info ============================
+ERROR tests/test_foo.py::TestClass::test_method - RuntimeError: fixture failed
+3 passed, 1 error in 0.52s
+"""
+    result = _parse_pytest_output(output)
+    assert result["errors"] == 1
+    assert len(result["failures"]) == 1
+    fail = result["failures"][0]
+    assert fail.test_name == "TestClass::test_method"
+    assert fail.file == "tests/test_foo.py"
+    assert fail.line == 10
+    assert "fixture failed" in fail.traceback
 
 def test_parse_pytest_output_no_tests():
     output = "no tests ran in 0.01s"
