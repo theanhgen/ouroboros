@@ -18,6 +18,24 @@ def temp_store(tmp_path):
     store.close()
 
 
+def _fact_by_id(store, fact_id):
+    row = store._conn.execute(
+        "SELECT fact_id, trust_score, retrieval_count, created_at "
+        "FROM facts WHERE fact_id = ?",
+        (fact_id,),
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def _set_fact_state(store, fact_id, **fields):
+    assignments = [f"{name} = ?" for name in fields]
+    store._conn.execute(
+        f"UPDATE facts SET {', '.join(assignments)} WHERE fact_id = ?",
+        [*fields.values(), fact_id],
+    )
+    store._conn.commit()
+
+
 def test_memory_store_index_code_returns_fact_ids(temp_store):
     code_content = textwrap.dedent('''
         """Module docs."""
@@ -434,3 +452,106 @@ def test_fact_retriever_contradict_detects_shared_entity_divergence(temp_store):
         unrelated_id not in {item["fact_a"]["fact_id"], item["fact_b"]["fact_id"]}
         for item in contradictions
     )
+
+
+def test_run_hygiene_resolves_contradiction_penalizes_lower_trust(temp_store):
+    manager = IndexManager(storage=temp_store)
+    low_id = temp_store.add_fact('Project Atlas deployment status is "red".')
+    high_id = temp_store.add_fact('Project Atlas deployment status is "green".')
+    _set_fact_state(temp_store, low_id, trust_score=0.30)
+    _set_fact_state(temp_store, high_id, trust_score=0.70)
+    manager._retriever.contradict = lambda: [
+        {
+            "fact_a": {"fact_id": high_id, "trust_score": 0.10},
+            "fact_b": {"fact_id": low_id, "trust_score": 0.90},
+        }
+    ]
+
+    assert manager.run_hygiene() == 0
+
+    assert _fact_by_id(temp_store, low_id)["trust_score"] == pytest.approx(0.20)
+    assert _fact_by_id(temp_store, high_id)["trust_score"] == pytest.approx(0.70)
+
+
+def test_run_hygiene_resolves_contradiction_penalizes_older_equal_trust_fact(temp_store):
+    manager = IndexManager(storage=temp_store)
+    old_id = temp_store.add_fact('Project Atlas deployment status is "red".')
+    new_id = temp_store.add_fact('Project Atlas deployment status is "green".')
+    _set_fact_state(
+        temp_store, old_id, trust_score=0.50, created_at="2024-01-01 00:00:00"
+    )
+    _set_fact_state(
+        temp_store, new_id, trust_score=0.50, created_at="2024-01-02 00:00:00"
+    )
+    manager._retriever.contradict = lambda: [
+        {"fact_a": {"fact_id": new_id}, "fact_b": {"fact_id": old_id}}
+    ]
+
+    assert manager.run_hygiene() == 0
+
+    assert _fact_by_id(temp_store, old_id)["trust_score"] == pytest.approx(0.40)
+    assert _fact_by_id(temp_store, new_id)["trust_score"] == pytest.approx(0.50)
+
+
+def test_run_hygiene_skips_contradictions_with_removed_facts(temp_store):
+    manager = IndexManager(storage=temp_store)
+    removed_id = temp_store.add_fact('Project Atlas deployment status is "red".')
+    survivor_id = temp_store.add_fact('Project Atlas deployment status is "green".')
+    temp_store.remove_fact(removed_id)
+    manager._retriever.contradict = lambda: [
+        {"fact_a": {"fact_id": removed_id}, "fact_b": {"fact_id": survivor_id}}
+    ]
+
+    assert manager.run_hygiene() == 0
+    assert _fact_by_id(temp_store, survivor_id)["trust_score"] == pytest.approx(0.50)
+
+
+def test_run_hygiene_prunes_contradictory_fact_below_threshold(temp_store):
+    manager = IndexManager(storage=temp_store)
+    loser_id = temp_store.add_fact('Project Atlas deployment status is "red".')
+    winner_id = temp_store.add_fact('Project Atlas deployment status is "green".')
+    _set_fact_state(temp_store, loser_id, trust_score=0.10, retrieval_count=1)
+    _set_fact_state(temp_store, winner_id, trust_score=0.60)
+    manager._retriever.contradict = lambda: [
+        {"fact_a": {"fact_id": loser_id}, "fact_b": {"fact_id": winner_id}}
+    ]
+
+    assert manager.run_hygiene() == 1
+
+    assert _fact_by_id(temp_store, loser_id) is None
+    assert _fact_by_id(temp_store, winner_id)["trust_score"] == pytest.approx(0.60)
+
+
+def test_run_hygiene_retains_low_trust_unretrieved_pruning(temp_store):
+    manager = IndexManager(storage=temp_store)
+    unretrieved_id = temp_store.add_fact("discarded low trust fact")
+    retrieved_id = temp_store.add_fact("retained retrieved low trust fact")
+    normal_id = temp_store.add_fact("retained ordinary fact")
+    _set_fact_state(temp_store, unretrieved_id, trust_score=0.05, retrieval_count=0)
+    _set_fact_state(temp_store, retrieved_id, trust_score=0.05, retrieval_count=1)
+    manager._retriever.contradict = lambda: []
+
+    assert manager.run_hygiene() == 1
+
+    assert _fact_by_id(temp_store, unretrieved_id) is None
+    assert _fact_by_id(temp_store, retrieved_id)["trust_score"] == pytest.approx(0.05)
+    assert _fact_by_id(temp_store, normal_id)["trust_score"] == pytest.approx(0.50)
+
+
+def test_run_hygiene_calls_contradict_with_no_numpy(temp_store, monkeypatch):
+    manager = IndexManager(storage=temp_store)
+    fact_id = temp_store.add_fact("Project Atlas deployment status is stable.")
+    original_contradict = FactRetriever.contradict
+    called = False
+
+    def spy_contradict(self):
+        nonlocal called
+        called = True
+        return original_contradict(self)
+
+    monkeypatch.setattr(FactRetriever, "contradict", spy_contradict)
+    monkeypatch.setattr(hrr, "HAS_NUMPY", False)
+
+    assert manager.run_hygiene() == 0
+    assert called
+    assert _fact_by_id(temp_store, fact_id) is not None
