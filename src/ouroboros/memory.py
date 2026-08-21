@@ -862,6 +862,44 @@ class IndexManager:
     def run_hygiene(self) -> int:
         """Run contradiction detection and prune low-trust facts. Returns count removed."""
         removed = 0
+
+        for item in self._retriever.contradict():
+            fact_a_id = item["fact_a"]["fact_id"]
+            fact_b_id = item["fact_b"]["fact_id"]
+            if fact_a_id == fact_b_id:
+                continue
+
+            with self._store._lock:
+                rows = self._store._conn.execute(
+                    "SELECT fact_id, trust_score, created_at FROM facts "
+                    "WHERE fact_id IN (?, ?)",
+                    (fact_a_id, fact_b_id),
+                ).fetchall()
+            facts = {row["fact_id"]: dict(row) for row in rows}
+            if fact_a_id not in facts or fact_b_id not in facts:
+                continue
+
+            fact_a = facts[fact_a_id]
+            fact_b = facts[fact_b_id]
+            if fact_a["trust_score"] < fact_b["trust_score"]:
+                loser = fact_a
+            elif fact_b["trust_score"] < fact_a["trust_score"]:
+                loser = fact_b
+            elif (fact_a["created_at"] or "", fact_a["fact_id"]) <= (
+                fact_b["created_at"] or "",
+                fact_b["fact_id"],
+            ):
+                loser = fact_a
+            else:
+                loser = fact_b
+
+            new_trust = _clamp_trust(loser["trust_score"] + _UNHELPFUL_DELTA)
+            if new_trust < 0.05:
+                if self._store.remove_fact(loser["fact_id"]):
+                    removed += 1
+            else:
+                self._store.update_fact(loser["fact_id"], trust_delta=_UNHELPFUL_DELTA)
+
         # Prune facts with very low trust
         low_trust = self._store.list_facts(min_trust=0.0, limit=100)
         for fact in low_trust:
