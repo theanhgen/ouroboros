@@ -72,27 +72,30 @@ def _parse_pytest_output(output: str) -> dict:
     if cov_match:
         result["coverage"] = float(cov_match.group(1))
 
-    # Parse FAILED/ERROR lines like "FAILED tests/test_foo.py::test_bar - AssertionError: ..."
+    # Parse FAILED and ERROR lines like "FAILED tests/test_foo.py::test_bar - AssertionError: ..."
     for match in re.finditer(r"(?:FAILED|ERROR)\s+([\w/._-]+)::(\S+)\s*(?:-\s*(.*))?", output):
         file_path = match.group(1)
         test_name = match.group(2)
         message = match.group(3) or ""
 
-        # Try to extract line number from traceback sections
-        line_num = None
-        line_match = re.search(rf"{re.escape(file_path)}:(\d+)", output)
-        if line_match:
-            line_num = int(line_match.group(1))
-
         # Extract traceback for this test
         tb = ""
+        dot_name = test_name.replace("::", ".")
+        header_pattern = rf"(?:ERROR at (?:setup|teardown)\s+of\s+)?(?:{re.escape(test_name)}|{re.escape(dot_name)})"
         tb_pattern = (
-            r"_" + "{2,}" + r"\s+" + re.escape(test_name) + r"\s+_" + "{2,}"
+            r"_" + "{2,}" + r"\s+" + header_pattern + r"\s+_" + "{2,}"
             + r"(.*?)(?=_{2,}\s+\w|={2,}|$)"
         )
         tb_match = re.search(tb_pattern, output, re.DOTALL)
         if tb_match:
             tb = tb_match.group(1).strip()
+
+        # Try to extract line number from traceback sections
+        line_num = None
+        search_target = tb if tb else output
+        line_match = re.search(rf"{re.escape(file_path)}:(\d+)", search_target)
+        if line_match:
+            line_num = int(line_match.group(1))
 
         result["failures"].append(
             FailureDetail(
