@@ -399,7 +399,34 @@ def _build_agent_prompt(task: Any, plan: str, config: Any, model: Optional[str] 
     )
 
 
-def _collect_changes(repo: Path, untracked_before: set, code_change_cls: Any) -> List[Any]:
+def _snapshot_tracked_dirty(repo: Path) -> Dict[str, str]:
+    """Contents of every already-modified tracked file, before the agent runs.
+
+    Without this, a file that was dirty beforehand is indistinguishable from one
+    the agent edited: `_collect_changes` compares against HEAD, so it attributed
+    the pre-existing edit to the agent. On 2026-08-21 that turned an untouched
+    `config/learnings.md` into an agent change and tripped the forbidden-path
+    policy, failing a cycle whose actual code changes were fine.
+    """
+    snapshot: Dict[str, str] = {}
+    proc = _git(repo, "status", "--porcelain")
+    for status, path in _git_porcelain_changes(proc.stdout):
+        if status == "??" or "D" in status:
+            continue
+        try:
+            snapshot[path] = (repo / path).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+    return snapshot
+
+
+def _collect_changes(
+    repo: Path,
+    untracked_before: set,
+    code_change_cls: Any,
+    dirty_before: Optional[Dict[str, str]] = None,
+) -> List[Any]:
+    dirty_before = dirty_before or {}
     proc = _git(repo, "status", "--porcelain")
     changes: List[Any] = []
     for status, path in _git_porcelain_changes(proc.stdout):
@@ -418,6 +445,9 @@ def _collect_changes(repo: Path, untracked_before: set, code_change_cls: Any) ->
         except (OSError, UnicodeDecodeError):
             continue
         if new_content == original:
+            continue
+        # Already dirty before the agent ran and untouched by it: not its work.
+        if path in dirty_before and new_content == dirty_before[path]:
             continue
         changes.append(code_change_cls(
             file_path=path,
@@ -466,6 +496,7 @@ def agent_generate_changes(
 
     repo = Path(repo_root)
     untracked_before = _untracked_files(repo)
+    dirty_before = _snapshot_tracked_dirty(repo)
     prompt = _build_agent_prompt(task, plan, config, model)
 
     try:
@@ -482,7 +513,7 @@ def agent_generate_changes(
         _reset_worktree(repo, untracked_before)
         return None, None
 
-    changes = _collect_changes(repo, untracked_before, CodeChange)
+    changes = _collect_changes(repo, untracked_before, CodeChange, dirty_before)
     _reset_worktree(repo, untracked_before)
     if not changes:
         log.info("agent backend '%s' produced no changes", backend)
