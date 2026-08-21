@@ -199,9 +199,14 @@ def _run_agy(
     cmd = [binary, "-p", prompt]
     if model:
         cmd += ["--model", model]
+    # A subprocess has no human to answer a permission prompt. agy DENIES and
+    # exits 1 -- unlike `claude -p` / `codex exec`, which degrade to read-only.
+    # That broke every planning call from 2026-08-01: agy tried to run
+    # `pwd && ls -la`, was denied, exited 1, and the cycle logged it as the
+    # unrelated "no plan generated".
+    cmd += ["--dangerously-skip-permissions"]
     if edit:
-        # Auto-approve tool/file-edit permission requests and scope to the repo.
-        cmd += ["--dangerously-skip-permissions"]
+        cmd += ["--mode", "accept-edits"]
         if cwd:
             cmd += ["--add-dir", cwd]
     proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
