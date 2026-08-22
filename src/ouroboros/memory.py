@@ -243,7 +243,13 @@ class MemoryStore:
             return fact_id
 
     def index_code(self, file_path: str, content: str) -> List[int]:
-        """Parse code into code facts and persist them."""
+        """Parse code into code facts and persist them.
+
+        Python files are parsed with AST to extract module docstrings, classes,
+        methods, standalone functions, and docstrings. Non-Python files, parse
+        failures, and Python files with no extractable facts fall back to a
+        content prefix. Returns the created or existing fact IDs.
+        """
         facts: List[str] = []
 
         if file_path.lower().endswith(".py"):
