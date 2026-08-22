@@ -47,3 +47,4 @@
 2026-08-09 | fix_bug | Fix search_facts in src/ouroboros/memory.py to catch sqlite3 | failed | no plan generated
 2026-08-21 | fix_bug | Replace fragile subprocess 'df -h /' string parsing in get_s | failed | Forbidden file modification: config/learnings.md
 2026-08-21 | add_feature | Integrate contradiction resolution into IndexManager.run_hyg | success | tests: 948 -> 954
+2026-08-22 | add_feature | Implement index_code on MemoryStore in src/ouroboros/memory. | success | tests: 966 -> 966
