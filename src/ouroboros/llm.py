@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from openai import OpenAI
 
@@ -295,8 +295,16 @@ def chat_completion(
     model: str = DEFAULT_OPENAI_MODEL,
     response_format: Optional[Dict[str, str]] = None,
     max_tokens: int = 1000,
+    on_error: Optional[Callable[[str], None]] = None,
 ) -> tuple[str, Optional[dict]]:
-    """Generic wrapper for chat completion. Returns (content, usage_dict)."""
+    """Generic wrapper for chat completion. Returns (content, usage_dict).
+
+    A failed call and a genuinely empty response both return "". That ambiguity
+    cost three weeks: every August 2026 improvement was recorded as "no plan
+    generated" when the call itself may never have succeeded. Pass `on_error`
+    to find out which happened -- it receives "ExcType: message" and is called
+    only when the request actually raised.
+    """
     try:
         kwargs = {
             "model": model,
@@ -316,8 +324,10 @@ def chat_completion(
                 "completion_tokens": resp.usage.completion_tokens,
             }
         return resp.choices[0].message.content or "", usage
-    except Exception:
+    except Exception as exc:
         log.exception("completion failed")
+        if on_error is not None:
+            on_error(f"{type(exc).__name__}: {exc}")
         return "", None
 
 
@@ -416,6 +426,7 @@ def plan_code_change(
     task: dict,
     code: str,
     model: str = DEFAULT_OPENAI_MODEL,
+    on_error: Optional[Callable[[str], None]] = None,
 ) -> tuple[Optional[str], Optional[dict]]:
     system = "You are a senior Python developer. Create a step-by-step plan for the code change."
     user = (
@@ -424,7 +435,8 @@ def plan_code_change(
         f"Target files: {task.get('target_files')}\n\n"
         f"## Relevant Code\n{code}"
     )
-    content, usage = chat_completion(client, system, user, model, max_tokens=800)
+    content, usage = chat_completion(client, system, user, model, max_tokens=800,
+                                     on_error=on_error)
     return (content if content else None, usage)
 
 
@@ -434,6 +446,7 @@ def generate_code(
     files: dict,
     constraints: str,
     model: str = DEFAULT_OPENAI_MODEL,
+    on_error: Optional[Callable[[str], None]] = None,
 ) -> tuple[Optional[list], Optional[dict]]:
     file_contents = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in files.items())
     system = (
@@ -443,9 +456,10 @@ def generate_code(
     user = f"## Plan\n{plan}\n\n## Constraints\n{constraints}\n\n## Current Code\n{file_contents}"
     
     content, usage = chat_completion(
-        client, system, user, model, 
+        client, system, user, model,
         response_format={"type": "json_object"},
-        max_tokens=2500
+        max_tokens=2500,
+        on_error=on_error,
     )
     
     try:

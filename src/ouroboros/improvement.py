@@ -223,8 +223,13 @@ def plan_improvement(
     task: ImprovementTask,
     relevant_code: Dict[str, str],
     model: str = DEFAULT_OPENAI_MODEL,
+    on_error: Optional[Callable[[str], None]] = None,
 ) -> tuple[Optional[str], Optional[dict]]:
-    """Generate a plan for the improvement. Returns (plan, usage)."""
+    """Generate a plan for the improvement. Returns (plan, usage).
+
+    `on_error` distinguishes "the model returned nothing" from "the call
+    failed" -- see llm.chat_completion.
+    """
     code_text = "\n\n".join(
         f"### {path}\n{content}" for path, content in relevant_code.items()
     )
@@ -234,7 +239,8 @@ def plan_improvement(
         "target_files": task.target_files,
         "evidence": task.evidence,
     }
-    return llm.plan_code_change(client, task_dict, code_text, model=model)
+    return llm.plan_code_change(client, task_dict, code_text, model=model,
+                                on_error=on_error)
 
 
 def generate_changes(
@@ -945,18 +951,27 @@ def run_improvement_cycle(
     # Step 4: Plan the improvement
     log.info("[improve] Planning changes...")
     _fire("planning", f"Planning: {task.description[:100]}")
-    plan, plan_usage = plan_improvement(plan_client, task, relevant_code, model=model)
+    plan_errors: List[str] = []
+    plan, plan_usage = plan_improvement(
+        plan_client, task, relevant_code, model=model, on_error=plan_errors.append
+    )
     if plan_usage:
         improvement_result.total_usage["prompt_tokens"] += plan_usage.get("prompt_tokens", 0)
         improvement_result.total_usage["completion_tokens"] += plan_usage.get("completion_tokens", 0)
 
     if not plan:
-        log.warning("[improve] Failed to generate plan")
+        # Say WHICH failure it was. "no plan generated" masked three weeks of
+        # failed agy calls in August 2026 because the two were indistinguishable.
+        cause = f" ({plan_errors[0]})" if plan_errors else ""
+        log.warning("[improve] Failed to generate plan%s", cause)
         improvement_result.status = "failed"
-        improvement_result.details = "Failed to generate a concrete implementation plan"
+        improvement_result.details = (
+            f"Planning call failed: {plan_errors[0]}" if plan_errors
+            else "Failed to generate a concrete implementation plan (model returned nothing)"
+        )
         _fire("failed", f"Failed to plan: {task.description[:100]}")
         record_improvement(improvement_result, repo_root, model=model)
-        _append_learning(repo_root, f"{_today()} | {task.task_type} | {task.description[:60]} | failed | no plan generated")
+        _append_learning(repo_root, f"{_today()} | {task.task_type} | {task.description[:60]} | failed | " + (f"planning call failed: {plan_errors[0][:60]}" if plan_errors else "no plan generated"))
         return improvement_result
 
     # Step 5: Generate code changes
