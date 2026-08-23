@@ -149,6 +149,53 @@ def test_get_function_signatures_async_method(tmp_path):
     ]
 
 
+def test_get_function_signatures_all_parameter_types(tmp_path):
+    test_file = tmp_path / 'params.py'
+    test_file.write_text(textwrap.dedent('''
+        def complex_func(pos_only, /, regular, *args, kw_only, **kwargs):
+            pass
+
+        def keyword_only_func(*, key_only=True, **kwargs):
+            pass
+
+        class Service:
+            def sync_method(self, raw, /, regular, *args, kw_only, **kwargs):
+                pass
+
+            async def async_method(self, first, /, second, *items, flag=False, **options):
+                pass
+    ''').lstrip())
+
+    assert get_function_signatures(test_file) == [
+        {
+            'name': 'complex_func',
+            'args': ['pos_only', 'regular', '*args', 'kw_only', '**kwargs'],
+            'line': 1,
+            'type': 'function',
+        },
+        {
+            'name': 'keyword_only_func',
+            'args': ['key_only', '**kwargs'],
+            'line': 4,
+            'type': 'function',
+        },
+        {
+            'name': 'sync_method',
+            'args': ['self', 'raw', 'regular', '*args', 'kw_only', '**kwargs'],
+            'line': 8,
+            'type': 'method',
+            'class': 'Service',
+        },
+        {
+            'name': 'async_method',
+            'args': ['self', 'first', 'second', '*items', 'flag', '**options'],
+            'line': 11,
+            'type': 'method',
+            'class': 'Service',
+        },
+    ]
+
+
 def test_get_function_signatures_preserves_breadth_first_order(tmp_path):
     """Shallower definitions are reported before deeper ones."""
     test_file = tmp_path / 'order.py'
@@ -211,6 +258,45 @@ def test_extract_code_metadata_async_functions_and_methods():
     refresh = service.methods[0]
     assert refresh.args == ["self", "key"]
     assert refresh.docstring == "Refresh one key."
+
+
+def test_extract_code_metadata_all_parameter_types():
+    code = textwrap.dedent('''
+        def complex_func(pos_only, /, regular, *args, kw_only, **kwargs):
+            pass
+
+        def keyword_only_func(*, key_only=True, **kwargs):
+            pass
+
+        class Service:
+            def sync_method(self, raw, /, regular, *args, kw_only, **kwargs):
+                pass
+
+            async def async_method(self, first, /, second, *items, flag=False, **options):
+                pass
+    ''').lstrip()
+
+    metadata = extract_code_metadata(code, "params.py")
+
+    assert [func.name for func in metadata.functions] == [
+        "complex_func", "keyword_only_func",
+    ]
+    assert metadata.functions[0].args == [
+        "pos_only", "regular", "*args", "kw_only", "**kwargs",
+    ]
+    assert metadata.functions[1].args == ["key_only", "**kwargs"]
+
+    assert len(metadata.classes) == 1
+    service = metadata.classes[0]
+    assert [method.name for method in service.methods] == [
+        "sync_method", "async_method",
+    ]
+    assert service.methods[0].args == [
+        "self", "raw", "regular", "*args", "kw_only", "**kwargs",
+    ]
+    assert service.methods[1].args == [
+        "self", "first", "second", "*items", "flag", "**options",
+    ]
 
 
 def test_get_codebase_summary_includes_async_metadata(tmp_path):

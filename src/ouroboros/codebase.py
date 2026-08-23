@@ -37,6 +37,19 @@ class FileMetadata:
     imports: List[str] = field(default_factory=list)
 
 
+def _extract_args(args_node: ast.arguments) -> List[str]:
+    """Extract parameter names from an AST arguments node in Python order."""
+    params: List[str] = []
+    params.extend(arg.arg for arg in getattr(args_node, "posonlyargs", []))
+    params.extend(arg.arg for arg in args_node.args)
+    if args_node.vararg is not None:
+        params.append(f"*{args_node.vararg.arg}")
+    params.extend(arg.arg for arg in args_node.kwonlyargs)
+    if args_node.kwarg is not None:
+        params.append(f"**{args_node.kwarg.arg}")
+    return params
+
+
 def extract_code_metadata(content: str, path: str = "") -> FileMetadata:
     """Extract structural metadata from Python code using AST."""
     try:
@@ -58,7 +71,7 @@ def extract_code_metadata(content: str, path: str = "") -> FileMetadata:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             metadata.functions.append(FunctionMetadata(
                 name=node.name,
-                args=[arg.arg for arg in node.args.args],
+                args=_extract_args(node.args),
                 docstring=ast.get_docstring(node),
                 line_start=node.lineno,
                 line_end=getattr(node, "end_lineno", node.lineno)
@@ -74,7 +87,7 @@ def extract_code_metadata(content: str, path: str = "") -> FileMetadata:
                 if isinstance(subnode, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     cls.methods.append(FunctionMetadata(
                         name=subnode.name,
-                        args=[arg.arg for arg in subnode.args.args],
+                        args=_extract_args(subnode.args),
                         docstring=ast.get_docstring(subnode),
                         line_start=subnode.lineno,
                         line_end=getattr(subnode, "end_lineno", subnode.lineno)
@@ -164,7 +177,7 @@ def get_function_signatures(path: Path) -> List[Dict[str, Any]]:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             sig: Dict[str, Any] = {
                 "name": node.name,
-                "args": [arg.arg for arg in node.args.args],
+                "args": _extract_args(node.args),
                 "line": node.lineno,
                 "type": "function",
             }
