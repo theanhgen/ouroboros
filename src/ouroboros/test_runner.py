@@ -50,22 +50,30 @@ def _parse_pytest_output(output: str) -> dict:
     """Parse pytest output into counts and failure details."""
     result = {"passed": 0, "failed": 0, "errors": 0, "failures": [], "coverage": None}
 
+    summary_line = ""
+    for line in reversed(output.splitlines()):
+        if re.search(r"\bin\s+\d+(?:\.\d+)?s\b", line):
+            summary_line = line
+            break
+
     # Handle case for 'no tests ran'
-    if 'no tests ran' in output:
+    if "no tests ran" in summary_line or "no tests ran" in output:
         return result
 
-    # Match summary line like "3 passed, 1 failed, 1 error in 0.52s"
-    summary_match = re.search(r"(\d+) passed", output)
-    if summary_match:
-        result["passed"] = int(summary_match.group(1))
+    if summary_line:
+        # Match counts from the terminal summary line only, e.g.
+        # "3 passed, 1 failed, 1 error in 0.52s".
+        summary_match = re.search(r"(\d+)\s+passed", summary_line)
+        if summary_match:
+            result["passed"] = int(summary_match.group(1))
 
-    failed_match = re.search(r"(\d+) failed", output)
-    if failed_match:
-        result["failed"] = int(failed_match.group(1))
+        failed_match = re.search(r"(\d+)\s+failed", summary_line)
+        if failed_match:
+            result["failed"] = int(failed_match.group(1))
 
-    error_match = re.search(r"(\d+) error", output)
-    if error_match:
-        result["errors"] = int(error_match.group(1))
+        error_match = re.search(r"(\d+)\s+error", summary_line)
+        if error_match:
+            result["errors"] = int(error_match.group(1))
 
     # Match coverage line like "TOTAL                                          1272    169    87%"
     cov_match = re.search(r"TOTAL\s+\d+\s+\d+\s+(\d+)%", output)

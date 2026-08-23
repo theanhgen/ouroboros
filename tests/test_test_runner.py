@@ -32,6 +32,51 @@ def test_parse_pytest_output_mixed():
     assert result["failed"] == 2
     assert result["errors"] == 1
 
+def test_parse_pytest_output_ignores_log_messages():
+    output = """
+tests/test_service.py::test_pipeline
+[INFO] Processed 100 passed records and 20 failed records, 5 errors encountered
+PASSED
+1 passed in 0.45s
+"""
+    result = _parse_pytest_output(output)
+    assert result["passed"] == 1
+    assert result["failed"] == 0
+    assert result["errors"] == 0
+
+def test_parse_pytest_output_terminal_summary_banner():
+    output = """
+[DEBUG] 50 passed items and 12 failed attempts
+=========================== short test summary info ============================
+FAILED tests/test_foo.py::test_bar - AssertionError
+=================== 2 passed, 1 failed, 1 error in 1.50s ===================
+"""
+    result = _parse_pytest_output(output)
+    assert result["passed"] == 2
+    assert result["failed"] == 1
+    assert result["errors"] == 1
+    assert len(result["failures"]) == 1
+
+def test_parse_pytest_output_with_warnings():
+    output = """
+[DEBUG] 10 passed setup checks, 3 failed retries, 2 errors ignored
+=================== 4 passed, 2 warnings in 0.30s ===================
+"""
+    result = _parse_pytest_output(output)
+    assert result["passed"] == 4
+    assert result["failed"] == 0
+    assert result["errors"] == 0
+
+def test_parse_pytest_output_missing_summary_line():
+    output = """
+INTERNALERROR> RuntimeError: pytest crashed before writing its summary
+[DEBUG] 10 passed setup checks, 3 failed retries, 2 errors ignored
+"""
+    result = _parse_pytest_output(output)
+    assert result["passed"] == 0
+    assert result["failed"] == 0
+    assert result["errors"] == 0
+
 def test_parse_pytest_output_failed_details():
     output = """
 FAILED tests/test_foo.py::test_bar - AssertionError: expected 1 got 2
