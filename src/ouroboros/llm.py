@@ -499,7 +499,19 @@ def review_code_changes(
         "Name any concrete correctness/security/data-loss defect this change introduces. "
         "If you can name none, approve it."
     )
-    content, usage = chat_completion(client, system, user, model, max_tokens=1000)
+    # Fail-closed is right here -- an unreadable review must not merge code.
+    # But the REASON has to survive: 5 of 18 historical rejections were this
+    # branch, logged as though the reviewer had judged the change and objected.
+    call_errors: list = []
+    content, usage = chat_completion(
+        client, system, user, model, max_tokens=1000, on_error=call_errors.append
+    )
+    if call_errors:
+        log.warning("review_code_changes: the review call failed: %s", call_errors[0])
+        return False, f"Review call failed (not a rejection): {call_errors[0]}", usage
+    if not content.strip():
+        log.warning("review_code_changes: reviewer returned empty output")
+        return False, "Reviewer returned no output (not a rejection).", usage
     try:
         if "{" in content:
             content = content[content.find("{"):content.rfind("}")+1]
@@ -507,7 +519,10 @@ def review_code_changes(
         return result.get("approved", False), result.get("feedback", ""), usage
     except Exception:
         log.warning("review_code_changes: failed to parse reviewer response", exc_info=True)
-        return False, "Reviewer failed to provide structured feedback.", usage
+        return False, (
+            "Reviewer output was not valid JSON (not a rejection): "
+            f"{content[:160]}"
+        ), usage
 
 
 def generate_question_post(
