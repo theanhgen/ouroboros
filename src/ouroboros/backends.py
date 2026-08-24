@@ -458,10 +458,20 @@ def _collect_changes(
     return changes
 
 
-def _reset_worktree(repo: Path, untracked_before: set) -> None:
-    """Restore tracked files and remove only agent-created untracked files."""
+def _reset_worktree(
+    repo: Path,
+    untracked_before: set,
+    dirty_before: Optional[Dict[str, str]] = None,
+) -> None:
+    """Restore tracked files, preserving pre-existing dirty contents."""
     _git(repo, "reset", "-q")            # unstage anything the agent staged
     _git(repo, "checkout", "--", ".")    # restore modified tracked files
+    if dirty_before:
+        for path, content in dirty_before.items():
+            try:
+                (repo / path).write_text(content, encoding="utf-8")
+            except OSError:
+                pass
     for path in _untracked_files(repo) - untracked_before:
         try:
             (repo / path).unlink()
@@ -510,11 +520,11 @@ def agent_generate_changes(
             return None, None
     except Exception:
         log.warning("agent run failed for backend '%s'", backend, exc_info=True)
-        _reset_worktree(repo, untracked_before)
+        _reset_worktree(repo, untracked_before, dirty_before)
         return None, None
 
     changes = _collect_changes(repo, untracked_before, CodeChange, dirty_before)
-    _reset_worktree(repo, untracked_before)
+    _reset_worktree(repo, untracked_before, dirty_before)
     if not changes:
         log.info("agent backend '%s' produced no changes", backend)
         return None, usage
