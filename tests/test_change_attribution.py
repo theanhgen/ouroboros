@@ -38,6 +38,18 @@ class _Change:
         self.description = description
 
 
+class _Task:
+    task_type = "fix_bug"
+    description = "change code"
+
+
+class _Cfg:
+    max_changed_files_per_pr = 3
+    max_lines_changed_per_pr = 200
+    allowed_modification_paths = ("",)
+    forbidden_modification_paths = ()
+
+
 class TestSnapshot:
     def test_captures_modified_tracked_files(self, repo):
         (repo / "code.py").write_text("locally edited\n")
@@ -106,3 +118,80 @@ class TestCollectChanges:
         changes = backends._collect_changes(repo, untracked_before, _Change, before)
         assert [c.file_path for c in changes] == ["brand_new.py"]
         assert changes[0].original_content == ""
+
+
+class TestResetWorktree:
+    def test_reset_restores_pre_existing_dirty_files(self, repo):
+        (repo / "learnings.md").write_text("entry one\nlocal note\n")
+        dirty_before = backends._snapshot_tracked_dirty(repo)
+        untracked_before = backends._untracked_files(repo)
+
+        (repo / "learnings.md").write_text("agent overwrote local note\n")
+        (repo / "code.py").write_text("agent changed code\n")
+
+        backends._reset_worktree(repo, untracked_before, dirty_before)
+
+        assert (repo / "learnings.md").read_text() == "entry one\nlocal note\n"
+        assert (repo / "code.py").read_text() == "original\n"
+
+    def test_reset_removes_agent_created_untracked_files(self, repo):
+        (repo / "local.db").write_text("keep\n")
+        untracked_before = backends._untracked_files(repo)
+        dirty_before = backends._snapshot_tracked_dirty(repo)
+        (repo / "new_file.py").write_text("remove\n")
+
+        backends._reset_worktree(repo, untracked_before, dirty_before)
+
+        assert (repo / "local.db").read_text() == "keep\n"
+        assert not (repo / "new_file.py").exists()
+
+    def test_reset_handles_staged_changes(self, repo):
+        (repo / "learnings.md").write_text("entry one\nlocal note\n")
+        dirty_before = backends._snapshot_tracked_dirty(repo)
+        untracked_before = backends._untracked_files(repo)
+        (repo / "code.py").write_text("agent changed code\n")
+        _git(repo, "add", "code.py")
+
+        backends._reset_worktree(repo, untracked_before, dirty_before)
+
+        assert (repo / "learnings.md").read_text() == "entry one\nlocal note\n"
+        assert (repo / "code.py").read_text() == "original\n"
+        assert _git(repo, "diff", "--cached", "--name-only").stdout == ""
+
+    def test_reset_with_empty_or_none_dirty_before(self, repo):
+        untracked_before = backends._untracked_files(repo)
+        (repo / "code.py").write_text("agent changed code\n")
+        backends._reset_worktree(repo, untracked_before, None)
+        assert (repo / "code.py").read_text() == "original\n"
+
+        (repo / "code.py").write_text("agent changed code again\n")
+        backends._reset_worktree(repo, untracked_before, {})
+        assert (repo / "code.py").read_text() == "original\n"
+
+    @pytest.mark.parametrize("crash", [False, True])
+    def test_agent_generate_changes_lifecycle_preserves_dirty_files(
+        self, monkeypatch, repo, crash
+    ):
+        (repo / "learnings.md").write_text("entry one\nlocal note\n")
+
+        def fake_run_claude(binary, prompt, *, model=None, cwd=None, edit=False, timeout=600):
+            (repo / "code.py").write_text("agent changed code\n")
+            if crash:
+                raise RuntimeError("agent died")
+            return "done", {"prompt_tokens": 2, "completion_tokens": 1}
+
+        monkeypatch.setattr(backends, "resolve_binary", lambda name: "/usr/bin/claude")
+        monkeypatch.setattr(backends, "_run_claude", fake_run_claude)
+
+        changes, usage = backends.agent_generate_changes(
+            _Task(), "plan", repo, _Cfg(), "claude",
+        )
+
+        assert (repo / "learnings.md").read_text() == "entry one\nlocal note\n"
+        assert (repo / "code.py").read_text() == "original\n"
+        if crash:
+            assert changes is None
+            assert usage is None
+        else:
+            assert [change.file_path for change in changes] == ["code.py"]
+            assert usage == {"prompt_tokens": 2, "completion_tokens": 1}
