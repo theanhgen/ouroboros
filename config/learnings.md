@@ -51,3 +51,4 @@
 2026-08-23 | fix_bug | Fix parameter extraction in extract_code_metadata and get_fu | success | tests: 966 -> 968
 2026-08-23 | fix_bug | Fix summary line parsing in _parse_pytest_output within src/ | success | tests: 968 -> 972
 2026-08-24 | fix_bug | Fix get_pr_checks_status in src/ouroboros/git_ops.py so empt | failed | Forbidden file modification: config/state.json; Forbidden file modification: src
+2026-08-24 | fix_bug | Fix _reset_worktree in src/ouroboros/backends.py to accept d | success | tests: 994 -> 1000
