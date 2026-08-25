@@ -94,6 +94,25 @@ def test_similarity():
     assert similarity(a, c) < 0.5
     assert -1.0 <= similarity(a, c) <= 1.0
 
+def test_similarity_shape_mismatch():
+    a = encode_atom("cat", dim=64)
+    b = encode_atom("cat", dim=128)
+
+    with pytest.raises(ValueError, match="Vector shapes must match"):
+        similarity(a, b)
+
+    with pytest.raises(ValueError, match="Vector shapes must match"):
+        similarity(a, np.zeros((64, 1), dtype=np.float64))
+
+def test_similarity_empty_vectors_return_zero():
+    a = np.array([], dtype=np.float64)
+    b = np.array([], dtype=np.float64)
+
+    score = similarity(a, b)
+
+    assert score == 0.0
+    assert not math.isnan(score)
+
 def test_encode_text():
     text = "The quick brown fox."
     v = encode_text(text, dim=128)

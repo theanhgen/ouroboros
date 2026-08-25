@@ -79,7 +79,14 @@ def bundle(*vectors: "np.ndarray") -> "np.ndarray":
 def similarity(a: "np.ndarray", b: "np.ndarray") -> float:
     """Phase cosine similarity. Range [-1, 1]."""
     _require_numpy()
-    return float(np.mean(np.cos(a - b)))
+    if a.shape != b.shape:
+        raise ValueError(f"Vector shapes must match: {a.shape} vs {b.shape}")
+    if a.size == 0:
+        return 0.0
+    value = float(np.mean(np.cos(a - b)))
+    if math.isnan(value):
+        return 0.0
+    return value
 
 
 def encode_text(text: str, dim: int = 1024) -> "np.ndarray":
