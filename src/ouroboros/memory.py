@@ -761,8 +761,11 @@ class FactRetriever:
 
     def _fts_candidates(self, query: str, category: Optional[str],
                         min_trust: float, limit: int) -> List[Dict]:
+        match_query = _fts5_match_query(query)
+        if not match_query:
+            return []
         conn = self.store._conn
-        params: list = [query]
+        params: list = [match_query]
         where_parts = ["facts_fts MATCH ?"]
         if category:
             where_parts.append("f.category = ?")
@@ -778,10 +781,7 @@ class FactRetriever:
             WHERE {' AND '.join(where_parts)}
             ORDER BY facts_fts.rank LIMIT ?
         """
-        try:
-            rows = conn.execute(sql, params).fetchall()
-        except Exception:
-            return []
+        rows = conn.execute(sql, params).fetchall()
         if not rows:
             return []
 

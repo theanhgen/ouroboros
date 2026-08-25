@@ -298,6 +298,89 @@ def test_search_facts_no_hits_does_not_bump_retrieval_count(temp_store):
     assert stored["retrieval_count"] == 0
 
 
+@pytest.mark.parametrize(
+    "query",
+    [
+        "col:val",
+        'foo"bar',
+        '"unclosed',
+        "NEAR/",
+        "*",
+        "***",
+        '" "',
+    ],
+)
+def test_fact_retriever_fts_candidates_no_hits_for_fts5_syntax_text(
+    temp_store,
+    query,
+):
+    temp_store.add_fact("the cat sat on the mat", category="test")
+    retriever = FactRetriever(temp_store, hrr_weight=0.0)
+
+    assert retriever._fts_candidates(query, None, 0.3, 10) == []
+    assert retriever.search(query) == []
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("cat:", "the cat sat on the mat"),
+        ("issue:123", "see issue:123 for details"),
+        ("http://example.com", "visit http://example.com now"),
+        ("user's manual", "the user's manual"),
+        ("a AND", "a AND b are both listed"),
+    ],
+)
+def test_fact_retriever_fts_candidates_treats_query_as_literal_text(
+    temp_store,
+    query,
+    expected,
+):
+    for content in (
+        "the cat sat on the mat",
+        "see issue:123 for details",
+        "visit http://example.com now",
+        "the user's manual",
+        "a AND b are both listed",
+    ):
+        temp_store.add_fact(content, category="test")
+    retriever = FactRetriever(
+        temp_store,
+        fts_weight=1.0,
+        jaccard_weight=0.0,
+        hrr_weight=0.0,
+    )
+
+    candidates = retriever._fts_candidates(query, "test", 0.3, 10)
+    assert [result["content"] for result in candidates] == [expected]
+    assert candidates[0]["fts_rank"] == pytest.approx(1.0)
+
+    results = retriever.search(query, category="test")
+    assert [result["content"] for result in results] == [expected]
+    assert results[0]["score"] == pytest.approx(0.5)
+
+
+@pytest.mark.parametrize("query", ["", "   ", "\x00", "\x00\x00"])
+def test_fact_retriever_fts_candidates_empty_query_short_circuits(
+    temp_store,
+    query,
+):
+    temp_store.add_fact("the cat sat on the mat", category="test")
+    temp_store._conn.execute("DROP TABLE facts_fts")
+    retriever = FactRetriever(temp_store, hrr_weight=0.0)
+
+    assert retriever._fts_candidates(query, None, 0.3, 10) == []
+    assert retriever.search(query) == []
+
+
+def test_fact_retriever_fts_candidates_propagates_real_database_errors(temp_store):
+    temp_store.add_fact("the cat sat on the mat", category="test")
+    temp_store._conn.execute("DROP TABLE facts_fts")
+
+    with pytest.raises(sqlite3.OperationalError, match="facts_fts"):
+        FactRetriever(temp_store)._fts_candidates("cat", None, 0.3, 10)
+
+
 @pytest.mark.parametrize("hrr_dim", [0, -1, -1024])
 def test_memory_store_rejects_non_positive_hrr_dim(tmp_path, hrr_dim):
     """Reject before touching the DB, so no partial fact row can be committed."""
