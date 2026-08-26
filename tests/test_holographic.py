@@ -64,6 +64,24 @@ def test_bind_unbind():
     retrieved_a = unbind(bound, b)
     assert np.allclose(retrieved_a, a)
 
+def test_bind_shape_mismatch():
+    a = encode_atom("key", dim=64)
+
+    with pytest.raises(ValueError, match="Vector shapes must match"):
+        bind(a, encode_atom("val", dim=128))
+
+    with pytest.raises(ValueError, match="Vector shapes must match"):
+        bind(a, np.zeros((64, 1), dtype=np.float64))
+
+def test_unbind_shape_mismatch():
+    memory = encode_atom("memory", dim=64)
+
+    with pytest.raises(ValueError, match="Vector shapes must match"):
+        unbind(memory, encode_atom("key", dim=128))
+
+    with pytest.raises(ValueError, match="Vector shapes must match"):
+        unbind(memory, np.zeros((64, 1), dtype=np.float64))
+
 def test_bundle():
     a = encode_atom("apple", dim=128)
     b = encode_atom("banana", dim=128)
@@ -84,6 +102,16 @@ def test_bundle():
 def test_bundle_empty():
     with pytest.raises(ValueError, match="At least one vector must be provided to bundle"):
         bundle()
+
+def test_bundle_shape_mismatch():
+    a = encode_atom("apple", dim=64)
+    b = encode_atom("banana", dim=64)
+
+    with pytest.raises(ValueError, match="Vector shapes must match"):
+        bundle(a, b, encode_atom("cherry", dim=128))
+
+    with pytest.raises(ValueError, match="Vector shapes must match"):
+        bundle(a, np.zeros((64, 1), dtype=np.float64))
 
 def test_similarity():
     a = encode_atom("cat", dim=64)
@@ -157,3 +185,8 @@ def test_snr_estimate(caplog):
         snr = snr_estimate(16, 8)
         assert snr < 2.0
         assert any("HRR storage near capacity" in record.message for record in caplog.records)
+
+@pytest.mark.parametrize("dim", [0, -1, -100])
+def test_snr_estimate_rejects_non_positive_dim(dim):
+    with pytest.raises(ValueError, match="dim must be positive"):
+        snr_estimate(dim, 0)

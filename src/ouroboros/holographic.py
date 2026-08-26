@@ -58,12 +58,16 @@ def encode_atom(word: str, dim: int = 1024) -> "np.ndarray":
 def bind(a: "np.ndarray", b: "np.ndarray") -> "np.ndarray":
     """Circular convolution -- element-wise phase addition."""
     _require_numpy()
+    if a.shape != b.shape:
+        raise ValueError(f"Vector shapes must match: {a.shape} vs {b.shape}")
     return (a + b) % _TWO_PI
 
 
 def unbind(memory: "np.ndarray", key: "np.ndarray") -> "np.ndarray":
     """Circular correlation -- element-wise phase subtraction."""
     _require_numpy()
+    if memory.shape != key.shape:
+        raise ValueError(f"Vector shapes must match: {memory.shape} vs {key.shape}")
     return (memory - key) % _TWO_PI
 
 
@@ -72,6 +76,10 @@ def bundle(*vectors: "np.ndarray") -> "np.ndarray":
     _require_numpy()
     if not vectors:
         raise ValueError("At least one vector must be provided to bundle")
+    target_shape = vectors[0].shape
+    for vector in vectors[1:]:
+        if vector.shape != target_shape:
+            raise ValueError(f"Vector shapes must match: {target_shape} vs {vector.shape}")
     complex_sum = np.sum([np.exp(1j * v) for v in vectors], axis=0)
     return np.angle(complex_sum) % _TWO_PI
 
@@ -127,6 +135,8 @@ def bytes_to_phases(data: bytes) -> "np.ndarray":
 
 def snr_estimate(dim: int, n_items: int) -> float:
     """Signal-to-noise ratio estimate for holographic storage."""
+    if dim <= 0:
+        raise ValueError(f"dim must be positive, got {dim}")
     if n_items <= 0:
         return float("inf")
     snr = math.sqrt(dim / n_items)
