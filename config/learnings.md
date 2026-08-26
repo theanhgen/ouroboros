@@ -53,3 +53,4 @@
 2026-08-24 | fix_bug | Fix get_pr_checks_status in src/ouroboros/git_ops.py so empt | failed | Forbidden file modification: config/state.json; Forbidden file modification: src
 2026-08-24 | fix_bug | Fix _reset_worktree in src/ouroboros/backends.py to accept d | success | tests: 994 -> 1000
 2026-08-25 | fix_bug | Fix _fts_candidates in FactRetriever within src/ouroboros/me | success | tests: 1000 -> 1017
+2026-08-25 | fix_bug | Fix similarity in src/ouroboros/holographic.py to validate m | success | tests: 1017 -> 1019
