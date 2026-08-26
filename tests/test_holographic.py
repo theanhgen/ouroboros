@@ -151,6 +151,39 @@ def test_encode_text():
     v_ref = encode_atom("__hrr_empty__", dim=128)
     assert np.array_equal(v_empty, v_ref)
 
+def test_encode_text_filters_stopwords_before_bundling():
+    dim = 128
+    filtered = encode_text("The quick and the brown fox is here.", dim=dim)
+    expected = bundle(
+        encode_atom("quick", dim),
+        encode_atom("brown", dim),
+        encode_atom("fox", dim),
+    )
+
+    assert np.array_equal(filtered, expected)
+    assert np.array_equal(filtered, encode_text("quick brown fox", dim=dim))
+
+def test_encode_text_falls_back_to_all_tokens_when_all_stopwords():
+    dim = 128
+    encoded = encode_text("to be or not to be", dim=dim)
+    expected = bundle(
+        encode_atom("to", dim),
+        encode_atom("be", dim),
+        encode_atom("or", dim),
+        encode_atom("not", dim),
+        encode_atom("to", dim),
+        encode_atom("be", dim),
+    )
+
+    assert np.array_equal(encoded, expected)
+    assert not np.array_equal(encoded, encode_atom("__hrr_empty__", dim))
+
+def test_encode_text_filters_stopwords_after_case_and_punctuation_normalization():
+    assert np.array_equal(
+        encode_text("The, (AND) Is? QUICK!", dim=128),
+        encode_text("quick", dim=128),
+    )
+
 def test_encode_fact():
     content = "likes cheese"
     entities = ["Alice", "Bob"]
@@ -169,6 +202,18 @@ def test_encode_fact():
     
     unbound_entity = unbind(fact, role_entity)
     assert similarity(unbound_entity, alice_vec) > 0.1
+
+def test_encode_fact_uses_stopword_filtered_content():
+    dim = 128
+    fact = encode_fact("the latent vector stores the memory", ["Alice"], dim=dim)
+    role_content = encode_atom("__hrr_role_content__", dim)
+    role_entity = encode_atom("__hrr_role_entity__", dim)
+    expected = bundle(
+        bind(encode_text("latent vector stores memory", dim), role_content),
+        bind(encode_atom("alice", dim), role_entity),
+    )
+
+    assert np.array_equal(fact, expected)
 
 def test_serialization():
     v = encode_atom("serialize", dim=128)

@@ -29,6 +29,30 @@ log = logging.getLogger(__name__)
 
 _TWO_PI = 2.0 * math.pi
 
+STOPWORDS: frozenset[str] = frozenset({
+    "a", "about", "above", "after", "again", "against", "all", "am", "an", "and",
+    "any", "are", "aren't", "as", "at", "be", "because", "been", "before",
+    "being", "below", "between", "both", "but", "by", "can", "can't", "cannot",
+    "could", "couldn't", "did", "didn't", "do", "does", "doesn't", "doing",
+    "don't", "down", "during", "each", "few", "for", "from", "further", "had",
+    "hadn't", "has", "hasn't", "have", "haven't", "having", "he", "he'd",
+    "he'll", "he's", "her", "here", "here's", "hers", "herself", "him",
+    "himself", "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if",
+    "in", "into", "is", "isn't", "it", "it's", "its", "itself", "let's", "me",
+    "more", "most", "mustn't", "my", "myself", "no", "nor", "not", "of", "off",
+    "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves",
+    "out", "over", "own", "same", "shan't", "she", "she'd", "she'll", "she's",
+    "should", "shouldn't", "so", "some", "such", "than", "that", "that's", "the",
+    "their", "theirs", "them", "themselves", "then", "there", "there's", "these",
+    "they", "they'd", "they'll", "they're", "they've", "this", "those",
+    "through", "to", "too", "under", "until", "up", "very", "was", "wasn't",
+    "we", "we'd", "we'll", "we're", "we've", "were", "weren't", "what",
+    "what's", "when", "when's", "where", "where's", "which", "while", "who",
+    "who's", "whom", "why", "why's", "with", "won't", "would", "wouldn't",
+    "you", "you'd", "you'll", "you're", "you've", "your", "yours", "yourself",
+    "yourselves",
+})
+
 
 def _require_numpy() -> None:
     if not HAS_NUMPY:
@@ -98,7 +122,7 @@ def similarity(a: "np.ndarray", b: "np.ndarray") -> float:
 
 
 def encode_text(text: str, dim: int = 1024) -> "np.ndarray":
-    """Bag-of-words: bundle of atom vectors for each token."""
+    """Bag-of-words: bundle of atom vectors for non-stopword tokens."""
     _require_numpy()
     tokens = [
         token.strip(".,!?;:\"'()[]{}")
@@ -107,7 +131,9 @@ def encode_text(text: str, dim: int = 1024) -> "np.ndarray":
     tokens = [t for t in tokens if t]
     if not tokens:
         return encode_atom("__hrr_empty__", dim)
-    return bundle(*[encode_atom(token, dim) for token in tokens])
+    content_tokens = [token for token in tokens if token not in STOPWORDS]
+    active_tokens = content_tokens or tokens
+    return bundle(*[encode_atom(token, dim) for token in active_tokens])
 
 
 def encode_fact(content: str, entities: List[str], dim: int = 1024) -> "np.ndarray":
