@@ -722,6 +722,134 @@ class ToolRunner:
         return f"Unknown tool: {name}"
 
 
+# How much a task must resemble the backlog item it was offered before the item
+# is considered taken. Calibrated against real history: a genuine restatement of
+# the same task scores ~0.83, while two different tasks on neighbouring modules
+# ("unit tests for memory" vs "unit tests for backlog") score ~0.60.
+_BACKLOG_MATCH_THRESHOLD = 0.8
+
+
+# How close a proposed task must be to a COMPLETED one before it is treated as
+# already done. Same scale and calibration as _BACKLOG_MATCH_THRESHOLD.
+_DUPLICATE_THRESHOLD = 0.8
+
+
+def _already_completed(task: Any, history: List[EvaluationRecord]) -> Optional[str]:
+    """The description of a completed task this one duplicates, or None.
+
+    Deliberately narrow. Broad FTS matching is not usable as this gate: two
+    unrelated tasks sharing "test", "parser" and "memory" would score highly and
+    real work would be suppressed -- a silent failure, and far worse than the
+    duplication it prevents. Only an exact task id or >= 0.8 content-word
+    overlap against SUCCEEDED history counts.
+
+    Failed attempts deliberately do not count. A task that failed should be
+    retried; discouraging it is the job of the "previously failed" context,
+    which advises the model rather than overriding it.
+    """
+    description = getattr(task, "description", "") or ""
+    if not description.strip():
+        return None
+    from . import backlog as _backlog
+
+    task_id = getattr(task, "task_id", None)
+    for record in history:
+        if record.outcome not in ("merged", "success"):
+            continue
+        if task_id and getattr(record, "task_id", None) == task_id:
+            return record.description
+        if _backlog.content_overlap(description, record.description or "") >= _DUPLICATE_THRESHOLD:
+            return record.description
+    return None
+
+
+def _record_cycle_memory(ctx: Dict[str, Any]) -> None:
+    """Write the cycle's outcome into memory. Runs on EVERY path.
+
+    This block used to sit at the bottom of the cycle, after PR creation. Four
+    of the eleven exits -- no plan (~975), no code (~991), reviewer rejected
+    (~1025), validation failed (~1058) -- return before reaching it, so a cycle
+    that failed recorded nothing. Measured on production: 544 facts in
+    categories `code` and `success` only, and **zero failure facts in five
+    months**. The agent has never once recorded why something did not work,
+    which is the category it most needs in order to stop retrying it.
+
+    Note what is NOT moved here. `record_improvement` and `_append_learning`
+    are already called at all five exits -- duplicated, but not bypassed, so
+    hoisting them would be a reordering risk for no correctness gain. Only the
+    memory write was actually unreachable, so only it moves.
+
+    Called from a `finally`, so it must not raise: a failure to record must not
+    turn a completed cycle into a crashed one.
+    """
+    task, result = ctx.get("task"), ctx.get("result")
+    if task is None or result is None:
+        return  # a legitimate skip -- rate limit, open PR, stale streak, dry run
+    try:
+        from .memory import IndexManager
+        memory = IndexManager()
+        if result.status == "success":
+            for change in result.changes:
+                memory.index_file(change.file_path, change.new_content)
+            memory.index_success(task.task_id, task.description, result.details or "")
+            memory.record_outcome_feedback(task.description, success=True)
+        elif result.status in ("failed", "reverted"):
+            memory.index_failure(task.task_id, task.description, result.details or "")
+            memory.record_outcome_feedback(task.description, success=False)
+    except Exception:
+        log.debug("Memory indexing failed", exc_info=True)
+
+
+def _finalize_backlog(ctx: Dict[str, Any]) -> None:
+    """Close out the backlog item this cycle was offered, if it took it.
+
+    `mark_done` and `mark_failed` had zero production callers. An item was
+    injected into the prompt as HIGH-PRIORITY and then never resolved, so the
+    same head was re-offered every cycle indefinitely.
+
+    The link between the offered item and the task the model came back with is
+    not exact -- nothing round-trips an id through the prompt -- so it is
+    established by content overlap, and a weak match resolves nothing. Marking
+    the wrong item done would silently drop real work from the agenda, which is
+    worse than leaving an item open one more cycle.
+
+    `mark_failed` already counts attempts and abandons at three; it is called
+    once per failed attempt, not gated on a count here.
+
+    Runs from a `finally` and must not raise.
+    """
+    item = ctx.get("backlog_item")
+    task, result = ctx.get("task"), ctx.get("result")
+    repo_root = ctx.get("repo_root")
+    if not item or task is None or result is None or repo_root is None:
+        return
+    try:
+        from . import backlog as _backlog
+
+        overlap = _backlog.content_overlap(
+            item.get("description", ""), getattr(task, "description", "")
+        )
+        if overlap < _BACKLOG_MATCH_THRESHOLD:
+            log.debug("Cycle did not take the offered backlog item (overlap %.2f)", overlap)
+            return
+        item_id = item.get("id")
+        if not item_id:
+            return
+        if result.status == "success":
+            _backlog.mark_done(repo_root, item_id)
+        elif result.status in ("failed", "reverted"):
+            _backlog.mark_failed(repo_root, item_id)
+        # Anything else -- "skipped" (a dry run, improvement.py:1121) or the
+        # "pending" default (line 69, still set when an exception escapes the
+        # body after the result exists) -- is NOT an attempt and must not count
+        # as one. An `else` here meant three dry-run preflights, or three cycles
+        # during a backend outage like the three-week agy one in August, would
+        # silently abandon a live item. That is the failure this function's own
+        # threshold exists to prevent, arriving through the back door.
+    except Exception:
+        log.debug("Backlog finalisation failed", exc_info=True)
+
+
 def run_improvement_cycle(
     client: Any,
     state: Dict[str, Any],
@@ -730,10 +858,41 @@ def run_improvement_cycle(
     dry_run: bool = False,
     on_event: EventCallback = None,
 ) -> Optional[ImprovementResult]:
+    """Run a full improvement cycle, and record its outcome whatever happens.
+
+    A thin wrapper so that the memory write has exactly one call site reachable
+    from every exit of `_run_improvement_cycle`, including the ones that return
+    early and the ones that raise. Adding a twelfth exit to the body below
+    cannot reintroduce the bypass; that is the whole point of the split.
+    """
+    ctx: Dict[str, Any] = {}
+    try:
+        return _run_improvement_cycle(
+            ctx, client, state, config=config, model=model,
+            dry_run=dry_run, on_event=on_event,
+        )
+    finally:
+        _record_cycle_memory(ctx)
+        _finalize_backlog(ctx)
+
+
+def _run_improvement_cycle(
+    ctx: Dict[str, Any],
+    client: Any,
+    state: Dict[str, Any],
+    config: SafetyConfig | None = None,
+    model: str = DEFAULT_OPENAI_MODEL,
+    dry_run: bool = False,
+    on_event: EventCallback = None,
+) -> Optional[ImprovementResult]:
     """Run a full improvement cycle with tool-calling ReAct loop.
+
+    Populates `ctx` with the task and result as soon as each exists, so the
+    caller's `finally` can record the outcome no matter which exit is taken.
     """
     config = config or SafetyConfig()
     repo_root = get_repo_root()
+    ctx["repo_root"] = repo_root
     tool_runner = ToolRunner(repo_root)
 
     # Per-role backend clients. identify/plan run as text/JSON completions; a
@@ -833,6 +992,12 @@ def run_improvement_cycle(
         pending = _backlog.get_pending(repo_root)
         if pending and pending[0].get("priority", 0) >= 8:
             top = pending[0]
+            # Remembered so the epilogue can close it out. Without this the item
+            # is offered as HIGH-PRIORITY every cycle forever -- nothing ever
+            # called mark_done, which is why "code-aware indexing in MemoryStore"
+            # was implemented on 2026-06-27 and again on 2026-08-22, the second
+            # time re-implementing a method that already existed (tests 966->966).
+            ctx["backlog_item"] = top
             backlog_ctx = (
                 f"HIGH-PRIORITY BACKLOG ITEM: [{top.get('task_type', '?')}] "
                 f"{top.get('description', '')} (priority={top.get('priority', '?')})"
@@ -846,6 +1011,15 @@ def run_improvement_cycle(
     if recent_learnings:
         learnings_ctx = f"Recent improvement history (last 20):\n{recent_learnings}"
         final_ctx = f"{final_ctx}\n\n{learnings_ctx}"
+
+    # Written, unit-tested, and never called until now. Without them the model
+    # re-proposes work it has already failed at, with no idea it ever tried.
+    failed_ctx = _build_failed_attempts_context(history)
+    if failed_ctx:
+        final_ctx = f"{final_ctx}\n\n{failed_ctx}"
+    rates_ctx = _build_success_rate_context(history)
+    if rates_ctx:
+        final_ctx = f"{final_ctx}\n\n{rates_ctx}"
 
     task_data, id_err = llm.identify_improvements(
         identify_client, codebase_summary, test_results.summary(), history_summary,
@@ -925,6 +1099,18 @@ def run_improvement_cycle(
                     }
 
     task = ImprovementTask.from_llm_response(task_data)
+    ctx["task"] = task
+
+    duplicate_of = _already_completed(task, history)
+    if duplicate_of is not None:
+        log.info("[improve] Skipping: already completed -- %s", duplicate_of[:100])
+        _fire("cycle_end", f"Skipped: already completed ({duplicate_of[:80]})")
+        _append_learning(
+            repo_root,
+            f"{_today()} | {task.task_type} | {task.description[:60]} | duplicate | "
+            f"already completed: {duplicate_of[:60]}",
+        )
+        return None
     log.info("[improve] Identified: [%s] %s", task.task_type, task.description)
     _fire("task_identified", f"Task: [{task.task_type}] {task.description}", {
         "task_type": task.task_type,
@@ -933,6 +1119,7 @@ def run_improvement_cycle(
     })
 
     improvement_result = ImprovementResult(task=task)
+    ctx["result"] = improvement_result
     if task._usage:
         improvement_result.total_usage["prompt_tokens"] += task._usage.get("prompt_tokens", 0)
         improvement_result.total_usage["completion_tokens"] += task._usage.get("completion_tokens", 0)
@@ -1115,23 +1302,6 @@ def run_improvement_cycle(
             )
     except Exception:
         log.debug("Failed to append learning entry")
-
-    # Update Memory
-    try:
-        from .memory import IndexManager
-        memory = IndexManager()
-        if improvement_result.status == "success":
-            for change in improvement_result.changes:
-                memory.index_file(change.file_path, change.new_content)
-            memory.index_success(task.task_id, task.description,
-                                 improvement_result.details or "")
-            memory.record_outcome_feedback(task.description, success=True)
-        elif improvement_result.status in ("failed", "reverted"):
-            memory.index_failure(task.task_id, task.description,
-                                 improvement_result.details or "")
-            memory.record_outcome_feedback(task.description, success=False)
-    except Exception:
-        log.debug("Memory indexing failed")
 
     _fire("cycle_end", f"Cycle complete: {improvement_result.status}")
     return improvement_result
