@@ -837,8 +837,15 @@ def _finalize_backlog(ctx: Dict[str, Any]) -> None:
             return
         if result.status == "success":
             _backlog.mark_done(repo_root, item_id)
-        else:
+        elif result.status in ("failed", "reverted"):
             _backlog.mark_failed(repo_root, item_id)
+        # Anything else -- "skipped" (a dry run, improvement.py:1121) or the
+        # "pending" default (line 69, still set when an exception escapes the
+        # body after the result exists) -- is NOT an attempt and must not count
+        # as one. An `else` here meant three dry-run preflights, or three cycles
+        # during a backend outage like the three-week agy one in August, would
+        # silently abandon a live item. That is the failure this function's own
+        # threshold exists to prevent, arriving through the back door.
     except Exception:
         log.debug("Backlog finalisation failed", exc_info=True)
 

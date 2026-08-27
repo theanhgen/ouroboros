@@ -96,6 +96,23 @@ class TestFinalizeBacklog:
         assert stored["status"] == "abandoned"
         assert backlog.get_pending(repo) == [], "an abandoned item stops being offered"
 
+    @pytest.mark.parametrize("status", ["skipped", "pending"])
+    def test_a_non_attempt_does_not_count_as_one(self, repo, status):
+        """`skipped` is a dry run; `pending` is the default still in place when an
+        exception escapes after the result exists. Neither is an attempt.
+
+        Counting them meant three dry-run preflights -- or three cycles during a
+        backend outage -- would abandon a live item without anyone touching it.
+        """
+        item = backlog.add_item(repo, "fix_bug", "Fix parsing in _parse_pytest_output", priority=9)
+        for _ in range(3):
+            improvement._finalize_backlog(
+                self._ctx(repo, item, "Fix parsing in _parse_pytest_output", status))
+        stored = backlog.load_backlog(repo)[0]
+        assert stored["attempts"] == 0, f"{status} must not count as an attempt"
+        assert stored["status"] == "pending"
+        assert backlog.get_pending(repo), "the item must still be offered"
+
     def test_a_cycle_that_did_something_else_resolves_nothing(self, repo):
         """The failure mode worth protecting against. Marking the wrong item
         done silently drops real work off the agenda."""
