@@ -722,6 +722,13 @@ class ToolRunner:
         return f"Unknown tool: {name}"
 
 
+# How much a task must resemble the backlog item it was offered before the item
+# is considered taken. Calibrated against real history: a genuine restatement of
+# the same task scores ~0.83, while two different tasks on neighbouring modules
+# ("unit tests for memory" vs "unit tests for backlog") score ~0.60.
+_BACKLOG_MATCH_THRESHOLD = 0.8
+
+
 def _record_cycle_memory(ctx: Dict[str, Any]) -> None:
     """Write the cycle's outcome into memory. Runs on EVERY path.
 
@@ -759,6 +766,49 @@ def _record_cycle_memory(ctx: Dict[str, Any]) -> None:
         log.debug("Memory indexing failed", exc_info=True)
 
 
+def _finalize_backlog(ctx: Dict[str, Any]) -> None:
+    """Close out the backlog item this cycle was offered, if it took it.
+
+    `mark_done` and `mark_failed` had zero production callers. An item was
+    injected into the prompt as HIGH-PRIORITY and then never resolved, so the
+    same head was re-offered every cycle indefinitely.
+
+    The link between the offered item and the task the model came back with is
+    not exact -- nothing round-trips an id through the prompt -- so it is
+    established by content overlap, and a weak match resolves nothing. Marking
+    the wrong item done would silently drop real work from the agenda, which is
+    worse than leaving an item open one more cycle.
+
+    `mark_failed` already counts attempts and abandons at three; it is called
+    once per failed attempt, not gated on a count here.
+
+    Runs from a `finally` and must not raise.
+    """
+    item = ctx.get("backlog_item")
+    task, result = ctx.get("task"), ctx.get("result")
+    repo_root = ctx.get("repo_root")
+    if not item or task is None or result is None or repo_root is None:
+        return
+    try:
+        from . import backlog as _backlog
+
+        overlap = _backlog.content_overlap(
+            item.get("description", ""), getattr(task, "description", "")
+        )
+        if overlap < _BACKLOG_MATCH_THRESHOLD:
+            log.debug("Cycle did not take the offered backlog item (overlap %.2f)", overlap)
+            return
+        item_id = item.get("id")
+        if not item_id:
+            return
+        if result.status == "success":
+            _backlog.mark_done(repo_root, item_id)
+        else:
+            _backlog.mark_failed(repo_root, item_id)
+    except Exception:
+        log.debug("Backlog finalisation failed", exc_info=True)
+
+
 def run_improvement_cycle(
     client: Any,
     state: Dict[str, Any],
@@ -782,6 +832,7 @@ def run_improvement_cycle(
         )
     finally:
         _record_cycle_memory(ctx)
+        _finalize_backlog(ctx)
 
 
 def _run_improvement_cycle(
@@ -800,6 +851,7 @@ def _run_improvement_cycle(
     """
     config = config or SafetyConfig()
     repo_root = get_repo_root()
+    ctx["repo_root"] = repo_root
     tool_runner = ToolRunner(repo_root)
 
     # Per-role backend clients. identify/plan run as text/JSON completions; a
@@ -899,6 +951,12 @@ def _run_improvement_cycle(
         pending = _backlog.get_pending(repo_root)
         if pending and pending[0].get("priority", 0) >= 8:
             top = pending[0]
+            # Remembered so the epilogue can close it out. Without this the item
+            # is offered as HIGH-PRIORITY every cycle forever -- nothing ever
+            # called mark_done, which is why "code-aware indexing in MemoryStore"
+            # was implemented on 2026-06-27 and again on 2026-08-22, the second
+            # time re-implementing a method that already existed (tests 966->966).
+            ctx["backlog_item"] = top
             backlog_ctx = (
                 f"HIGH-PRIORITY BACKLOG ITEM: [{top.get('task_type', '?')}] "
                 f"{top.get('description', '')} (priority={top.get('priority', '?')})"

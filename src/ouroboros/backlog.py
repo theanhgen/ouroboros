@@ -93,6 +93,36 @@ def add_item(
     return _update_backlog(repo_root, _add)
 
 
+# Words too common to carry meaning when comparing two task descriptions. Kept
+# local and small on purpose: this is a similarity gate on short engineering
+# sentences, not a search index, and importing the retrieval stopword list would
+# couple two things that want to change for different reasons.
+_FILLER = frozenset({
+    "a", "an", "and", "the", "to", "in", "on", "of", "for", "with", "that",
+    "this", "is", "are", "be", "by", "as", "at", "or", "from", "it", "its",
+    "so", "then", "than", "into", "within", "using", "use", "add", "adds",
+})
+
+
+def content_overlap(a: str, b: str) -> float:
+    """Jaccard similarity over content words, in [0.0, 1.0].
+
+    Deliberately crude and deliberately NOT full-text search. The gate this
+    feeds decides whether to suppress work as already done, and a broad FTS
+    match would happily call two unrelated tasks equivalent because they share
+    "test" and "parser". Set intersection over content words needs an actual
+    overlap of subject matter to score high.
+    """
+    def words(text: str) -> set:
+        raw = "".join(ch if ch.isalnum() or ch in "_-" else " " for ch in (text or "").lower())
+        return {w for w in raw.split() if len(w) > 2 and w not in _FILLER}
+
+    wa, wb = words(a), words(b)
+    if not wa or not wb:
+        return 0.0
+    return len(wa & wb) / len(wa | wb)
+
+
 def mark_done(repo_root: Path, item_id: str) -> None:
     def _mark(items: List[Dict[str, Any]]) -> None:
         for item in items:
