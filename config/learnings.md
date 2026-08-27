@@ -55,3 +55,4 @@
 2026-08-25 | fix_bug | Fix _fts_candidates in FactRetriever within src/ouroboros/me | success | tests: 1000 -> 1017
 2026-08-25 | fix_bug | Fix similarity in src/ouroboros/holographic.py to validate m | success | tests: 1017 -> 1019
 2026-08-26 | fix_bug | Fix bind, unbind, bundle, and snr_estimate in src/ouroboros/ | success | tests: 1019 -> 1025
+2026-08-26 | add_feature | Add stopword filtering to encode_text in src/ouroboros/holog | success | tests: 1025 -> 1029
