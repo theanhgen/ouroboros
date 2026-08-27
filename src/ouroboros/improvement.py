@@ -729,6 +729,40 @@ class ToolRunner:
 _BACKLOG_MATCH_THRESHOLD = 0.8
 
 
+# How close a proposed task must be to a COMPLETED one before it is treated as
+# already done. Same scale and calibration as _BACKLOG_MATCH_THRESHOLD.
+_DUPLICATE_THRESHOLD = 0.8
+
+
+def _already_completed(task: Any, history: List[EvaluationRecord]) -> Optional[str]:
+    """The description of a completed task this one duplicates, or None.
+
+    Deliberately narrow. Broad FTS matching is not usable as this gate: two
+    unrelated tasks sharing "test", "parser" and "memory" would score highly and
+    real work would be suppressed -- a silent failure, and far worse than the
+    duplication it prevents. Only an exact task id or >= 0.8 content-word
+    overlap against SUCCEEDED history counts.
+
+    Failed attempts deliberately do not count. A task that failed should be
+    retried; discouraging it is the job of the "previously failed" context,
+    which advises the model rather than overriding it.
+    """
+    description = getattr(task, "description", "") or ""
+    if not description.strip():
+        return None
+    from . import backlog as _backlog
+
+    task_id = getattr(task, "task_id", None)
+    for record in history:
+        if record.outcome not in ("merged", "success"):
+            continue
+        if task_id and getattr(record, "task_id", None) == task_id:
+            return record.description
+        if _backlog.content_overlap(description, record.description or "") >= _DUPLICATE_THRESHOLD:
+            return record.description
+    return None
+
+
 def _record_cycle_memory(ctx: Dict[str, Any]) -> None:
     """Write the cycle's outcome into memory. Runs on EVERY path.
 
@@ -971,6 +1005,15 @@ def _run_improvement_cycle(
         learnings_ctx = f"Recent improvement history (last 20):\n{recent_learnings}"
         final_ctx = f"{final_ctx}\n\n{learnings_ctx}"
 
+    # Written, unit-tested, and never called until now. Without them the model
+    # re-proposes work it has already failed at, with no idea it ever tried.
+    failed_ctx = _build_failed_attempts_context(history)
+    if failed_ctx:
+        final_ctx = f"{final_ctx}\n\n{failed_ctx}"
+    rates_ctx = _build_success_rate_context(history)
+    if rates_ctx:
+        final_ctx = f"{final_ctx}\n\n{rates_ctx}"
+
     task_data, id_err = llm.identify_improvements(
         identify_client, codebase_summary, test_results.summary(), history_summary,
         model=model, additional_context=final_ctx
@@ -1050,6 +1093,17 @@ def _run_improvement_cycle(
 
     task = ImprovementTask.from_llm_response(task_data)
     ctx["task"] = task
+
+    duplicate_of = _already_completed(task, history)
+    if duplicate_of is not None:
+        log.info("[improve] Skipping: already completed -- %s", duplicate_of[:100])
+        _fire("cycle_end", f"Skipped: already completed ({duplicate_of[:80]})")
+        _append_learning(
+            repo_root,
+            f"{_today()} | {task.task_type} | {task.description[:60]} | duplicate | "
+            f"already completed: {duplicate_of[:60]}",
+        )
+        return None
     log.info("[improve] Identified: [%s] %s", task.task_type, task.description)
     _fire("task_identified", f"Task: [{task.task_type}] {task.description}", {
         "task_type": task.task_type,
