@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from . import holographic as hrr
+from .holographic import STOPWORDS
 from .codebase import get_repo_root
 
 log = logging.getLogger(__name__)
@@ -104,11 +105,32 @@ _RE_DOUBLE_QUOTE = re.compile(r'"([^"]+)"')
 _RE_SINGLE_QUOTE = re.compile(r"'([^']+)'")
 
 
+# Trimmed off both query tokens and fact tokens so the two agree on what a word
+# is. Same set FactRetriever._tokenize has always used, hoisted so the query
+# compiler cannot drift from it.
+_TOKEN_PUNCT = ".,;:!?\"'()[]{}#@<>"
+
+
+def _informative(token: str) -> bool:
+    """Whether a token is worth putting in a query or counting as overlap.
+
+    Requires an alphanumeric character, which is what excludes the horizontal
+    rules in the markdown the cycle searches with: `-----` and `=====` survive
+    `_TOKEN_PUNCT` stripping, are in no stopword list, and are long -- so
+    length-ranked selection picked them ahead of every real keyword.
+    """
+    stripped = token.strip(_TOKEN_PUNCT).lower()
+    if not stripped or stripped in STOPWORDS:
+        return False
+    return any(ch.isalnum() for ch in stripped)
+
+
 def _clamp_trust(value: float) -> float:
     return max(_TRUST_MIN, min(_TRUST_MAX, value))
 
 
-def _fts5_match_query(text: str) -> str:
+def _fts5_match_query(text: str, *, match_all: bool = True,
+                     max_tokens: Optional[int] = None) -> str:
     """Compile arbitrary text into a literal FTS5 MATCH expression.
 
     FTS5 reads its own operators out of the query string, so ordinary text
@@ -125,9 +147,55 @@ def _fts5_match_query(text: str) -> str:
     expression at U+0000, so a quoted phrase containing one is reported as
     an unterminated string no matter how it is escaped. It is the only
     control character that survives quoting.
+
+    ``match_all`` selects the operator between tokens. FTS5 reads a space as
+    an implicit AND, so the default requires every token to be present -- fine
+    for a short deliberate query, fatal for a long one. `retrieve_relevant_context`
+    passes the first 1000 characters of a codebase summary, roughly 120 tokens,
+    and no fact contains all 120; measured on the production database, a
+    six-token query already returns nothing while a two-token one returns rows.
+    ``match_all=False`` joins with OR instead, so recall degrades gracefully
+    with query length instead of collapsing.
+
+    ``max_tokens`` keeps an OR query from turning into "match anything": tokens
+    are stopword-filtered and the longest (most specific) are kept. Sorting by
+    length is a deliberately crude proxy for informativeness -- it is not IDF,
+    and it does not need to be, because the caller reranks and gates whatever
+    comes back.
     """
     tokens = [token for token in text.replace("\x00", " ").split() if token.strip()]
-    return " ".join('"' + token.replace('"', '""') + '"' for token in tokens)
+
+    if not match_all:
+        # Stopwords are filtered for EVERY OR query, not only ones long enough to
+        # need capping. Under AND a stopword is nearly free -- it is one more
+        # thing a fact must contain. Under OR it is ruinous: `OR "the"` matches
+        # essentially the whole table and floods the candidate set before the
+        # reranker ever sees a relevant row.
+        kept = [t for t in tokens if _informative(t)]
+        # A query with nothing but stopwords is not about anything. Better to
+        # return no results than to OR common English words across the database.
+        tokens = kept
+
+        # Deduplicate on the normalised form before ranking. Ranking a raw list
+        # by length let a repeated module name take every slot -- a codebase
+        # summary mentioning "improvement" thirty times compiled to that word
+        # six times and starved out every other keyword.
+        seen, unique = set(), []
+        for token in tokens:
+            key = token.strip(_TOKEN_PUNCT).lower()
+            if key not in seen:
+                seen.add(key)
+                unique.append(token)
+        tokens = unique
+
+    if max_tokens is not None and len(tokens) > max_tokens:
+        # Longest first for selection, then back into the caller's order so the
+        # compiled query stays a deterministic function of its input.
+        keep = set(sorted(range(len(tokens)), key=lambda i: -len(tokens[i]))[:max_tokens])
+        tokens = [t for i, t in enumerate(tokens) if i in keep]
+
+    quoted = ['"' + token.replace('"', '""') + '"' for token in tokens]
+    return (" " if match_all else " OR ").join(quoted)
 
 
 # ---------------------------------------------------------------------------
@@ -391,6 +459,26 @@ class MemoryStore:
             """
             return [dict(r) for r in self._conn.execute(sql, params).fetchall()]
 
+    def note_retrieved(self, fact_ids: List[int]) -> None:
+        """Record that these facts were actually returned to a caller.
+
+        Separate from `search_facts`, which increments the same column inline.
+        Nothing on the improvement cycle's path went through `search_facts`, so
+        `retrieval_count` sat at 0 on every one of 544 facts while retrieval was
+        running every cycle -- the counter was measuring a code path nobody
+        used, which made it look like proof that retrieval was dead.
+        """
+        if not fact_ids:
+            return
+        with self._lock:
+            placeholders = ",".join("?" for _ in fact_ids)
+            self._conn.execute(
+                f"UPDATE facts SET retrieval_count = retrieval_count + 1 "
+                f"WHERE fact_id IN ({placeholders})",
+                list(fact_ids),
+            )
+            self._conn.commit()
+
     def record_feedback(self, fact_id: int, helpful: bool) -> Dict:
         """Adjust trust based on feedback. Returns old/new trust."""
         with self._lock:
@@ -514,9 +602,12 @@ class FactRetriever:
     """Multi-strategy fact retrieval with trust-weighted scoring."""
 
     def __init__(self, store: MemoryStore, fts_weight: float = 0.4,
-                 jaccard_weight: float = 0.3, hrr_weight: float = 0.3) -> None:
+                 jaccard_weight: float = 0.3, hrr_weight: float = 0.3,
+                 max_query_tokens: int = 12, min_overlap: int = 2) -> None:
         self.store = store
         self.hrr_dim = store.hrr_dim
+        self.max_query_tokens = max_query_tokens
+        self.min_overlap = min_overlap
         if hrr_weight > 0 and not hrr.HAS_NUMPY:
             fts_weight, jaccard_weight, hrr_weight = 0.6, 0.4, 0.0
         self.fts_weight = fts_weight
@@ -531,10 +622,39 @@ class FactRetriever:
             return []
 
         query_tokens = self._tokenize(query)
+        # The gate, and the reason OR is safe to switch on.
+        #
+        # `fts_rank` is normalised against the maximum of its own batch
+        # (_fts_candidates), so the best row of ANY batch scores 1.0 however
+        # weak it is in absolute terms. With AND that was harmless -- a row had
+        # to contain every token to appear at all. With OR a fact sharing one
+        # incidental token becomes the batch maximum, and at the default
+        # weights reaches 0.4*1.0 + 0.3*0.5(hrr) = 0.55, times the default 0.5
+        # trust = 0.275: past the 0.1 cutoff in `retrieve_relevant_context` AND
+        # past the 0.2 threshold in `record_outcome_feedback`, which would move
+        # trust on facts that have nothing to do with the task.
+        #
+        # So relevance is gated on absolute token overlap before any of the
+        # relative scoring runs. A fact must share `min_overlap` informative
+        # tokens with the query; a query too short to meet that is exempt,
+        # because a deliberate two-word lookup is not the failure mode here.
+        informative = {t for t in query_tokens if _informative(t)}
+        if not informative:
+            # No fallback to the raw tokens. Falling back let a query of nothing
+            # but stopwords satisfy the gate on stopwords alone, admitting
+            # arbitrary facts that happened to contain common English words.
+            return []
+        # A query with a single keyword requires that keyword and no more --
+        # demanding two overlaps of a one-word question returns nothing, which is
+        # not the failure this gate exists to prevent. The gate bites on rich
+        # queries, where matching one incidental token is genuinely meaningless.
+        required = min(self.min_overlap, len(informative))
         scored = []
         for fact in candidates:
             content_tokens = self._tokenize(fact["content"])
             tag_tokens = self._tokenize(fact.get("tags", ""))
+            if len(informative & (content_tokens | tag_tokens)) < required:
+                continue
             jaccard = self._jaccard(query_tokens, content_tokens | tag_tokens)
             fts_score = fact.get("fts_rank", 0.0)
 
@@ -553,7 +673,12 @@ class FactRetriever:
             scored.append(fact)
 
         scored.sort(key=lambda x: x["score"], reverse=True)
-        return scored[:limit]
+        results = scored[:limit]
+        # Counted here, not in _fts_candidates: a candidate that loses the
+        # rerank was never used, and recording it as retrieved would overstate
+        # every fact the query merely brushed against.
+        self.store.note_retrieved([f["fact_id"] for f in results])
+        return results
 
     def _entity_linked_facts(self, entities: List[str], category: Optional[str],
                              require_all: bool, limit: int) -> List[Dict]:
@@ -761,7 +886,9 @@ class FactRetriever:
 
     def _fts_candidates(self, query: str, category: Optional[str],
                         min_trust: float, limit: int) -> List[Dict]:
-        match_query = _fts5_match_query(query)
+        match_query = _fts5_match_query(
+            query, match_all=False, max_tokens=self.max_query_tokens
+        )
         if not match_query:
             return []
         conn = self.store._conn
@@ -781,7 +908,15 @@ class FactRetriever:
             WHERE {' AND '.join(where_parts)}
             ORDER BY facts_fts.rank LIMIT ?
         """
-        rows = conn.execute(sql, params).fetchall()
+        # Deliberately NOT wrapped in try/except. A dropped table or a corrupt
+        # index is an infrastructure failure and must not be masked as "no
+        # results" -- see test_fact_retriever_fts_candidates_propagates_real_
+        # database_errors, and the same rule on MemoryStore.search_facts.
+        # The unattended cycle is protected one level up, at
+        # IndexManager.retrieve_relevant_context, which is the only caller that
+        # cannot afford to raise.
+        with self.store._lock:
+            rows = conn.execute(sql, params).fetchall()
         if not rows:
             return []
 
@@ -800,7 +935,7 @@ class FactRetriever:
     def _tokenize(text: str) -> set:
         if not text:
             return set()
-        return {w.strip(".,;:!?\"'()[]{}#@<>") for w in text.lower().split()} - {""}
+        return {w.strip(_TOKEN_PUNCT) for w in text.lower().split()} - {""}
 
     @staticmethod
     def _jaccard(a: set, b: set) -> float:
@@ -841,8 +976,31 @@ class IndexManager:
         self._store.add_fact(text, category="success", tags=task_id)
 
     def retrieve_relevant_context(self, query: str, limit: int = 5) -> str:
-        """Search memory for relevant past experiences."""
-        results = self._retriever.search(query, limit=limit)
+        """Search memory for relevant past experiences.
+
+        The only retrieval entry point that swallows failures, and the only one
+        that should. `improvement.py` calls this bare on the cycle's path, so a
+        raise here aborts an unattended run before it can plan or generate --
+        and memory is an optimisation for that run, not a precondition for it.
+        Direct callers still get the exception; `FactRetriever.search` and
+        `MemoryStore.search_facts` both propagate, because masking a dropped
+        table as "no results" is how a broken index goes unnoticed.
+
+        Logged at warning, not swallowed silently: a persistently failing query
+        must not be indistinguishable from an empty database. That confusion is
+        exactly what kept this subsystem broken for five months.
+        """
+        try:
+            results = self._retriever.search(query, limit=limit)
+        except Exception:
+            # Deliberately broad, and only here. `search` is not only SQLite: it
+            # runs HRR vector maths through numpy, so a dimension mismatch or an
+            # encoding error raises something that is not a DatabaseError and
+            # would still abort the unattended run. Every narrower except clause
+            # is a guess about which of them can fail.
+            log.warning("Memory retrieval failed; continuing without context",
+                        exc_info=True)
+            return ""
         if not results:
             return ""
         parts = ["### Relevant Past Context (Holographic Memory)"]
@@ -909,7 +1067,14 @@ class IndexManager:
         # Prune facts with very low trust
         low_trust = self._store.list_facts(min_trust=0.0, limit=100)
         for fact in low_trust:
-            if fact["trust_score"] <= 0.05 and fact["retrieval_count"] == 0:
+            # Keyed on helpful_count, not retrieval_count. The guard was written
+            # when the counter never moved, so "never retrieved" was every fact
+            # and the clause was inert. Now that retrieval counts, keeping it
+            # would invert the intent exactly: a discredited fact that gets
+            # retrieved once becomes permanently unprunable, and the more a bad
+            # fact is surfaced the safer it gets. What earns a reprieve is
+            # having been *useful*, which is what helpful_count records.
+            if fact["trust_score"] <= 0.05 and fact["helpful_count"] == 0:
                 self._store.remove_fact(fact["fact_id"])
                 removed += 1
         return removed

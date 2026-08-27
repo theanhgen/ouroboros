@@ -328,7 +328,13 @@ def test_fact_retriever_fts_candidates_no_hits_for_fts5_syntax_text(
         ("issue:123", "see issue:123 for details"),
         ("http://example.com", "visit http://example.com now"),
         ("user's manual", "the user's manual"),
-        ("a AND", "a AND b are both listed"),
+        # "parser AND", not "a AND": the RETRIEVER (unlike search_facts above)
+        # compiles OR queries with stopwords filtered, so a query made only of
+        # stopwords now compiles to nothing -- deliberately, because OR-ing
+        # common English words floods the candidate set before the reranker
+        # sees a relevant row. The property under test is unchanged: AND must
+        # be a literal token, not an FTS5 operator.
+        ("parser AND", "parser AND indexer are both listed"),
     ],
 )
 def test_fact_retriever_fts_candidates_treats_query_as_literal_text(
@@ -341,7 +347,7 @@ def test_fact_retriever_fts_candidates_treats_query_as_literal_text(
         "see issue:123 for details",
         "visit http://example.com now",
         "the user's manual",
-        "a AND b are both listed",
+        "parser AND indexer are both listed",
     ):
         temp_store.add_fact(content, category="test")
     retriever = FactRetriever(
@@ -615,19 +621,34 @@ def test_run_hygiene_prunes_contradictory_fact_below_threshold(temp_store):
     assert _fact_by_id(temp_store, winner_id)["trust_score"] == pytest.approx(0.60)
 
 
-def test_run_hygiene_retains_low_trust_unretrieved_pruning(temp_store):
+def test_run_hygiene_spares_low_trust_facts_that_proved_useful(temp_store):
+    """A reprieve is earned by being useful, not by being surfaced.
+
+    This guard used to key on retrieval_count, back when nothing on the
+    improvement cycle's path incremented it -- so "never retrieved" was every
+    fact and the clause never fired. Now that retrieval counts, keying on it
+    would invert the intent: a discredited fact retrieved once would become
+    permanently unprunable, and the more often a bad fact got surfaced the
+    safer it would be. helpful_count records the thing that should actually
+    buy protection.
+    """
     manager = IndexManager(storage=temp_store)
-    unretrieved_id = temp_store.add_fact("discarded low trust fact")
-    retrieved_id = temp_store.add_fact("retained retrieved low trust fact")
+    never_useful_id = temp_store.add_fact("discarded low trust fact")
+    was_useful_id = temp_store.add_fact("retained low trust fact that once helped")
     normal_id = temp_store.add_fact("retained ordinary fact")
-    _set_fact_state(temp_store, unretrieved_id, trust_score=0.05, retrieval_count=0)
-    _set_fact_state(temp_store, retrieved_id, trust_score=0.05, retrieval_count=1)
+    _set_fact_state(temp_store, never_useful_id, trust_score=0.05, retrieval_count=9)
+    _set_fact_state(temp_store, was_useful_id, trust_score=0.05, retrieval_count=0)
+    temp_store._conn.execute(
+        "UPDATE facts SET helpful_count = 1 WHERE fact_id = ?", (was_useful_id,)
+    )
+    temp_store._conn.commit()
     manager._retriever.contradict = lambda: []
 
     assert manager.run_hygiene() == 1
 
-    assert _fact_by_id(temp_store, unretrieved_id) is None
-    assert _fact_by_id(temp_store, retrieved_id)["trust_score"] == pytest.approx(0.05)
+    # Retrieved nine times and never once helpful -- being surfaced is not a defence.
+    assert _fact_by_id(temp_store, never_useful_id) is None
+    assert _fact_by_id(temp_store, was_useful_id)["trust_score"] == pytest.approx(0.05)
     assert _fact_by_id(temp_store, normal_id)["trust_score"] == pytest.approx(0.50)
 
 
