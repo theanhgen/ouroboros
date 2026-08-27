@@ -722,6 +722,43 @@ class ToolRunner:
         return f"Unknown tool: {name}"
 
 
+def _record_cycle_memory(ctx: Dict[str, Any]) -> None:
+    """Write the cycle's outcome into memory. Runs on EVERY path.
+
+    This block used to sit at the bottom of the cycle, after PR creation. Four
+    of the eleven exits -- no plan (~975), no code (~991), reviewer rejected
+    (~1025), validation failed (~1058) -- return before reaching it, so a cycle
+    that failed recorded nothing. Measured on production: 544 facts in
+    categories `code` and `success` only, and **zero failure facts in five
+    months**. The agent has never once recorded why something did not work,
+    which is the category it most needs in order to stop retrying it.
+
+    Note what is NOT moved here. `record_improvement` and `_append_learning`
+    are already called at all five exits -- duplicated, but not bypassed, so
+    hoisting them would be a reordering risk for no correctness gain. Only the
+    memory write was actually unreachable, so only it moves.
+
+    Called from a `finally`, so it must not raise: a failure to record must not
+    turn a completed cycle into a crashed one.
+    """
+    task, result = ctx.get("task"), ctx.get("result")
+    if task is None or result is None:
+        return  # a legitimate skip -- rate limit, open PR, stale streak, dry run
+    try:
+        from .memory import IndexManager
+        memory = IndexManager()
+        if result.status == "success":
+            for change in result.changes:
+                memory.index_file(change.file_path, change.new_content)
+            memory.index_success(task.task_id, task.description, result.details or "")
+            memory.record_outcome_feedback(task.description, success=True)
+        elif result.status in ("failed", "reverted"):
+            memory.index_failure(task.task_id, task.description, result.details or "")
+            memory.record_outcome_feedback(task.description, success=False)
+    except Exception:
+        log.debug("Memory indexing failed", exc_info=True)
+
+
 def run_improvement_cycle(
     client: Any,
     state: Dict[str, Any],
@@ -730,7 +767,36 @@ def run_improvement_cycle(
     dry_run: bool = False,
     on_event: EventCallback = None,
 ) -> Optional[ImprovementResult]:
+    """Run a full improvement cycle, and record its outcome whatever happens.
+
+    A thin wrapper so that the memory write has exactly one call site reachable
+    from every exit of `_run_improvement_cycle`, including the ones that return
+    early and the ones that raise. Adding a twelfth exit to the body below
+    cannot reintroduce the bypass; that is the whole point of the split.
+    """
+    ctx: Dict[str, Any] = {}
+    try:
+        return _run_improvement_cycle(
+            ctx, client, state, config=config, model=model,
+            dry_run=dry_run, on_event=on_event,
+        )
+    finally:
+        _record_cycle_memory(ctx)
+
+
+def _run_improvement_cycle(
+    ctx: Dict[str, Any],
+    client: Any,
+    state: Dict[str, Any],
+    config: SafetyConfig | None = None,
+    model: str = DEFAULT_OPENAI_MODEL,
+    dry_run: bool = False,
+    on_event: EventCallback = None,
+) -> Optional[ImprovementResult]:
     """Run a full improvement cycle with tool-calling ReAct loop.
+
+    Populates `ctx` with the task and result as soon as each exists, so the
+    caller's `finally` can record the outcome no matter which exit is taken.
     """
     config = config or SafetyConfig()
     repo_root = get_repo_root()
@@ -925,6 +991,7 @@ def run_improvement_cycle(
                     }
 
     task = ImprovementTask.from_llm_response(task_data)
+    ctx["task"] = task
     log.info("[improve] Identified: [%s] %s", task.task_type, task.description)
     _fire("task_identified", f"Task: [{task.task_type}] {task.description}", {
         "task_type": task.task_type,
@@ -933,6 +1000,7 @@ def run_improvement_cycle(
     })
 
     improvement_result = ImprovementResult(task=task)
+    ctx["result"] = improvement_result
     if task._usage:
         improvement_result.total_usage["prompt_tokens"] += task._usage.get("prompt_tokens", 0)
         improvement_result.total_usage["completion_tokens"] += task._usage.get("completion_tokens", 0)
@@ -1115,23 +1183,6 @@ def run_improvement_cycle(
             )
     except Exception:
         log.debug("Failed to append learning entry")
-
-    # Update Memory
-    try:
-        from .memory import IndexManager
-        memory = IndexManager()
-        if improvement_result.status == "success":
-            for change in improvement_result.changes:
-                memory.index_file(change.file_path, change.new_content)
-            memory.index_success(task.task_id, task.description,
-                                 improvement_result.details or "")
-            memory.record_outcome_feedback(task.description, success=True)
-        elif improvement_result.status in ("failed", "reverted"):
-            memory.index_failure(task.task_id, task.description,
-                                 improvement_result.details or "")
-            memory.record_outcome_feedback(task.description, success=False)
-    except Exception:
-        log.debug("Memory indexing failed")
 
     _fire("cycle_end", f"Cycle complete: {improvement_result.status}")
     return improvement_result
