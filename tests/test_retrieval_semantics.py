@@ -43,8 +43,13 @@ class TestMatchQuery:
         assert _fts5_match_query("alpha beta", match_all=False) == '"alpha" OR "beta"'
 
     def test_punctuation_is_still_quoted_not_interpreted(self):
-        """The whole reason the helper exists -- see PR #82."""
-        out = _fts5_match_query("issue:123 AND *", match_all=False)
+        """The whole reason the helper exists -- see PR #82.
+
+        Asserted in AND mode, which is where literal quoting is the safety
+        property: OR mode additionally drops stopwords and tokens with no
+        alphanumeric character, so "AND" and "*" do not survive it.
+        """
+        out = _fts5_match_query("issue:123 AND *")
         assert '"issue:123"' in out and '"AND"' in out and '"*"' in out
 
     def test_empty_text_compiles_to_nothing(self):
@@ -66,9 +71,16 @@ class TestMatchQuery:
         b = _fts5_match_query(q, match_all=False, max_tokens=4)
         assert a == b
 
-    def test_all_stopwords_still_yields_a_query(self):
-        """Falling back to the raw tokens beats searching for nothing."""
-        assert _fts5_match_query("the and for", match_all=False, max_tokens=2) != ""
+    def test_an_all_stopword_query_compiles_to_nothing(self):
+        """It used to fall back to the raw tokens, which was wrong.
+
+        OR-ing "the" and "for" across the table matches nearly every fact, and
+        those matches then satisfy an overlap gate on stopwords alone. A query
+        with no informative word is not about anything; no results is the
+        honest answer.
+        """
+        assert _fts5_match_query("the and for", match_all=False, max_tokens=2) == ""
+        assert _fts5_match_query("the and for") != "", "AND mode is unchanged"
 
 
 # ------------------------------------------------------------------- recall
@@ -245,3 +257,71 @@ class TestFtsErrorsDoNotCrashTheCycle:
         with caplog.at_level(logging.WARNING):
             manager.retrieve_relevant_context("pytest parser summary")
         assert any("retrieval" in r.message.lower() for r in caplog.records)
+
+
+class TestTokenSelection:
+    """Every case here was a real defect in the first cut of this change.
+
+    Found by an adversarial review pass, all four reproduced before being fixed.
+    They share a shape: OR mode makes token *selection* load-bearing in a way
+    AND mode never did, because under AND a junk token only narrowed the result
+    and under OR it widens it.
+    """
+
+    def test_a_repeated_word_cannot_take_every_slot(self):
+        """A codebase summary naming one module thirty times compiled to that
+        word six times and starved out every real keyword."""
+        q = "# Summary\n" + "improvement " * 30 + "parser holographic"
+        out = _fts5_match_query(q, match_all=False, max_tokens=6)
+        assert out.count('"improvement"') == 1
+        assert '"parser"' in out and '"holographic"' in out
+
+    def test_markdown_rules_are_not_keywords(self):
+        """`-----` survives punctuation stripping, is in no stopword list, and
+        is long -- so length-ranked selection picked it over every real word."""
+        out = _fts5_match_query(
+            "------------------------ ==================== parser memory",
+            match_all=False, max_tokens=3)
+        assert "-" not in out and "=" not in out
+        assert '"parser"' in out and '"memory"' in out
+
+    def test_stopwords_are_filtered_even_without_capping(self):
+        """The filter used to be nested inside the capping branch, so a short
+        query kept its stopwords -- and `OR "the"` matches nearly everything."""
+        out = _fts5_match_query("what is the parser for", match_all=False, max_tokens=12)
+        assert out == '"parser"'
+
+    def test_and_mode_keeps_every_token(self):
+        """Filtering belongs to OR mode alone. Under AND a stopword is nearly
+        free, and callers doing exact literal lookups depend on it."""
+        assert _fts5_match_query("what is the parser for").count(" ") == 4
+
+
+class TestGateExemption:
+    def test_a_stopword_only_query_matches_nothing(self, store):
+        """The gate used to fall back to raw tokens when nothing was
+        informative, which let stopwords alone satisfy it."""
+        assert FactRetriever(store).search("the and for is", min_trust=0.0) == []
+
+    def test_a_single_keyword_query_still_works(self, store):
+        """Requiring two overlaps of a one-word question would return nothing,
+        which is not the failure the gate exists to prevent."""
+        assert FactRetriever(store).search("porcelain", min_trust=0.0)
+
+    def test_a_rich_query_still_needs_two(self, store):
+        assert FactRetriever(store).search(
+            "kubernetes ingress certificate rotation porcelain", min_trust=0.0) == []
+
+
+class TestUnattendedBoundaryIsBroad:
+    def test_a_non_database_failure_also_degrades(self, store, monkeypatch):
+        """`search` runs numpy vector maths, so it can raise things that are not
+        DatabaseError -- and those would still have aborted the cycle."""
+        from ouroboros.memory import IndexManager
+        manager = IndexManager(storage=store)
+
+        def boom(*_a, **_k):
+            raise ValueError("operands could not be broadcast together")
+
+        monkeypatch.setattr(manager._retriever, "search", boom)
+        assert manager.retrieve_relevant_context("pytest parser summary") == ""

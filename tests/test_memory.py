@@ -328,7 +328,13 @@ def test_fact_retriever_fts_candidates_no_hits_for_fts5_syntax_text(
         ("issue:123", "see issue:123 for details"),
         ("http://example.com", "visit http://example.com now"),
         ("user's manual", "the user's manual"),
-        ("a AND", "a AND b are both listed"),
+        # "parser AND", not "a AND": the RETRIEVER (unlike search_facts above)
+        # compiles OR queries with stopwords filtered, so a query made only of
+        # stopwords now compiles to nothing -- deliberately, because OR-ing
+        # common English words floods the candidate set before the reranker
+        # sees a relevant row. The property under test is unchanged: AND must
+        # be a literal token, not an FTS5 operator.
+        ("parser AND", "parser AND indexer are both listed"),
     ],
 )
 def test_fact_retriever_fts_candidates_treats_query_as_literal_text(
@@ -341,7 +347,7 @@ def test_fact_retriever_fts_candidates_treats_query_as_literal_text(
         "see issue:123 for details",
         "visit http://example.com now",
         "the user's manual",
-        "a AND b are both listed",
+        "parser AND indexer are both listed",
     ):
         temp_store.add_fact(content, category="test")
     retriever = FactRetriever(

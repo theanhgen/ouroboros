@@ -111,6 +111,20 @@ _RE_SINGLE_QUOTE = re.compile(r"'([^']+)'")
 _TOKEN_PUNCT = ".,;:!?\"'()[]{}#@<>"
 
 
+def _informative(token: str) -> bool:
+    """Whether a token is worth putting in a query or counting as overlap.
+
+    Requires an alphanumeric character, which is what excludes the horizontal
+    rules in the markdown the cycle searches with: `-----` and `=====` survive
+    `_TOKEN_PUNCT` stripping, are in no stopword list, and are long -- so
+    length-ranked selection picked them ahead of every real keyword.
+    """
+    stripped = token.strip(_TOKEN_PUNCT).lower()
+    if not stripped or stripped in STOPWORDS:
+        return False
+    return any(ch.isalnum() for ch in stripped)
+
+
 def _clamp_trust(value: float) -> float:
     return max(_TRUST_MIN, min(_TRUST_MAX, value))
 
@@ -150,13 +164,36 @@ def _fts5_match_query(text: str, *, match_all: bool = True,
     comes back.
     """
     tokens = [token for token in text.replace("\x00", " ").split() if token.strip()]
+
+    if not match_all:
+        # Stopwords are filtered for EVERY OR query, not only ones long enough to
+        # need capping. Under AND a stopword is nearly free -- it is one more
+        # thing a fact must contain. Under OR it is ruinous: `OR "the"` matches
+        # essentially the whole table and floods the candidate set before the
+        # reranker ever sees a relevant row.
+        kept = [t for t in tokens if _informative(t)]
+        # A query with nothing but stopwords is not about anything. Better to
+        # return no results than to OR common English words across the database.
+        tokens = kept
+
+        # Deduplicate on the normalised form before ranking. Ranking a raw list
+        # by length let a repeated module name take every slot -- a codebase
+        # summary mentioning "improvement" thirty times compiled to that word
+        # six times and starved out every other keyword.
+        seen, unique = set(), []
+        for token in tokens:
+            key = token.strip(_TOKEN_PUNCT).lower()
+            if key not in seen:
+                seen.add(key)
+                unique.append(token)
+        tokens = unique
+
     if max_tokens is not None and len(tokens) > max_tokens:
-        informative = [t for t in tokens if t.strip(_TOKEN_PUNCT).lower() not in STOPWORDS]
-        pool = informative or tokens
         # Longest first for selection, then back into the caller's order so the
         # compiled query stays a deterministic function of its input.
-        keep = set(sorted(range(len(pool)), key=lambda i: -len(pool[i]))[:max_tokens])
-        tokens = [t for i, t in enumerate(pool) if i in keep]
+        keep = set(sorted(range(len(tokens)), key=lambda i: -len(tokens[i]))[:max_tokens])
+        tokens = [t for i, t in enumerate(tokens) if i in keep]
+
     quoted = ['"' + token.replace('"', '""') + '"' for token in tokens]
     return (" " if match_all else " OR ").join(quoted)
 
@@ -601,8 +638,17 @@ class FactRetriever:
         # relative scoring runs. A fact must share `min_overlap` informative
         # tokens with the query; a query too short to meet that is exempt,
         # because a deliberate two-word lookup is not the failure mode here.
-        informative = {t for t in query_tokens if t not in STOPWORDS} or query_tokens
-        required = self.min_overlap if len(informative) >= self.min_overlap else 1
+        informative = {t for t in query_tokens if _informative(t)}
+        if not informative:
+            # No fallback to the raw tokens. Falling back let a query of nothing
+            # but stopwords satisfy the gate on stopwords alone, admitting
+            # arbitrary facts that happened to contain common English words.
+            return []
+        # A query with a single keyword requires that keyword and no more --
+        # demanding two overlaps of a one-word question returns nothing, which is
+        # not the failure this gate exists to prevent. The gate bites on rich
+        # queries, where matching one incidental token is genuinely meaningless.
+        required = min(self.min_overlap, len(informative))
         scored = []
         for fact in candidates:
             content_tokens = self._tokenize(fact["content"])
@@ -946,7 +992,12 @@ class IndexManager:
         """
         try:
             results = self._retriever.search(query, limit=limit)
-        except sqlite3.DatabaseError:
+        except Exception:
+            # Deliberately broad, and only here. `search` is not only SQLite: it
+            # runs HRR vector maths through numpy, so a dimension mismatch or an
+            # encoding error raises something that is not a DatabaseError and
+            # would still abort the unattended run. Every narrower except clause
+            # is a guess about which of them can fail.
             log.warning("Memory retrieval failed; continuing without context",
                         exc_info=True)
             return ""
