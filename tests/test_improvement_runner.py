@@ -162,3 +162,46 @@ def test_scheduled_run_defers_unless_open_pr_state_is_definitely_false(
 
     assert result.status == expected_status
     mock_run_cycle.assert_not_called()
+
+
+@patch("ouroboros.improvement_runner.time.time", return_value=1_700_000_000)
+@patch("ouroboros.improvement_runner.save_scheduler_state")
+@patch("ouroboros.improvement_runner.load_scheduler_state", return_value={"consecutive_failures": 0, "next_due_ts": None})
+@patch("ouroboros.improvement_runner._load_feed_context_state", return_value={})
+@patch("ouroboros.improvement_runner.llm.make_client")
+@patch("ouroboros.improvement_runner.llm.load_openai_key", return_value="key")
+@patch("ouroboros.improvement_runner.run_improvement_cycle")
+@patch("ouroboros.improvement_runner.git_ops.has_open_improvement_prs", return_value=False)
+@patch("ouroboros.improvement_runner.git_ops.is_clean", return_value=True)
+@patch("ouroboros.improvement_runner.check_pr_outcomes")
+@patch("ouroboros.improvement_runner.get_repo_root")
+@patch("ouroboros.improvement_runner.load_runner_config")
+def test_the_configured_daily_cap_reaches_the_cycle(
+    mock_cfg,
+    mock_repo_root,
+    _mock_check_prs,
+    _mock_is_clean,
+    _mock_has_open_prs,
+    mock_run_cycle,
+    _mock_load_key,
+    _mock_make_client,
+    _mock_feed_state,
+    _mock_load_state,
+    _mock_save_state,
+    _mock_time,
+):
+    """The rate limit is read off SafetyConfig, not off the runner config.
+
+    This is the scheduled path, which owns the improvement clock -- so a cap
+    the operator set has to survive the handover or it is silently the
+    SafetyConfig default that binds.
+    """
+    mock_cfg.return_value = _cfg(max_improvements_per_day=5)
+    mock_repo_root.return_value = "/tmp/repo"
+    task = ImprovementTask("abc", "fix_bug", "Repair status output", ["src/ouroboros/cli.py"], "Bug")
+    mock_run_cycle.return_value = ImprovementResult(task=task, status="success", pr_url=None)
+
+    run_scheduled_self_improvement(force=True)
+
+    safety = mock_run_cycle.call_args.args[2]
+    assert safety.max_improvements_per_day == 5

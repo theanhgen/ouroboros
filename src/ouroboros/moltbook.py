@@ -207,6 +207,10 @@ class RunnerConfig:
     enable_self_improvement_in_loop: bool = True
     improvement_interval_hours: int = 48
     self_improvement_retry_minutes: int = 60
+    # Mirrors SafetyConfig.max_improvements_per_day so the tracked config can
+    # actually set it. Counts attempts in a rolling 24h window, not merges.
+    # The default matches SafetyConfig's, so an unset config is unchanged.
+    max_improvements_per_day: int = 3
     improvement_model: str = DEFAULT_OPENAI_MODEL
     improvement_types: Optional[List[str]] = None  # default: ["fix_test", "add_test", "fix_bug", "refactor", "improve_docs", "add_feature"]
     enable_auto_issue_creation: bool = True
@@ -329,6 +333,7 @@ def load_runner_config() -> RunnerConfig:
         enable_self_improvement_in_loop=bool(data.get("enable_self_improvement_in_loop", True)),
         improvement_interval_hours=improvement_interval,
         self_improvement_retry_minutes=int(data.get("self_improvement_retry_minutes", 60)),
+        max_improvements_per_day=int(data.get("max_improvements_per_day", 3)),
         improvement_model=str(data.get("improvement_model", DEFAULT_OPENAI_MODEL)),
         improvement_types=data.get("improvement_types"),
         enable_auto_issue_creation=bool(data.get("enable_auto_issue_creation", True)),
@@ -1629,6 +1634,7 @@ def run_loop() -> int:
 
                         safety = SafetyConfig(
                             enable_auto_merge=cfg.enable_auto_merge,
+                            max_improvements_per_day=getattr(cfg, "max_improvements_per_day", 3),
                             identify_backend=getattr(cfg, "identify_backend", "openai"),
                             plan_backend=getattr(cfg, "plan_backend", "openai"),
                             generator_backend=getattr(cfg, "generator_backend", "openai"),

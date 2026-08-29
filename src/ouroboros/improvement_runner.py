@@ -281,6 +281,7 @@ def run_scheduled_self_improvement(
 
     safety = SafetyConfig(
         enable_auto_merge=getattr(cfg, "enable_auto_merge", False),
+        max_improvements_per_day=getattr(cfg, "max_improvements_per_day", 3),
         identify_backend=getattr(cfg, "identify_backend", "openai"),
         plan_backend=getattr(cfg, "plan_backend", "openai"),
         generator_backend=getattr(cfg, "generator_backend", "openai"),

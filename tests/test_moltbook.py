@@ -941,3 +941,39 @@ def test_a_null_title_is_normalised_like_a_null_body():
     )
     assert state["knowledge_pending"][0]["title"] == ""
     assert state["knowledge_pending"][0]["content"] == ""
+
+
+def test_load_runner_config_reads_the_daily_improvement_cap(tmp_path):
+    """The cap lives on SafetyConfig, so the loader has to carry it across.
+
+    Before this was a RunnerConfig field the tracked agent.json could name it
+    and nothing read it: the value looked configured and the real ceiling
+    stayed at SafetyConfig's default.
+    """
+    cfg_file = tmp_path / "agent.json"
+    cfg_file.write_text(json.dumps({"max_improvements_per_day": 5}))
+
+    def fake_expanduser(path):
+        if path == "~/.config/moltbook/agent.json":
+            return str(cfg_file)
+        return path
+
+    orig_exists = os.path.exists
+
+    def fake_exists(path):
+        if os.fspath(path) == str(cfg_file):
+            return True
+        return orig_exists(path)
+
+    with mock.patch("ouroboros.moltbook.os.path.expanduser", side_effect=fake_expanduser):
+        with mock.patch("ouroboros.moltbook.os.path.exists", side_effect=fake_exists):
+            cfg = load_runner_config()
+
+    assert cfg.max_improvements_per_day == 5
+
+
+def test_the_daily_improvement_cap_defaults_to_the_safety_default():
+    """An unset config must not change the ceiling that was already in force."""
+    from ouroboros.config import SafetyConfig
+
+    assert RunnerConfig().max_improvements_per_day == SafetyConfig().max_improvements_per_day

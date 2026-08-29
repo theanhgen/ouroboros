@@ -41,6 +41,10 @@ _BOUNDS: Dict[str, Bounds] = {
     "self_improve_interval_hours": Bounds(1, 8_760),
     "self_question_hours": Bounds(1, 8_760),
     "wiki_update_interval_hours": Bounds(1, 8_760),
+    # A cap on improvement attempts per rolling 24h window. Floors at 1, not
+    # 0: stopping improvement outright is enable_self_improvement, and a cap
+    # of zero would park the loop while looking like a tuning value.
+    "max_improvements_per_day": Bounds(1, 100),
     # A count of zero is meaningful here -- it means "do not comment" -- so
     # these floor at 0 rather than 1.
     "max_comments_per_cycle": Bounds(0, 100),
