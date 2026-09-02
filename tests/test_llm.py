@@ -18,6 +18,7 @@ from ouroboros.llm import (
     estimate_tokens,
     generate_comment,
     identify_improvements,
+    pick_oddities,
     load_openai_key,
     make_client,
     truncate_to_tokens,
@@ -185,6 +186,26 @@ def test_answer_question_returns_none_on_error():
     client = mock.MagicMock()
     client.chat.completions.create.side_effect = RuntimeError("fail")
     result = answer_question(client, "What is missing?")
+    assert result is None
+
+
+# -- pick_oddities tests --
+
+
+def test_pick_oddities_handles_posts_with_null_fields():
+    client = mock.MagicMock()
+    client.chat.completions.create.return_value = _mock_openai_response("Weird digest")
+    posts = [{"title": None, "content": None}, {}, {"title": "t", "content": "body"}]
+    result = pick_oddities(client, posts)
+    assert result == "Weird digest"
+    user_msg = client.chat.completions.create.call_args.kwargs["messages"][1]["content"]
+    assert user_msg == "[0] : \n\n[1] : \n\n[2] t: body"
+
+
+def test_pick_oddities_returns_none_on_error():
+    client = mock.MagicMock()
+    client.chat.completions.create.side_effect = Exception("API down")
+    result = pick_oddities(client, [{"title": "t", "content": "body"}])
     assert result is None
 
 
