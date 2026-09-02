@@ -108,7 +108,16 @@ def is_retryable(exc: BaseException) -> bool:
 
         if isinstance(exc, URLError):
             # Plain URLError means no response at all. Unwrap the reason so a
-            # permanent cause (bad certificate, unknown host) is not retried.
+            # bad certificate, which fails identically every time, is not
+            # retried.
+            #
+            # A name that does not resolve stays retryable, deliberately.
+            # gaierror is also how "temporary failure in name resolution"
+            # arrives, and on a Pi the resolver is the likeliest cause; the
+            # openai backend already retries the same failure as
+            # APIConnectionError, so the urllib path agrees with it. A typo'd
+            # host costs one capped backoff before it surfaces, while a
+            # resolver blip would otherwise cost a whole cycle.
             reason = getattr(exc, "reason", None)
             if isinstance(reason, ssl.SSLError):
                 return False
