@@ -676,11 +676,16 @@ class ToolRunner:
             pattern = args.get("pattern", "")
             try:
                 import subprocess
-                out = subprocess.check_output(
+                # grep exits 1 when it simply found nothing; only >=2 is a real error.
+                proc = subprocess.run(
                     ["grep", "-r", "-n", "--include=*.py", pattern, str(self.repo_root / "src")],
-                    text=True, stderr=subprocess.STDOUT
+                    text=True, capture_output=True
                 )
-                return out or "No matches found."
+                if proc.returncode == 0:
+                    return proc.stdout or "No matches found."
+                if proc.returncode == 1:
+                    return "No matches found."
+                return f"Error running grep: {proc.stderr.strip()}"
             except Exception as e:
                 return f"Error running grep: {e}"
         elif name == "read_file_metadata":
