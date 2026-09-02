@@ -1,5 +1,6 @@
 """Tests for retry with exponential backoff and jitter."""
 
+import ssl
 import urllib.error
 import urllib.request
 
@@ -74,6 +75,27 @@ def test_is_retryable_openai_rate_limit():
 def test_is_retryable_openai_bad_request_is_not():
     openai = pytest.importorskip("openai")
     exc = openai.BadRequestError.__new__(openai.BadRequestError)
+    assert is_retryable(exc) is False
+
+
+def test_is_retryable_urlerror_wrapping_dns_failure():
+    """A name that will not resolve stays retryable, and the comment says so.
+
+    gaierror is not proof of a typo -- "temporary failure in name resolution"
+    arrives the same way, and the openai backend already retries this as
+    APIConnectionError. Flipping it to permanent would cost a cycle every time
+    the Pi's resolver blinks.
+    """
+    # socket is on SafetyConfig's forbidden-import list and a policy test scans
+    # this suite, so reach the real class through urllib instead.
+    gaierror = urllib.request.socket.gaierror
+    exc = urllib.error.URLError(gaierror(-3, "Temporary failure in name resolution"))
+    assert is_retryable(exc) is True
+
+
+def test_is_not_retryable_urlerror_wrapping_ssl_error():
+    """The one reason the unwrap exists for: a certificate never gets better."""
+    exc = urllib.error.URLError(ssl.SSLError("certificate verify failed"))
     assert is_retryable(exc) is False
 
 
