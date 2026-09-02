@@ -512,3 +512,42 @@ def test_a_trailing_space_does_not_hide_a_python_file():
         SafetyConfig(),
     )
     assert any("pickle" in v for v in violations), violations
+
+
+def _tool_runner_repo(tmp_path):
+    """A repo_root whose src/ holds one grep-able module."""
+    src_dir = tmp_path / "src" / "ouroboros"
+    src_dir.mkdir(parents=True)
+    (src_dir / "sample.py").write_text("def findable_symbol():\n    return 1\n")
+    return tmp_path
+
+
+def test_grep_codebase_reports_no_matches_instead_of_an_error(tmp_path):
+    """grep exits 1 when it found nothing -- that is an answer, not breakage."""
+    from ouroboros.improvement import ToolRunner
+
+    out = ToolRunner(_tool_runner_repo(tmp_path)).execute(
+        "grep_codebase", {"pattern": "ZZZ_NO_MATCH_ZZZ"}
+    )
+    assert out == "No matches found."
+
+
+def test_grep_codebase_returns_the_matching_lines(tmp_path):
+    from ouroboros.improvement import ToolRunner
+
+    out = ToolRunner(_tool_runner_repo(tmp_path)).execute(
+        "grep_codebase", {"pattern": "findable_symbol"}
+    )
+    assert "sample.py" in out and "findable_symbol" in out
+
+
+def test_grep_codebase_still_reports_a_real_failure(tmp_path):
+    """Exit >=2 -- here an unbalanced bracket -- stays an error, with grep's own text."""
+    from ouroboros.improvement import ToolRunner
+
+    out = ToolRunner(_tool_runner_repo(tmp_path)).execute(
+        "grep_codebase", {"pattern": "["}
+    )
+    assert out.startswith("Error running grep:")
+    assert out != "Error running grep:"
+    assert "No matches found." not in out
