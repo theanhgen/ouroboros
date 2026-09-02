@@ -123,7 +123,8 @@ def migrate_json_history(
     )
     freeze_rollback_snapshot(state_file)
     state = load_json_file(state_file, default={})
-    for record in state.get("comment_history", []) if isinstance(state, dict) else []:
+    comments = state.get("comment_history") if isinstance(state, dict) else None
+    for record in comments if isinstance(comments, list) else []:
         if not isinstance(record, dict):
             report.skipped.append("comment_history: non-object record")
             continue
@@ -152,7 +153,8 @@ def migrate_json_history(
     kb_file = kb_path or Path(KB_PATH)
     freeze_rollback_snapshot(kb_file)
     kb = load_json_file(kb_file, default={})
-    for entry in kb.get("entries", []) if isinstance(kb, dict) else []:
+    entries = kb.get("entries") if isinstance(kb, dict) else None
+    for entry in entries if isinstance(entries, list) else []:
         if not isinstance(entry, dict):
             report.skipped.append("knowledge_base: non-object entry")
             continue

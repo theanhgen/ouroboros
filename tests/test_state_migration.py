@@ -164,6 +164,23 @@ def test_state_without_comment_history(tmp_path, store):
     assert migrate_json_history(tmp_path, store, **paths).comments == 0
 
 
+def test_explicitly_null_collections_are_tolerated(tmp_path, store):
+    """A key present with a null value is not the same as a missing key.
+
+    .get(key, []) returns the null, so the whole backfill used to abort with
+    TypeError instead of skipping the one empty section.
+    """
+    paths = _paths(tmp_path)
+    _write(paths["state_path"], {"comment_history": None})
+    _write(paths["kb_path"], {"entries": None})
+    _write(paths["history_path"], [_improvement(1)])
+
+    report = migrate_json_history(tmp_path, store, **paths)
+
+    assert (report.comments, report.knowledge) == (0, 0)
+    assert report.improvements == 1
+
+
 # -- report ------------------------------------------------------------------
 
 def test_report_summary_mentions_every_collection():
