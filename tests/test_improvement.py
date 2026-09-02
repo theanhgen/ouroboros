@@ -181,7 +181,10 @@ def test_revert_changes(tmp_path):
     target.write_text("modified")
 
     changes = [
-        CodeChange("src/ouroboros/foo.py", "original", "modified", "test"),
+        CodeChange(
+            "src/ouroboros/foo.py", "original", "modified", "test",
+            existed_before=True,
+        ),
     ]
     revert_changes(changes, tmp_path)
 
@@ -195,10 +198,13 @@ def test_revert_new_file(tmp_path):
     target.write_text("new content")
 
     changes = [
-        CodeChange("src/ouroboros/new_file.py", "", "new content", "new file"),
+        CodeChange(
+            "src/ouroboros/new_file.py", "", "new content", "new file",
+            existed_before=False,
+        ),
     ]
     revert_changes(changes, tmp_path)
-    assert not target.exists()  # empty original means file was new, so remove it
+    assert not target.exists()  # was not on disk before, so remove it
 
 
 def test_revert_keeps_an_existing_empty_file(tmp_path):
@@ -220,6 +226,45 @@ def test_revert_keeps_an_existing_empty_file(tmp_path):
 
     assert target.exists(), "revert deleted a file that existed before the change"
     assert target.read_text() == ""
+
+
+def test_revert_removes_a_new_file_touched_by_two_changes(tmp_path):
+    """Two entries can name the same new file (create, then edit it). The
+    second one is applied to a file the first just created, so it records
+    existed_before=True. Reverting forwards would unlink it for the first
+    entry and then write it back for the second, leaving a stray file and a
+    dirty worktree that blocks every later cycle."""
+    src_dir = tmp_path / "src" / "ouroboros"
+    src_dir.mkdir(parents=True)
+    target = src_dir / "brand_new.py"
+
+    changes = [
+        CodeChange("src/ouroboros/brand_new.py", "", "A = 1\n", "create"),
+        CodeChange("src/ouroboros/brand_new.py", "", "A = 2\n", "edit it"),
+    ]
+    apply_changes(changes, tmp_path)
+    assert [c.existed_before for c in changes] == [False, True]
+
+    revert_changes(changes, tmp_path)
+
+    assert not target.exists(), "revert left behind a file that did not exist before"
+
+
+def test_revert_skips_changes_that_were_never_applied(tmp_path):
+    """apply_changes stamps existed_before; a change that never reached it
+    was never written, so revert must not touch that file. Guessing from an
+    empty original_content would unlink a file already on disk."""
+    src_dir = tmp_path / "src" / "ouroboros"
+    src_dir.mkdir(parents=True)
+    untouched = src_dir / "untouched.py"
+    untouched.write_text("KEEP = 1\n")
+
+    revert_changes(
+        [CodeChange("src/ouroboros/untouched.py", "", "NEW = 1\n", "never applied")],
+        tmp_path,
+    )
+
+    assert untouched.read_text() == "KEEP = 1\n"
 
 
 def test_build_failed_attempts_context_uses_outcome_only():

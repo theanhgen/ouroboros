@@ -59,7 +59,8 @@ class CodeChange:
     # Whether the file was already on disk before the change was applied.
     # An empty original_content cannot tell a newly created file from an
     # existing empty one, so apply_changes stamps this from the filesystem and
-    # revert_changes trusts it instead of guessing (#91). None = never applied.
+    # revert_changes trusts it instead of guessing (#91). None = never went
+    # through apply_changes, so revert_changes leaves that file alone.
     existed_before: Optional[bool] = None
 
 
@@ -356,16 +357,24 @@ def apply_changes(
 
 
 def revert_changes(changes: List[CodeChange], repo_root: Path) -> None:
-    """Revert changes by restoring original file contents."""
-    for change in changes:
+    """Undo what ``apply_changes`` wrote, in reverse order of application.
+
+    Reverse order because two entries can name the same file (a create
+    followed by an edit of it). Applied forwards, the create is undone first
+    -- the file is unlinked -- and then the edit resurrects it, leaving a
+    stray file behind and the worktree dirty, which blocks every later cycle.
+    """
+    for change in reversed(changes):
+        # An existing empty file carries original_content == "" just like a
+        # brand new one, so emptiness cannot say whether the file is ours to
+        # delete (#91). Only the filesystem can, and apply_changes recorded
+        # what it saw there. None means this change never reached
+        # apply_changes -- nothing was written, so there is nothing to undo,
+        # and touching the file would clobber content we never wrote.
+        if change.existed_before is None:
+            continue
         full_path = repo_root / change.file_path
-        # An existing empty file also carries original_content == "", so
-        # emptiness alone is not "the file is ours to delete" -- use what
-        # apply_changes saw on disk, and only guess when it never ran.
-        existed = change.existed_before
-        if existed is None:
-            existed = bool(change.original_content)
-        if existed:
+        if change.existed_before:
             full_path.write_text(change.original_content, encoding="utf-8")
         elif full_path.exists():
             # File was newly created, remove it
