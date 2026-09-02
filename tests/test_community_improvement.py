@@ -267,6 +267,30 @@ def test_step_analyze_fallback_no_comments(mock_llm):
     assert state["community_improvement"]["fallback_used"] is True
 
 
+# -- test_step_analyze_fallback_actionable_without_suggestions --
+
+@patch("ouroboros.community_improvement.llm")
+def test_step_analyze_fallback_actionable_without_suggestions(mock_llm):
+    """has_actionable can be true while suggestions is empty, missing or null."""
+    comments = [{"id": "c1", "content": "fix the assertion", "author": {"name": "alice"}}]
+
+    for analysis in (
+        {"has_actionable": True, "suggestions": []},
+        {"has_actionable": True},
+        {"has_actionable": True, "suggestions": None},
+    ):
+        mock_llm.analyze_code_suggestions.return_value = analysis
+        ci = _make_ci_state(status="analyzing", comments_snapshot=comments)
+        state = _make_state(community_improvement=ci)
+        cfg = _make_cfg()
+
+        result = _step_analyze(MagicMock(), state, cfg)
+
+        assert result == "fallback_no_actionable"
+        assert state["community_improvement"]["status"] == "fallback"
+        assert state["community_improvement"]["fallback_used"] is True
+
+
 # -- test_step_implement_creates_pr_with_credit --
 
 @patch("ouroboros.community_improvement.get_repo_root")
