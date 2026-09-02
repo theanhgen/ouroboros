@@ -125,7 +125,9 @@ def get_summary(
         return ""
 
     cached = kb.get("summary_cache", "")
-    updated_at = kb.get("summary_updated_at", 0)
+    # The default only covers an absent key -- an explicit null, which is what
+    # an interrupted or hand-edited write leaves behind, still lands here.
+    updated_at = kb.get("summary_updated_at") or 0
     now = int(time.time())
 
     # Count entries added since last summary

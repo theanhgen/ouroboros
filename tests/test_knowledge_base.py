@@ -86,3 +86,16 @@ class TestKnowledgeBase:
         summary = get_summary(MagicMock(), kb, path=str(self.kb_file))
         assert summary == "recent summary"
         assert not mock_gen.called
+
+    @patch("ouroboros.llm.generate_kb_summary")
+    def test_get_summary_with_null_updated_at(self, mock_gen):
+        """A JSON null timestamp must degrade to a refresh, not a TypeError."""
+        mock_gen.return_value = "newly generated summary"
+        kb = {
+            "entries": [{"ts": 100, "insight": "i1"}],
+            "summary_cache": "old summary",
+            "summary_updated_at": None,  # what a JSON null deserializes to
+        }
+        summary = get_summary(MagicMock(), kb, path=str(self.kb_file))
+        assert summary == "newly generated summary"
+        assert mock_gen.called
