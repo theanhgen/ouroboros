@@ -726,8 +726,11 @@ def pick_oddities(
     posts: list,
     model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[str]:
-    posts_text = "\n\n".join([f"[{i}] {p.get('title')}: {p.get('content')[:200]}" for i, p in enumerate(posts[:20])])
     try:
+        posts_text = "\n\n".join([
+            f"[{i}] {p.get('title') or ''}: {(p.get('content') or '')[:200]}"
+            for i, p in enumerate(posts[:20])
+        ])
         resp = create_completion(
             client,
             model=model,
