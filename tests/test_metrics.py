@@ -43,6 +43,15 @@ class TestMetrics:
         assert len(loaded) == 200
         assert loaded[0]["timestamp"] == 5  # Should have dropped the first 5
 
+    def test_load_metrics_malformed_file_returns_list(self):
+        # A corrupt metrics.json must never leak a non-list to callers
+        path = self.config_dir / "metrics.json"
+        for raw in ("null", "42", '"snapshots"', '{"snapshots": null}',
+                    '{"snapshots": 5}', "{}"):
+            path.write_text(raw, encoding="utf-8")
+            loaded = load_metrics(self.tmp_dir)
+            assert loaded == [], f"{raw!r} produced {loaded!r}"
+
     @patch("ouroboros.evaluation.load_history")
     def test_record_snapshot(self, mock_load_history):
         # Setup mock history

@@ -24,7 +24,13 @@ def load_metrics(repo_root: Path) -> List[Dict[str, Any]]:
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return data.get("snapshots", []) if isinstance(data, dict) else data
+        if isinstance(data, dict):
+            snapshots = data.get("snapshots")
+        elif isinstance(data, list):
+            snapshots = data
+        else:
+            snapshots = None
+        return snapshots if isinstance(snapshots, list) else []
     except (json.JSONDecodeError, KeyError):
         return []
 
