@@ -352,7 +352,13 @@ def _step_analyze(
         return "fallback_no_actionable"
 
     # Select best suggestion by confidence
-    suggestions = analysis.get("suggestions", [])
+    suggestions = analysis.get("suggestions")
+    if not isinstance(suggestions, list) or not suggestions:
+        log.info("[community] Actionable flag set but no usable suggestions, falling back to LLM-only")
+        ci["status"] = "fallback"
+        ci["fallback_used"] = True
+        return "fallback_no_actionable"
+
     suggestions.sort(key=lambda s: s.get("confidence", 0), reverse=True)
     best = suggestions[0]
 
