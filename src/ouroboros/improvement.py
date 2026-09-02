@@ -56,6 +56,11 @@ class CodeChange:
     original_content: str
     new_content: str
     description: str
+    # Whether the file was already on disk before the change was applied.
+    # An empty original_content cannot tell a newly created file from an
+    # existing empty one, so apply_changes stamps this from the filesystem and
+    # revert_changes trusts it instead of guessing (#91). None = never applied.
+    existed_before: Optional[bool] = None
 
 
 @dataclass
@@ -343,6 +348,9 @@ def apply_changes(
             raise PermissionError(f"Cannot modify forbidden file: {change.file_path}")
 
         full_path = _resolved_inside(repo_root, change.file_path, config)
+        # Ground truth for the revert: taken from the filesystem here because
+        # this is the last moment the pre-change tree still exists.
+        change.existed_before = full_path.exists()
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(change.new_content, encoding="utf-8")
 
@@ -351,7 +359,13 @@ def revert_changes(changes: List[CodeChange], repo_root: Path) -> None:
     """Revert changes by restoring original file contents."""
     for change in changes:
         full_path = repo_root / change.file_path
-        if change.original_content:
+        # An existing empty file also carries original_content == "", so
+        # emptiness alone is not "the file is ours to delete" -- use what
+        # apply_changes saw on disk, and only guess when it never ran.
+        existed = change.existed_before
+        if existed is None:
+            existed = bool(change.original_content)
+        if existed:
             full_path.write_text(change.original_content, encoding="utf-8")
         elif full_path.exists():
             # File was newly created, remove it

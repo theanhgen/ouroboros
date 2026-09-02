@@ -201,6 +201,27 @@ def test_revert_new_file(tmp_path):
     assert not target.exists()  # empty original means file was new, so remove it
 
 
+def test_revert_keeps_an_existing_empty_file(tmp_path):
+    """A tracked-but-empty file carries the same original_content ("") as a
+    brand new one, so revert must not infer "newly created" from emptiness and
+    unlink it (#91)."""
+    src_dir = tmp_path / "src" / "ouroboros"
+    src_dir.mkdir(parents=True)
+    target = src_dir / "empty.py"
+    target.write_text("")
+
+    changes = [
+        CodeChange("src/ouroboros/empty.py", "", "VALUE = 1\n", "fill it in"),
+    ]
+    apply_changes(changes, tmp_path)
+    assert target.read_text() == "VALUE = 1\n"
+
+    revert_changes(changes, tmp_path)
+
+    assert target.exists(), "revert deleted a file that existed before the change"
+    assert target.read_text() == ""
+
+
 def test_build_failed_attempts_context_uses_outcome_only():
     history = [
         EvaluationRecord(
