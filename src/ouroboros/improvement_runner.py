@@ -15,6 +15,7 @@ from .config import SafetyConfig, reviewer_safety_kwargs
 from .evaluation import check_pr_outcomes
 from .improvement import ImprovementResult, ImprovementTask, run_improvement_cycle
 from .moltbook import load_runner_config, _send_telegram_message
+from .storage import save_json_file
 
 log = logging.getLogger(__name__)
 
@@ -61,12 +62,7 @@ def load_scheduler_state() -> Dict[str, Any]:
 
 
 def save_scheduler_state(state: Dict[str, Any]) -> None:
-    path = _scheduler_state_path()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = path + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2, sort_keys=True)
-    os.replace(tmp_path, path)
+    save_json_file(_scheduler_state_path(), state, sort_keys=True, indent=2)
 
 
 def _load_feed_context_state() -> Dict[str, Any]:
