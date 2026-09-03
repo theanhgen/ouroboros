@@ -1,5 +1,7 @@
 """Tests for git_ops module."""
 
+import json
+import shutil
 import subprocess
 import time
 from unittest.mock import patch, MagicMock
@@ -9,6 +11,8 @@ from pathlib import Path
 
 from ouroboros.git_ops import (
     _decode_git_path,
+    auto_merge_pr,
+    get_pr_checks_status,
     get_pr_feedback,
     get_pr_status,
     has_open_improvement_prs,
@@ -309,8 +313,8 @@ def test_commit_auto_state_ignores_sibling_of_state_file(mock_git, mock_branch):
 
 # -- has_open_improvement_prs ------------------------------------------------
 
-def _completed(stdout="", returncode=0):
-    return subprocess.CompletedProcess([], returncode, stdout=stdout, stderr="")
+def _completed(stdout="", returncode=0, stderr=""):
+    return subprocess.CompletedProcess([], returncode, stdout=stdout, stderr=stderr)
 
 
 @patch("ouroboros.git_ops.subprocess.run")
@@ -561,3 +565,162 @@ def test_has_open_improvement_prs_saturated_page_is_unknown(mock_run):
 def test_has_open_improvement_prs_short_page_is_definitive(mock_run):
     mock_run.return_value = _completed("\n".join(f"feature/pr-{i}" for i in range(5)))
     assert has_open_improvement_prs(Path("/repo")) is False
+
+
+# -- auto_merge_pr -----------------------------------------------------------
+
+def _gh_error(stderr):
+    err = subprocess.CalledProcessError(1, ["gh", "pr", "merge"])
+    err.stderr = stderr
+    return err
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_auto_merge_pr_uses_auto(mock_run):
+    mock_run.return_value = _completed("")
+    assert auto_merge_pr(Path("/repo"), "https://gh/pr/1") is True
+
+    cmd = mock_run.call_args.args[0]
+    assert cmd[:3] == ["gh", "pr", "merge"]
+    assert "--auto" in cmd
+    assert "--squash" in cmd
+
+
+@pytest.mark.parametrize(
+    "stderr",
+    [
+        "X GraphQL: Auto-merge is not allowed for this repository (enablePullRequestAutoMerge)",
+        "Pull request Auto-merge is not allowed for this repository",
+    ],
+)
+@patch("ouroboros.git_ops.subprocess.run")
+def test_auto_merge_pr_refuses_to_merge_without_checks(mock_run, stderr):
+    """No --auto means no CI gate, so the PR must be left open, not merged.
+
+    The old fallback ran a bare `gh pr merge`, which merges immediately and
+    waits for nothing -- on a repo with allow_auto_merge=false that was the
+    only reachable path, so every autonomous PR landed unchecked.
+    """
+    mock_run.side_effect = [_gh_error(stderr), _completed("")]
+
+    assert auto_merge_pr(Path("/repo"), "https://gh/pr/1") is False
+    # The second side_effect entry must never be consumed: exactly one
+    # `gh pr merge` attempt, the one carrying --auto.
+    assert mock_run.call_count == 1
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_auto_merge_pr_unrelated_failure_returns_false(mock_run):
+    mock_run.side_effect = _gh_error("could not resolve to a PullRequest")
+    assert auto_merge_pr(Path("/repo"), "https://gh/pr/1") is False
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_auto_merge_pr_tolerates_missing_stderr(mock_run):
+    mock_run.side_effect = _gh_error(None)
+    assert auto_merge_pr(Path("/repo"), "https://gh/pr/1") is False
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        FileNotFoundError("gh not installed"),
+        subprocess.TimeoutExpired(["gh"], 30),
+    ],
+)
+@patch("ouroboros.git_ops.subprocess.run")
+def test_auto_merge_pr_gh_unavailable(mock_run, error):
+    mock_run.side_effect = error
+    assert auto_merge_pr(Path("/repo"), "https://gh/pr/1") is False
+
+
+# -- get_pr_checks_status ----------------------------------------------------
+
+@pytest.mark.parametrize("status,returncode", [("pass", 0), ("fail", 1), ("pending", 8)])
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_checks_status_returns_the_bucket(mock_run, status, returncode):
+    # gh exits non-zero for anything but a green PR (8 while pending) and
+    # still prints the jq result.
+    mock_run.return_value = _completed(f"{status}\n", returncode=returncode)
+    assert get_pr_checks_status(Path("/repo"), "https://gh/pr/1") == status
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_checks_status_no_checks_is_pending(mock_run):
+    """A PR with no checks has not passed anything.
+
+    `gh pr checks` exits 1 and prints nothing on stdout in this case, so the
+    absence of output must not read as "pass" -- nor as "unknown".
+    """
+    mock_run.return_value = _completed(
+        "", returncode=1, stderr="no checks reported on the 'ouroboros/x' branch\n"
+    )
+    assert get_pr_checks_status(Path("/repo"), "https://gh/pr/1") == "pending"
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_checks_status_exit_8_is_pending(mock_run):
+    """Exit code 8 is gh's documented "checks pending"."""
+    mock_run.return_value = _completed("", returncode=8)
+    assert get_pr_checks_status(Path("/repo"), "https://gh/pr/1") == "pending"
+
+
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_checks_status_unknown_stays_none(mock_run):
+    mock_run.return_value = _completed("", returncode=1, stderr="authentication failed\n")
+    assert get_pr_checks_status(Path("/repo"), "https://gh/pr/1") is None
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        FileNotFoundError("gh not installed"),
+        subprocess.TimeoutExpired(["gh"], 30),
+    ],
+)
+@patch("ouroboros.git_ops.subprocess.run")
+def test_get_pr_checks_status_gh_unavailable(mock_run, error):
+    mock_run.side_effect = error
+    assert get_pr_checks_status(Path("/repo"), "https://gh/pr/1") is None
+
+
+def _checks_jq_query():
+    """The jq expression get_pr_checks_status hands to `gh pr checks -q`."""
+    with patch("ouroboros.git_ops.subprocess.run") as mock_run:
+        mock_run.return_value = _completed("pass")
+        get_pr_checks_status(Path("/repo"), "https://gh/pr/1")
+    cmd = mock_run.call_args.args[0]
+    return cmd[cmd.index("-q") + 1]
+
+
+@pytest.mark.parametrize(
+    "states,expected",
+    [
+        ([], "pending"),
+        (["SUCCESS"], "pass"),
+        (["SUCCESS", "SUCCESS"], "pass"),
+        (["SUCCESS", "FAILURE"], "fail"),
+        (["FAILURE"], "fail"),
+        (["SUCCESS", "IN_PROGRESS"], "pending"),
+        (["QUEUED"], "pending"),
+    ],
+)
+def test_checks_jq_query_semantics(states, expected):
+    """Run the real jq expression: an empty check list must not read "pass".
+
+    jq's all() is true on an empty array, so `all(. == "SUCCESS")` on its own
+    calls a PR whose checks have not started green.
+    """
+    jq = shutil.which("jq")
+    if jq is None:
+        pytest.skip("jq not installed")
+
+    out = subprocess.run(
+        [jq, "-r", _checks_jq_query()],
+        input=json.dumps([{"state": s} for s in states]),
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=30,
+    )
+    assert out.stdout.strip() == expected
