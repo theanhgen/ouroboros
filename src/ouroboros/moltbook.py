@@ -273,11 +273,33 @@ class RunnerConfig:
     reviewer_api_key: Optional[str] = field(default=None, repr=False)
 
 
+def _warn_unknown_config_keys(data: Dict[str, Any], path: str) -> None:
+    """Name every agent.json key that is not a setting at all.
+
+    Every setting below is pulled out by name, so a typo, a stale key, or a
+    SafetyConfig cap that is a compile-time constant parses cleanly and then
+    does nothing: the operator sees a saved file and keeps the old limit.
+    config_schema was written to stop exactly that, and was wired to
+    `config set` and to comment suggestions but not to the file the README
+    calls the runtime config.
+
+    A warning, not a refusal. The agent runs unattended, and one unrecognised
+    key must not keep the rest of a valid config from starting.
+    """
+    from . import config_schema
+
+    for key in data:
+        error = config_schema.unknown_key_error(key)
+        if error:
+            log.warning("%s: %s -- ignored, this setting has no effect", path, error)
+
+
 def load_runner_config() -> RunnerConfig:
     cfg_path = os.path.expanduser("~/.config/moltbook/agent.json")
     data: Dict[str, Any] = {}
     if os.path.exists(cfg_path):
         data = _read_json_file(cfg_path)
+        _warn_unknown_config_keys(data, cfg_path)
 
     # Keep sensitive Telegram values out of tracked config.
     cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
