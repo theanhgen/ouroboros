@@ -11,7 +11,6 @@ from ouroboros.improvement import (
     ImprovementTask,
     CodeChange,
     ImprovementResult,
-    IMMUTABLE_FILES,
     _build_failed_attempts_context,
     _build_success_rate_context,
     _is_path_allowed,
@@ -28,11 +27,13 @@ from ouroboros.test_runner import RunnerOutcome
 
 
 def test_immutable_files():
-    assert "config.py" in IMMUTABLE_FILES
-    assert "improvement.py" in IMMUTABLE_FILES
-    assert "git_ops.py" in IMMUTABLE_FILES
-    assert "evaluation.py" in IMMUTABLE_FILES
-    assert "policies.py" in IMMUTABLE_FILES
+    """The shipped config is the immutable-file list; the enforcement gate
+    reads it rather than a second hardcoded copy (#112)."""
+    config = SafetyConfig()
+    for name in ("config.py", "improvement.py", "git_ops.py", "evaluation.py",
+                 "policies.py"):
+        assert name in config.forbidden_modification_paths
+        assert _is_path_allowed(f"src/ouroboros/{name}", config) is False
 
 
 def test_is_path_allowed():

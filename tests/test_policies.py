@@ -591,14 +591,66 @@ def test_a_null_byte_is_not_a_path():
     assert is_safe_relative_path("src/ouroboros/x.py\x00.md") is False
 
 
-def test_the_two_immutable_lists_cannot_drift_apart():
-    """improvement.IMMUTABLE_FILES and SafetyConfig.forbidden_modification_paths
-    are maintained by hand and consulted by different gates. They are equal
-    today; this fails the moment they are not."""
-    from ouroboros.config import SafetyConfig
-    from ouroboros.improvement import IMMUTABLE_FILES
+def _rejected_by_enforcement(paths, config):
+    from ouroboros.improvement import _is_path_allowed
 
-    assert set(IMMUTABLE_FILES) == set(SafetyConfig().forbidden_modification_paths)
+    return {p for p in paths if not _is_path_allowed(p, config)}
+
+
+def _rejected_by_metrics_path(paths, config):
+    return {p for p in paths if validate_modification_scope([p], config)}
+
+
+# Every forbidden entry, plus a near-miss for each, plus an allowed file.
+_SCOPE_FIXTURE = (
+    "src/ouroboros/config.py",
+    "src/ouroboros/improvement.py",
+    "src/ouroboros/git_ops.py",
+    "src/ouroboros/evaluation.py",
+    "src/ouroboros/policies.py",
+    "src/ouroboros/policies.pyx",
+    "tests/config.py",
+    "src/ab/thing.py",
+    "src/ouroboros/llm.py",
+    "README.md",
+    "src/../../etc/passwd",
+)
+
+
+def test_enforcement_and_the_metrics_path_reject_the_same_files():
+    """_is_path_allowed is the gate; validate_modification_scope is what
+    metrics reports from. A file one rejects and the other accepts is a
+    metric that contradicts what the agent was actually allowed to do."""
+    config = SafetyConfig()
+    assert (
+        _rejected_by_enforcement(_SCOPE_FIXTURE, config)
+        == _rejected_by_metrics_path(_SCOPE_FIXTURE, config)
+    )
+    # tests/config.py is forbidden by basename, so both must reject it; the
+    # near-misses next to it must be accepted by both.
+    assert "tests/config.py" in _rejected_by_enforcement(_SCOPE_FIXTURE, config)
+    assert "src/ouroboros/llm.py" not in _rejected_by_enforcement(
+        _SCOPE_FIXTURE, config
+    )
+
+
+def test_the_immutable_list_has_a_single_source():
+    """The two gates read one list, so changing it moves both. With a second
+    hardcoded copy in improvement.py, a config that no longer forbids
+    improvement.py would still be enforced against while metrics reported the
+    change as in scope (#112)."""
+    config = SafetyConfig(forbidden_modification_paths=("secret.py",))
+    paths = (
+        "src/ouroboros/improvement.py",
+        "src/ouroboros/policies.py",
+        "src/ouroboros/secret.py",
+        "src/ouroboros/llm.py",
+    )
+    assert (
+        _rejected_by_enforcement(paths, config)
+        == _rejected_by_metrics_path(paths, config)
+        == {"src/ouroboros/secret.py"}
+    )
 
 
 # -- the filesystem answers what a lexical check cannot ----------------------

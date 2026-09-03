@@ -69,6 +69,10 @@ class SafetyConfig:
         "tests/",
         "docs/wiki/",
     )
+    # The single source of truth for the immutable-file list. Both the
+    # enforcement gate (improvement._is_path_allowed) and the version metrics
+    # reports from (policies.validate_modification_scope) read this one tuple,
+    # so they cannot disagree about what is immutable (#112).
     forbidden_modification_paths: Tuple[str, ...] = (
         "config.py",
         "improvement.py",
