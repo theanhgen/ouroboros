@@ -9,6 +9,8 @@ from ouroboros.llm import (
     MAX_CODEBASE_SUMMARY_TOKENS,
     MAX_HISTORY_TOKENS,
     MAX_TEST_OUTPUT_TOKENS,
+    analyze_code_suggestions,
+    analyze_comments_for_upgrades,
     answer_question,
     create_completion,
     fit_messages_to_budget,
@@ -483,3 +485,42 @@ def test_cli_agent_prompt_is_bounded():
     prompt = _build_agent_prompt(task, "P" * 500_000, config, model="gemma4")
 
     assert estimate_tokens(prompt) <= model_input_budget("gemma4")
+
+
+# -- comment rendering with a malformed author (#113) -----------------------
+
+MALFORMED_AUTHORS = [
+    ({"content": "x"}, "Comment by unknown: x"),                    # key absent
+    ({"author": None, "content": "x"}, "Comment by unknown: x"),    # explicit null
+    ({"author": {}, "content": "x"}, "Comment by unknown: x"),      # no name
+    ({"author": 42, "content": "x"}, "Comment by unknown: x"),      # not an object
+    ({"author": "bob", "content": "x"}, "Comment by bob: x"),       # bare name
+    ({"author": {"name": "bob"}, "content": "x"}, "Comment by bob: x"),
+]
+
+
+@pytest.mark.parametrize("comment,expected", MALFORMED_AUTHORS)
+def test_analyze_code_suggestions_renders_a_malformed_author(comment, expected):
+    """A null author raised AttributeError before the try, so the caller's
+    error boundary never ran and community_improvement stayed in 'analyzing'
+    -- a status the 24h stale-state sweep does not clear."""
+    client = mock.MagicMock()
+    client.chat.completions.create.return_value = _mock_openai_response('{"has_actionable": false}')
+
+    result = analyze_code_suggestions(client, "problem", {}, [comment])
+
+    assert result == {"has_actionable": False}
+    user_msg = client.chat.completions.create.call_args.kwargs["messages"][1]["content"]
+    assert expected in user_msg
+
+
+@pytest.mark.parametrize("comment,expected", MALFORMED_AUTHORS)
+def test_analyze_comments_for_upgrades_renders_a_malformed_author(comment, expected):
+    client = mock.MagicMock()
+    client.chat.completions.create.return_value = _mock_openai_response('{"has_upgrade": false}')
+
+    result = analyze_comments_for_upgrades(client, "title", "post", [comment])
+
+    assert result == {"has_upgrade": False}
+    user_msg = client.chat.completions.create.call_args.kwargs["messages"][1]["content"]
+    assert expected in user_msg

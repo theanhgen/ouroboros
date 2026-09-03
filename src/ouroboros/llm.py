@@ -550,6 +550,25 @@ def generate_question_post(
         return None
 
 
+def _format_comments(comments: list) -> str:
+    """Render comments for a prompt, tolerating a malformed author.
+
+    `c.get("author", {})` only falls back when the key is absent, so an
+    explicit JSON null -- or a bare string author -- raised AttributeError
+    and killed the analysis of an otherwise usable comment set. An author
+    that carries no name renders as "unknown" instead.
+    """
+    lines = []
+    for c in comments:
+        author = c.get("author")
+        if isinstance(author, dict):
+            author = author.get("name")
+        if not isinstance(author, str) or not author:
+            author = "unknown"
+        lines.append(f"Comment by {author}: {c.get('content')}")
+    return "\n\n".join(lines)
+
+
 def analyze_code_suggestions(
     client: Any,
     problem: str,
@@ -558,8 +577,8 @@ def analyze_code_suggestions(
     model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[dict]:
     code_block = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
-    comments_text = "\n\n".join(f"Comment by {c.get('author', {}).get('name')}: {c.get('content')}" for c in comments)
     try:
+        comments_text = _format_comments(comments)
         resp = create_completion(
             client,
             model=model,
@@ -609,8 +628,8 @@ def analyze_comments_for_upgrades(
     comments: list,
     model: str = DEFAULT_OPENAI_MODEL,
 ) -> Optional[dict]:
-    comments_text = "\n\n".join([f"Comment by {c.get('author', {}).get('name')}: {c.get('content')}" for c in comments])
     try:
+        comments_text = _format_comments(comments)
         resp = create_completion(
             client,
             model=model,
