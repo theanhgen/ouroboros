@@ -76,16 +76,6 @@ class ImprovementResult:
     total_usage: Dict[str, int] = field(default_factory=lambda: {"prompt_tokens": 0, "completion_tokens": 0})
 
 
-# Hardcoded immutable files that can never be modified
-IMMUTABLE_FILES = frozenset({
-    "config.py",
-    "improvement.py",
-    "git_ops.py",
-    "evaluation.py",
-    "policies.py",
-})
-
-
 PYTHON_SUFFIXES = frozenset({".py", ".pyi", ".pyw"})
 
 
@@ -112,11 +102,14 @@ def _is_path_allowed(file_path: str, config: SafetyConfig) -> bool:
     Both halves come from policies, so this gate and
     validate_modification_scope cannot drift apart -- they did, and the raw
     prefix compare here accepted "src/../../etc/passwd" as being under "src/".
+
+    The immutable-file list comes from config for the same reason. This gate
+    used to carry its own hardcoded copy, which validate_modification_scope --
+    the version metrics reports from -- could not see, so a change to either
+    list would have made enforcement and metrics disagree (#112).
     """
     from .policies import is_forbidden_modification_path, is_within_allowed_paths
 
-    if Path(file_path).name in IMMUTABLE_FILES:
-        return False
     if is_forbidden_modification_path(file_path, config.forbidden_modification_paths):
         return False
 
