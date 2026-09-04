@@ -151,6 +151,7 @@ def update_json_file(
     sort_keys: bool = False,
     indent: int = 2,
     replace: bool = False,
+    on_corrupt: Optional[Callable[[Path], Any]] = None,
 ) -> Any:
     """Load, apply mutate, and write back, all under one lock.
 
@@ -167,6 +168,12 @@ def update_json_file(
     With ``replace``, what mutate returns is written instead -- needed when the
     root value itself has to change, such as normalising a corrupt document of
     the wrong type before appending to it.
+
+    ``on_corrupt`` is called with the path, still under the lock, when the file
+    is there but cannot be parsed. Starting from the default means the write
+    that follows replaces whatever the damaged file held, so a caller whose
+    file is the only copy of its history can use the hook to move it aside
+    first. Raising from the hook aborts the update and leaves the file alone.
     """
     json_path = Path(path).expanduser()
     with _directory_lock(json_path.parent):
@@ -177,6 +184,8 @@ def update_json_file(
             data = copy.deepcopy(default)
         except (json.JSONDecodeError, UnicodeDecodeError):
             log.warning("Corrupt %s; starting from the default", json_path)
+            if on_corrupt is not None:
+                on_corrupt(json_path)
             data = copy.deepcopy(default)
 
         result = mutate(data)

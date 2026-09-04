@@ -624,6 +624,62 @@ def test_update_json_file_recovers_from_a_corrupt_file(tmp_path):
     assert load_json_file(path) == {"items": ["a"]}
 
 
+def test_on_corrupt_runs_before_the_default_replaces_the_file(tmp_path):
+    path = tmp_path / "x.json"
+    path.write_text("{ not json")
+    seen = []
+
+    def keep(p):
+        seen.append(p.read_text(encoding="utf-8"))
+
+    update_json_file(
+        path,
+        lambda d: d["items"].append("a"),
+        default={"items": []},
+        on_corrupt=keep,
+    )
+
+    assert seen == ["{ not json"]
+    assert load_json_file(path) == {"items": ["a"]}
+
+
+@pytest.mark.parametrize("contents", [None, '{"items": ["existing"]}'])
+def test_on_corrupt_is_only_for_files_that_cannot_be_read(tmp_path, contents):
+    path = tmp_path / "x.json"
+    if contents is not None:
+        path.write_text(contents)
+    calls = []
+
+    update_json_file(
+        path,
+        lambda d: d["items"].append("a"),
+        default={"items": []},
+        on_corrupt=calls.append,
+    )
+
+    assert calls == []
+
+
+def test_a_raising_on_corrupt_leaves_the_damaged_file_alone(tmp_path):
+    """The hook exists to protect the file; a failure must not write over it."""
+    path = tmp_path / "x.json"
+    path.write_text("{ not json")
+
+    def refuse(p):
+        raise OSError("cannot move it aside")
+
+    with pytest.raises(OSError):
+        update_json_file(
+            path,
+            lambda d: d["items"].append("a"),
+            default={"items": []},
+            on_corrupt=refuse,
+        )
+
+    assert path.read_text() == "{ not json"
+    assert list(tmp_path.glob("*.tmp")) == []
+
+
 def test_update_json_file_does_not_write_when_mutate_raises(tmp_path):
     path = tmp_path / "x.json"
     save_json_file(path, {"items": ["original"]})

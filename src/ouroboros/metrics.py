@@ -17,6 +17,49 @@ def _metrics_path(repo_root: Path) -> Path:
     return repo_root / METRICS_FILE
 
 
+def _coerce_snapshots(data: Any) -> Optional[List[Dict[str, Any]]]:
+    """Return the snapshot list in a loaded document, or None if it holds none.
+
+    None and [] are different answers and the difference matters on the write
+    path: [] means "a readable file with no snapshots yet", None means "this
+    document is not a metrics file", and only the first is safe to append to
+    and write back.
+    """
+    if isinstance(data, dict):
+        snapshots = data.get("snapshots")
+    elif isinstance(data, list):
+        # The original on-disk shape was a bare list. Still readable.
+        snapshots = data
+    else:
+        snapshots = None
+    return snapshots if isinstance(snapshots, list) else None
+
+
+def _quarantine_corrupt(path: Path) -> Path:
+    """Move an unreadable metrics file aside instead of letting it be rewritten.
+
+    A history that cannot be parsed is still worth more sitting on disk than
+    replaced by a single fresh row: the file is the only copy, config/ is
+    auto-committed every cycle, and a truncated series is indistinguishable
+    from an agent that has just run for the first time.
+
+    Failing to move it aside raises rather than falling through, because the
+    caller's next step is the write that would destroy it.
+    """
+    stamp = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
+    dest = path.with_name(f"{path.name}.corrupt-{stamp}")
+    suffix = 1
+    while dest.exists():
+        dest = path.with_name(f"{path.name}.corrupt-{stamp}-{suffix}")
+        suffix += 1
+    os.replace(path, dest)
+    log.error(
+        "%s could not be read and was moved to %s; the history it held is not "
+        "in the new file", path, dest.name,
+    )
+    return dest
+
+
 def load_metrics(repo_root: Path) -> List[Dict[str, Any]]:
     path = _metrics_path(repo_root)
     if not path.exists():
@@ -24,15 +67,10 @@ def load_metrics(repo_root: Path) -> List[Dict[str, Any]]:
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        if isinstance(data, dict):
-            snapshots = data.get("snapshots")
-        elif isinstance(data, list):
-            snapshots = data
-        else:
-            snapshots = None
-        return snapshots if isinstance(snapshots, list) else []
     except (json.JSONDecodeError, KeyError):
         return []
+    snapshots = _coerce_snapshots(data)
+    return snapshots if snapshots is not None else []
 
 
 def save_metrics(repo_root: Path, snapshots: List[Dict[str, Any]]) -> None:
@@ -134,6 +172,40 @@ def _policy_metrics(improvement_result: Any) -> Dict[str, Dict[str, Any]]:
     return metrics
 
 
+def _append_snapshot(repo_root: Path, snapshot: Dict[str, Any]) -> None:
+    """Add one snapshot to the history, under the storage lock.
+
+    load-append-save as three statements lets a second process write between
+    the load and the save, dropping whichever record was appended first, and --
+    worse -- makes load_metrics' "return [] for a file I cannot read" into a
+    wholesale truncation, because the empty list is written straight back over
+    the file it came from. update_json_file closes the race; the quarantine
+    hook and the None check below keep an unreadable history off the write
+    path entirely.
+    """
+    from .storage import update_json_file
+
+    path = _metrics_path(repo_root)
+
+    def append(data: Any) -> Dict[str, Any]:
+        snapshots = _coerce_snapshots(data)
+        if snapshots is None:
+            # Parsed, but not a metrics document. Same treatment as a parse
+            # failure: whatever it is, it is not ours to overwrite.
+            _quarantine_corrupt(path)
+            snapshots = []
+        snapshots.append(snapshot)
+        return {"snapshots": snapshots[-MAX_SNAPSHOTS:]}
+
+    update_json_file(
+        path,
+        append,
+        default={"snapshots": []},
+        replace=True,
+        on_corrupt=_quarantine_corrupt,
+    )
+
+
 def record_snapshot(
     repo_root: Path,
     improvement_result: Any = None,
@@ -189,9 +261,7 @@ def record_snapshot(
             snapshot["tests_failed"] = test_after.failed
         snapshot.update(_policy_metrics(improvement_result))
 
-    snapshots = load_metrics(repo_root)
-    snapshots.append(snapshot)
-    save_metrics(repo_root, snapshots)
+    _append_snapshot(repo_root, snapshot)
 
     log.info(
         "[metrics] Snapshot: %d src LOC, %d test LOC, %.1f%% success rate (30d)",
