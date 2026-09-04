@@ -14,6 +14,7 @@ from ouroboros.moltbook import (
     MoltbookError,
     RunnerConfig,
     _trim_self_question_log,
+    get_my_posts,
     load_credentials,
     load_runner_config,
     load_state,
@@ -977,3 +978,24 @@ def test_the_daily_improvement_cap_defaults_to_the_safety_default():
     from ouroboros.config import SafetyConfig
 
     assert RunnerConfig().max_improvements_per_day == SafetyConfig().max_improvements_per_day
+
+
+# -- get_my_posts with a malformed author (#113) --
+
+
+@pytest.mark.parametrize("bad", [
+    {"id": "1"},                      # author key absent
+    {"id": "1", "author": None},      # explicit JSON null
+    {"id": "1", "author": "agent"},   # not an object
+    {"id": "1", "author": 42},
+])
+def test_get_my_posts_skips_a_record_with_a_malformed_author(bad):
+    """A null author aborted the whole poll instead of skipping one record.
+
+    `.get("author", {})` only falls back when the key is absent, so an
+    explicit null raised AttributeError -- and the caller never advanced
+    last_comment_check, so every later cycle re-read the same bad feed.
+    """
+    mine = {"id": "2", "author": {"name": "agent"}}
+    with mock.patch("ouroboros.moltbook.get_feed", return_value={"posts": [bad, mine]}):
+        assert get_my_posts("key", "agent") == [mine]

@@ -169,11 +169,26 @@ def get_post_comments(api_key: str, post_id: str) -> Dict[str, Any]:
     return _request("GET", f"/posts/{post_id}/comments", api_key)
 
 
+def _author_name(record: Dict[str, Any]) -> Optional[str]:
+    """Author name of a feed record, or None when the author is malformed.
+
+    `record.get("author", {})` only falls back when the key is absent: an
+    explicit JSON null hands back None, and a bare string author is not a
+    mapping either. Both used to raise AttributeError here and abort the
+    whole poll over one bad record.
+    """
+    author = record.get("author")
+    if not isinstance(author, dict):
+        return None
+    name = author.get("name")
+    return name if isinstance(name, str) else None
+
+
 def get_my_posts(api_key: str, agent_name: str, limit: int = 10) -> List[Dict[str, Any]]:
     """Fetch posts authored by this agent."""
     feed = get_feed(api_key, sort="new", limit=50)
     posts = feed.get("posts", [])
-    return [p for p in posts if p.get("author", {}).get("name") == agent_name][:limit]
+    return [p for p in posts if _author_name(p) == agent_name][:limit]
 
 
 @dataclass
