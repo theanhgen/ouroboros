@@ -401,8 +401,11 @@ def get_pr_status(repo: Path, branch: str) -> Optional[str]:
 def auto_merge_pr(repo: Path, pr_url: str, strategy: str = "squash") -> bool:
     """Enable auto-merge on a PR. Returns True on success.
 
-    Uses --auto so the PR merges once all checks pass.
-    Falls back to immediate merge if auto-merge is not available on the repo.
+    Uses --auto so the PR merges once all checks pass. When the repository has
+    auto-merge disabled there is no safe fallback: merging without --auto lands
+    the PR immediately, before CI has had a chance to run, which is the opposite
+    of what this function promises. In that case it refuses and returns False,
+    leaving the PR open for a human to merge.
     """
     try:
         subprocess.run(
@@ -416,24 +419,19 @@ def auto_merge_pr(repo: Path, pr_url: str, strategy: str = "squash") -> bool:
         log.info("Auto-merge enabled for PR: %s", pr_url)
         return True
     except subprocess.CalledProcessError as e:
-        # --auto may not be available (requires branch protection), try immediate merge
-        if "auto-merge" in e.stderr.lower() or "not allowed" in e.stderr.lower():
-            log.info("Auto-merge not available, attempting immediate merge for %s", pr_url)
-            try:
-                subprocess.run(
-                    ["gh", "pr", "merge", pr_url, f"--{strategy}"],
-                    cwd=repo,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                    timeout=60,
-                )
-                log.info("Immediately merged PR: %s", pr_url)
-                return True
-            except subprocess.CalledProcessError:
-                log.warning("Immediate merge also failed for %s", pr_url)
-                return False
-        log.warning("Failed to enable auto-merge for %s: %s", pr_url, e.stderr.strip())
+        stderr = e.stderr or ""
+        # --auto requires allow_auto_merge on the repository. Without it the
+        # only remaining option is an unguarded `gh pr merge`, which merges now
+        # and waits for nothing -- so refuse rather than skip the checks.
+        if "auto-merge" in stderr.lower() or "not allowed" in stderr.lower():
+            log.error(
+                "Auto-merge is disabled on this repository; refusing to merge %s "
+                "without waiting for checks. Leaving the PR open. Enable it with: "
+                "gh api -X PATCH repos/OWNER/REPO -f allow_auto_merge=true",
+                pr_url,
+            )
+            return False
+        log.warning("Failed to enable auto-merge for %s: %s", pr_url, stderr.strip())
         return False
     except (FileNotFoundError, subprocess.TimeoutExpired):
         log.warning("Could not auto-merge PR %s (gh CLI unavailable or timeout)", pr_url)
@@ -443,21 +441,34 @@ def auto_merge_pr(repo: Path, pr_url: str, strategy: str = "squash") -> bool:
 def get_pr_checks_status(repo: Path, pr_url: str) -> Optional[str]:
     """Get the combined CI checks status for a PR.
 
-    Returns 'pass', 'fail', 'pending', or None.
+    Returns 'pass', 'fail', 'pending', or None when the status is unknown.
+
+    An empty check list means the checks have not started, not that they
+    passed: jq's all() is true on an empty array, so the query tests length
+    first. gh signals the same thing out of band -- it exits 8 while checks
+    are pending and 1 with "no checks reported" when a PR has none at all,
+    printing nothing on stdout in either case. Neither is a green PR, so both
+    read 'pending'.
     """
     try:
         result = subprocess.run(
             ["gh", "pr", "checks", pr_url, "--json", "state", "-q",
-             '[.[] | .state] | if all(. == "SUCCESS") then "pass" elif any(. == "FAILURE") then "fail" else "pending" end'],
+             '[.[] | .state] | if length == 0 then "pending"'
+             ' elif any(. == "FAILURE") then "fail"'
+             ' elif all(. == "SUCCESS") then "pass" else "pending" end'],
             cwd=repo,
             capture_output=True,
             text=True,
-            check=True,
             timeout=30,
         )
-        return result.stdout.strip() or None
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         return None
+    status = (result.stdout or "").strip()
+    if status in ("pass", "fail", "pending"):
+        return status
+    if result.returncode == 8 or "no checks reported" in (result.stderr or "").lower():
+        return "pending"
+    return None
 
 
 def get_pr_feedback(repo: Path, pr_url: str, max_chars: int = 2000) -> Optional[str]:
