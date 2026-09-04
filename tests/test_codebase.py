@@ -1,8 +1,10 @@
 """Tests for codebase self-reader."""
 
+import ast
 import textwrap
 from pathlib import Path
 
+import ouroboros
 from ouroboros.codebase import (
     extract_code_metadata,
     get_function_signatures,
@@ -328,3 +330,61 @@ def test_list_source_files_nonexistent(tmp_path):
 def test_get_test_files_nonexistent(tmp_path):
     files = get_test_files(tmp_path)
     assert files == [], "Expected no test files but got some unexpectedly."
+
+
+# Modules reached from outside the package rather than by an import from a
+# sibling: __init__ is the package itself, __main__ backs `python -m ouroboros`.
+# cli is deliberately absent -- __main__ imports it.
+PACKAGE_ENTRYPOINTS = frozenset({"__init__", "__main__"})
+
+
+def _package_local_imports(tree: ast.Module) -> set[str]:
+    """Top-level ouroboros submodule names imported by one parsed module."""
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            if node.level and not node.module:
+                # from . import backlog, llm
+                found.update(alias.name for alias in node.names)
+            elif node.level:
+                # from .moltbook import load_runner_config
+                found.add(node.module.split(".")[0])
+            elif node.module and node.module.split(".")[0] == "ouroboros":
+                # from ouroboros.moltbook import load_runner_config
+                parts = node.module.split(".")
+                if len(parts) > 1:
+                    found.add(parts[1])
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                parts = alias.name.split(".")
+                if parts[0] == "ouroboros" and len(parts) > 1:
+                    found.add(parts[1])
+    return found
+
+
+def test_every_package_module_has_an_importer():
+    """No module under src/ouroboros/ may sit with no importer in the package.
+
+    self_improve.py shipped that way and stayed: nothing in src/ ever imported
+    it in any commit, so run_self_improve never ran, while its six unit tests
+    kept passing and reported the capability as covered (#108, #109). The agent
+    chooses its daily work by reading this same tree, so an unreachable module
+    is not inert -- it is a live candidate to spend an improvement on.
+
+    A module genuinely entered from outside the package belongs in
+    PACKAGE_ENTRYPOINTS, with the reason recorded there.
+    """
+    pkg_dir = Path(ouroboros.__file__).resolve().parent
+
+    modules = {p.stem for p in pkg_dir.glob("*.py")} - PACKAGE_ENTRYPOINTS
+    imported: set[str] = set()
+    for path in sorted(pkg_dir.glob("*.py")):
+        imported |= _package_local_imports(
+            ast.parse(path.read_text(encoding="utf-8"))
+        )
+
+    orphans = sorted(modules - imported)
+    assert orphans == [], (
+        f"No module in src/ouroboros/ imports: {orphans}. "
+        "Wire each one in, delete it, or add it to PACKAGE_ENTRYPOINTS."
+    )

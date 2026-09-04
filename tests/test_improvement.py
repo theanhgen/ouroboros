@@ -46,6 +46,19 @@ def test_is_path_allowed():
     assert _is_path_allowed("setup.py", config) is False
 
 
+def test_prompts_module_stays_agent_editable():
+    """Prompt text must stay something the reviewed improvement cycle can edit.
+
+    self_improve.py carried a second prompt writer (_write_prompt) that ran no
+    tests, no peer review and no daily cap. It was deleted for #109 on the
+    grounds that every prompt already lives in src/ouroboros/prompts.py, which
+    the normal cycle may rewrite under all of those gates. Forbidding that file
+    would take prompt self-editing away again, silently.
+    """
+    config = SafetyConfig()
+    assert _is_path_allowed("src/ouroboros/prompts.py", config) is True
+
+
 def test_is_path_allowed_forbidden_path_and_prefix():
     config = SafetyConfig(
         forbidden_modification_paths=(

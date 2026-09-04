@@ -84,6 +84,15 @@ written down anywhere. See §7 for why that was left alone.
   `evaluation.py`, `policies.py` are in `forbidden_modification_paths`. The agent
   **cannot** modify them. Changes there are operator commits. This is the safety
   boundary — do not propose unfreezing it.
+- **Prompts are ordinary source, and the agent may edit them.** Every prompt is
+  a Python literal in `src/ouroboros/prompts.py`, which is not forbidden — the
+  normal cycle can rewrite it under peer review, the test gate, the size caps
+  and auto-revert. A second, ungated prompt writer existed
+  (`self_improve.py::_write_prompt`, which wrote an untracked `prompts.json`
+  that silently shadows the tracked text) with no importer in `src/` in any
+  commit of its life; it was deleted 2026-09-04 (#108, #109). Prompt
+  self-editing is wanted; a path around the safety gates is not. Improve a
+  prompt through the cycle like any other file.
 - **It auto-merges its own PRs, unattended.** Any change to the cycle path is a
   change to the code that decides whether to merge.
 - **Caps:** 3 files, 200 lines, 3 improvements per day. These are the main

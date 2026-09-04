@@ -293,15 +293,6 @@ Last updated: 2026-06-27 07:21 UTC
 - `load_github_issue_fix_prompt()`
 - `load_suggestion_implementation_prompt()`
 
-### `self_improve.py` (167 lines)
-- `_git_clean(repo)`
-- `_load_prompt_context(state)`
-- `_build_prompt_update_request(current_prompt, context)`
-- `_parse_prompt_update(payload)`
-- `_write_prompt(new_prompt)`
-- `_git_commit_and_pr(repo, message)`
-- `run_self_improve(client, state, model)`
-
 ### `self_modify.py` (136 lines)
 - `can_self_modify()`
 - `modify_config(updates, config_type)`
