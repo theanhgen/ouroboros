@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .storage import save_json_file
+
 log = logging.getLogger(__name__)
 
 METRICS_FILE = "config/metrics.json"
@@ -75,14 +77,10 @@ def load_metrics(repo_root: Path) -> List[Dict[str, Any]]:
 
 def save_metrics(repo_root: Path, snapshots: List[Dict[str, Any]]) -> None:
     path = _metrics_path(repo_root)
-    path.parent.mkdir(parents=True, exist_ok=True)
     # Keep bounded
     if len(snapshots) > MAX_SNAPSHOTS:
         snapshots = snapshots[-MAX_SNAPSHOTS:]
-    tmp = str(path) + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump({"snapshots": snapshots}, f, indent=2)
-    os.replace(tmp, str(path))
+    save_json_file(path, {"snapshots": snapshots}, indent=2)
 
 
 def _first_attr(obj: Any, names: List[str]) -> Any:

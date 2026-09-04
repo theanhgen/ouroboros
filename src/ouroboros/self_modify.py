@@ -2,6 +2,8 @@ import json
 import os
 from typing import Any, Dict, Optional
 
+from .storage import save_json_file
+
 
 class SelfModificationError(RuntimeError):
     pass
@@ -125,10 +127,7 @@ def modify_runner_config(updates: Dict[str, Any]) -> None:
         if "reviewer_api_key" in secret_updates:
             cred_data.pop("ollama_api_key", None)
         cred_data.update(secret_updates)
-        cred_tmp_path = cred_path + ".tmp"
-        with open(cred_tmp_path, "w", encoding="utf-8") as f:
-            json.dump(cred_data, f, indent=2, sort_keys=True)
-        os.replace(cred_tmp_path, cred_path)
+        save_json_file(cred_path, cred_data, sort_keys=True, indent=2)
 
     for key in secret_keys:
         data.pop(key, None)
@@ -137,10 +136,7 @@ def modify_runner_config(updates: Dict[str, Any]) -> None:
     data.update(updates)
 
     # Write back
-    tmp_path = cfg_path + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, sort_keys=True)
-    os.replace(tmp_path, cfg_path)
+    save_json_file(cfg_path, data, sort_keys=True, indent=2)
 
 
 def get_current_config() -> Dict[str, Any]:
