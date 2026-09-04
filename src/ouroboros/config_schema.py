@@ -166,6 +166,21 @@ def settable_error(key: str) -> Optional[str]:
     return None
 
 
+def unknown_key_error(key: str) -> Optional[str]:
+    """Return an error if this key is not a setting at all.
+
+    Split out of `validate` for the caller that holds a whole config file: its
+    values are already whatever the file said, so the key is the only question,
+    and the answer has to read the same as `config set` gives.
+    """
+    types = field_types()
+    if key in types:
+        return None
+    suggestion = _closest(key, types)
+    hint = f"; did you mean {suggestion}?" if suggestion else ""
+    return f"unknown setting {key!r}{hint}"
+
+
 def validate(key: str, value: Any) -> Optional[str]:
     """Return an error message if key/value is not a valid config setting.
 
@@ -174,9 +189,7 @@ def validate(key: str, value: Any) -> Optional[str]:
     """
     types = field_types()
     if key not in types:
-        suggestion = _closest(key, types)
-        hint = f"; did you mean {suggestion}?" if suggestion else ""
-        return f"unknown setting {key!r}{hint}"
+        return unknown_key_error(key)
 
     declared = types[key]
 

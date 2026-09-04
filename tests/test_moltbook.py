@@ -999,3 +999,40 @@ def test_get_my_posts_skips_a_record_with_a_malformed_author(bad):
     mine = {"id": "2", "author": {"name": "agent"}}
     with mock.patch("ouroboros.moltbook.get_feed", return_value={"posts": [bad, mine]}):
         assert get_my_posts("key", "agent") == [mine]
+
+
+def test_load_runner_config_names_the_keys_it_ignores(tmp_path, caplog):
+    """An unread key is worse than a rejected one.
+
+    Every setting is pulled out of the file by name, so a typo -- or a cap
+    that is a compile-time constant rather than a runner setting -- parses
+    cleanly and then does nothing. The operator sees a saved file and keeps
+    the old limit.
+    """
+    with caplog.at_level("WARNING"):
+        cfg = _runner_config_from(
+            tmp_path,
+            {
+                "interval_seconds": 60,
+                "intervals_seconds": 30,
+                "max_lines_changed_per_pr": 500,
+            },
+        )
+
+    # The keys that are real still apply: one bad key does not stop startup.
+    assert cfg.interval_seconds == 60
+    assert "intervals_seconds" in caplog.text
+    assert "did you mean interval_seconds?" in caplog.text
+    assert "max_lines_changed_per_pr" in caplog.text
+
+
+def test_load_runner_config_is_quiet_about_a_valid_file(tmp_path, caplog):
+    """The warning has to stay rare enough to be worth reading."""
+    with caplog.at_level("WARNING"):
+        cfg = _runner_config_from(
+            tmp_path,
+            {"interval_seconds": 60, "max_improvements_per_day": 5, "keyword_allowlist": None},
+        )
+
+    assert cfg.max_improvements_per_day == 5
+    assert caplog.text == ""
