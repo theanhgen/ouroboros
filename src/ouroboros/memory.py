@@ -698,23 +698,24 @@ class FactRetriever:
             params.append(len(set(targets)))
         params.append(limit)
 
-        rows = self.store._conn.execute(
-            f"""
-            SELECT f.fact_id, f.content, f.category, f.tags, f.trust_score,
-                   f.retrieval_count, f.helpful_count, f.created_at, f.updated_at,
-                   COUNT(DISTINCT lower(e.name)) AS entity_matches
-            FROM facts f
-            JOIN fact_entities fe ON fe.fact_id = f.fact_id
-            JOIN entities e ON e.entity_id = fe.entity_id
-            WHERE lower(e.name) IN ({placeholders})
-              {category_clause}
-            GROUP BY f.fact_id
-            {having_clause}
-            ORDER BY entity_matches DESC, f.trust_score DESC, f.fact_id ASC
-            LIMIT ?
-            """,
-            params,
-        ).fetchall()
+        with self.store._lock:
+            rows = self.store._conn.execute(
+                f"""
+                SELECT f.fact_id, f.content, f.category, f.tags, f.trust_score,
+                       f.retrieval_count, f.helpful_count, f.created_at, f.updated_at,
+                       COUNT(DISTINCT lower(e.name)) AS entity_matches
+                FROM facts f
+                JOIN fact_entities fe ON fe.fact_id = f.fact_id
+                JOIN entities e ON e.entity_id = fe.entity_id
+                WHERE lower(e.name) IN ({placeholders})
+                  {category_clause}
+                GROUP BY f.fact_id
+                {having_clause}
+                ORDER BY entity_matches DESC, f.trust_score DESC, f.fact_id ASC
+                LIMIT ?
+                """,
+                params,
+            ).fetchall()
 
         target_count = max(len(set(targets)), 1)
         results = []
@@ -730,6 +731,7 @@ class FactRetriever:
         """Compositional entity query using HRR algebra."""
         linked = self._entity_linked_facts([entity], category, require_all=True, limit=limit)
         if linked:
+            self.store.note_retrieved([f["fact_id"] for f in linked])
             return linked
         if not hrr.HAS_NUMPY:
             return self.search(entity, category=category, limit=limit)
@@ -746,11 +748,12 @@ class FactRetriever:
             where += " AND category = ?"
             params.append(category)
 
-        rows = conn.execute(
-            f"SELECT fact_id, content, category, tags, trust_score, "
-            f"retrieval_count, helpful_count, created_at, updated_at, hrr_vector "
-            f"FROM facts {where}", params,
-        ).fetchall()
+        with self.store._lock:
+            rows = conn.execute(
+                f"SELECT fact_id, content, category, tags, trust_score, "
+                f"retrieval_count, helpful_count, created_at, updated_at, hrr_vector "
+                f"FROM facts {where}", params,
+            ).fetchall()
 
         if not rows:
             return self.search(entity, category=category, limit=limit)
@@ -766,13 +769,16 @@ class FactRetriever:
             scored.append(fact)
 
         scored.sort(key=lambda x: x["score"], reverse=True)
-        return scored[:limit]
+        results = scored[:limit]
+        self.store.note_retrieved([f["fact_id"] for f in results])
+        return results
 
     def reason(self, entities: List[str], category: Optional[str] = None,
                limit: int = 10) -> List[Dict]:
         """Multi-entity compositional query -- vector-space JOIN."""
         linked = self._entity_linked_facts(entities, category, require_all=True, limit=limit)
         if linked:
+            self.store.note_retrieved([f["fact_id"] for f in linked])
             return linked
         if not hrr.HAS_NUMPY or not entities:
             return self.search(" ".join(entities), category=category, limit=limit)
@@ -792,11 +798,12 @@ class FactRetriever:
             where += " AND category = ?"
             params.append(category)
 
-        rows = conn.execute(
-            f"SELECT fact_id, content, category, tags, trust_score, "
-            f"retrieval_count, helpful_count, created_at, updated_at, hrr_vector "
-            f"FROM facts {where}", params,
-        ).fetchall()
+        with self.store._lock:
+            rows = conn.execute(
+                f"SELECT fact_id, content, category, tags, trust_score, "
+                f"retrieval_count, helpful_count, created_at, updated_at, hrr_vector "
+                f"FROM facts {where}", params,
+            ).fetchall()
 
         if not rows:
             return self.search(" ".join(entities), category=category, limit=limit)
@@ -815,7 +822,9 @@ class FactRetriever:
             scored.append(fact)
 
         scored.sort(key=lambda x: x["score"], reverse=True)
-        return scored[:limit]
+        results = scored[:limit]
+        self.store.note_retrieved([f["fact_id"] for f in results])
+        return results
 
     def contradict(self, category: Optional[str] = None, threshold: float = 0.3,
                    limit: int = 10) -> List[Dict]:
@@ -830,27 +839,28 @@ class FactRetriever:
             where += " AND f.category = ?"
             params.append(category)
 
-        rows = conn.execute(
-            f"SELECT f.fact_id, f.content, f.category, f.tags, f.trust_score, "
-            f"f.created_at, f.updated_at, f.hrr_vector FROM facts f {where}", params,
-        ).fetchall()
-
-        if len(rows) < 2:
-            return []
-
-        # Cap at 500 to avoid O(n^2) explosion
-        if len(rows) > 500:
-            rows = sorted(rows, key=lambda r: r["updated_at"] or r["created_at"], reverse=True)[:500]
-
-        fact_entities: Dict[int, set] = {}
-        for row in rows:
-            fid = row["fact_id"]
-            ent_rows = conn.execute(
-                "SELECT e.name FROM entities e "
-                "JOIN fact_entities fe ON fe.entity_id = e.entity_id "
-                "WHERE fe.fact_id = ?", (fid,),
+        with self.store._lock:
+            rows = conn.execute(
+                f"SELECT f.fact_id, f.content, f.category, f.tags, f.trust_score, "
+                f"f.created_at, f.updated_at, f.hrr_vector FROM facts f {where}", params,
             ).fetchall()
-            fact_entities[fid] = {r["name"].lower() for r in ent_rows}
+
+            if len(rows) < 2:
+                return []
+
+            # Cap at 500 to avoid O(n^2) explosion
+            if len(rows) > 500:
+                rows = sorted(rows, key=lambda r: r["updated_at"] or r["created_at"], reverse=True)[:500]
+
+            fact_entities: Dict[int, set] = {}
+            for row in rows:
+                fid = row["fact_id"]
+                ent_rows = conn.execute(
+                    "SELECT e.name FROM entities e "
+                    "JOIN fact_entities fe ON fe.entity_id = e.entity_id "
+                    "WHERE fe.fact_id = ?", (fid,),
+                ).fetchall()
+                fact_entities[fid] = {r["name"].lower() for r in ent_rows}
 
         facts = [dict(r) for r in rows]
         contradictions = []
