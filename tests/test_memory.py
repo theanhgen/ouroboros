@@ -225,6 +225,137 @@ def test_memory_store_crud_entities_search_and_feedback(temp_store):
         temp_store.record_feedback(fact_id, helpful=True)
 
 
+def test_prune_to_snr_capacity_limit(tmp_path):
+    store = MemoryStore(db_path=tmp_path / "snr.db", hrr_dim=16)
+    try:
+        for i in range(6):
+            store.add_fact(f"snr capacity fact {i}", category="test")
+
+        assert store.prune_to_snr(category="test", min_snr=2.0) == 2
+
+        count = store._conn.execute(
+            "SELECT COUNT(*) FROM facts WHERE category = ?", ("test",)
+        ).fetchone()[0]
+        assert count == 4
+    finally:
+        store.close()
+
+
+def test_prune_to_snr_selection_order(tmp_path):
+    store = MemoryStore(db_path=tmp_path / "snr_order.db", hrr_dim=16)
+    try:
+        low_trust = store.add_fact("prune lowest trust", category="order")
+        low_helpful = store.add_fact("prune lowest helpful count", category="order")
+        older = store.add_fact("prune older equal fact", category="order")
+        newer = store.add_fact("keep newer equal fact", category="order")
+        keep_a = store.add_fact("keep trusted fact a", category="order")
+        keep_b = store.add_fact("keep trusted fact b", category="order")
+        keep_c = store.add_fact("keep trusted fact c", category="order")
+
+        _set_fact_state(
+            store, low_trust, trust_score=0.10, helpful_count=9,
+            created_at="2024-01-05 00:00:00"
+        )
+        _set_fact_state(
+            store, low_helpful, trust_score=0.20, helpful_count=0,
+            created_at="2024-01-06 00:00:00"
+        )
+        _set_fact_state(
+            store, older, trust_score=0.20, helpful_count=1,
+            created_at="2024-01-01 00:00:00"
+        )
+        _set_fact_state(
+            store, newer, trust_score=0.20, helpful_count=1,
+            created_at="2024-01-02 00:00:00"
+        )
+        for fact_id in (keep_a, keep_b, keep_c):
+            _set_fact_state(store, fact_id, trust_score=0.80, helpful_count=0)
+
+        assert store.prune_to_snr(category="order", min_snr=2.0) == 3
+
+        remaining = {
+            row["fact_id"]
+            for row in store._conn.execute("SELECT fact_id FROM facts")
+        }
+        assert {low_trust, low_helpful, older}.isdisjoint(remaining)
+        assert {newer, keep_a, keep_b, keep_c} <= remaining
+    finally:
+        store.close()
+
+
+def test_prune_to_snr_all_categories(tmp_path):
+    store = MemoryStore(db_path=tmp_path / "snr_all.db", hrr_dim=16)
+    try:
+        for category, total in (("cat_a", 5), ("cat_b", 6), ("cat_c", 3)):
+            for i in range(total):
+                store.add_fact(f"{category} fact {i}", category=category)
+
+        assert store.prune_to_snr(min_snr=2.0) == 3
+
+        counts = dict(
+            store._conn.execute(
+                "SELECT category, COUNT(*) FROM facts GROUP BY category"
+            ).fetchall()
+        )
+        assert counts == {"cat_a": 4, "cat_b": 4, "cat_c": 3}
+    finally:
+        store.close()
+
+
+def test_prune_to_snr_under_capacity_no_op(tmp_path):
+    store = MemoryStore(db_path=tmp_path / "snr_noop.db", hrr_dim=16)
+    try:
+        fact_ids = [
+            store.add_fact(f"under capacity fact {i}", category="small")
+            for i in range(3)
+        ]
+
+        assert store.prune_to_snr(category="small", min_snr=2.0) == 0
+
+        remaining = [
+            row["fact_id"]
+            for row in store._conn.execute(
+                "SELECT fact_id FROM facts WHERE category = ? ORDER BY fact_id",
+                ("small",),
+            )
+        ]
+        assert remaining == fact_ids
+    finally:
+        store.close()
+
+
+@pytest.mark.parametrize("min_snr", [0, -1.0])
+def test_prune_to_snr_invalid_min_snr(temp_store, min_snr):
+    with pytest.raises(ValueError, match="min_snr must be positive"):
+        temp_store.prune_to_snr(min_snr=min_snr)
+
+
+def test_prune_to_snr_updates_memory_bank(tmp_path):
+    if not hrr.HAS_NUMPY:
+        pytest.skip("NumPy is required for memory bank assertions")
+
+    store = MemoryStore(db_path=tmp_path / "snr_bank.db", hrr_dim=16)
+    try:
+        for i in range(6):
+            store.add_fact(f"memory bank fact {i}", category="bank")
+
+        before = store._conn.execute(
+            "SELECT fact_count FROM memory_banks WHERE bank_name = ?",
+            ("cat:bank",),
+        ).fetchone()
+        assert before["fact_count"] == 6
+
+        assert store.prune_to_snr(category="bank", min_snr=2.0) == 2
+
+        after = store._conn.execute(
+            "SELECT fact_count FROM memory_banks WHERE bank_name = ?",
+            ("cat:bank",),
+        ).fetchone()
+        assert after["fact_count"] == 4
+    finally:
+        store.close()
+
+
 @pytest.mark.parametrize(
     "query",
     [
@@ -703,6 +834,24 @@ def test_run_hygiene_spares_low_trust_facts_that_proved_useful(temp_store):
     assert _fact_by_id(temp_store, never_useful_id) is None
     assert _fact_by_id(temp_store, was_useful_id)["trust_score"] == pytest.approx(0.05)
     assert _fact_by_id(temp_store, normal_id)["trust_score"] == pytest.approx(0.50)
+
+
+def test_run_hygiene_prunes_to_snr(tmp_path):
+    store = MemoryStore(db_path=tmp_path / "hygiene_snr.db", hrr_dim=16)
+    try:
+        manager = IndexManager(storage=store)
+        manager._retriever.contradict = lambda: []
+        for i in range(6):
+            store.add_fact(f"hygiene snr fact {i}", category="hygiene")
+
+        assert manager.run_hygiene() == 2
+
+        count = store._conn.execute(
+            "SELECT COUNT(*) FROM facts WHERE category = ?", ("hygiene",)
+        ).fetchone()[0]
+        assert count == 4
+    finally:
+        store.close()
 
 
 def test_run_hygiene_calls_contradict_with_no_numpy(temp_store, monkeypatch):
