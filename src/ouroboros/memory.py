@@ -441,6 +441,45 @@ class MemoryStore:
             self._rebuild_bank(row["category"])
             return True
 
+    def prune_to_snr(self, category: Optional[str] = None, min_snr: float = 2.0) -> int:
+        """Prune facts when categories exceed SNR holographic capacity."""
+        if min_snr <= 0:
+            raise ValueError("min_snr must be positive")
+
+        max_capacity = max(0, int(self.hrr_dim / (min_snr ** 2)))
+        removed = 0
+        with self._lock:
+            if category is None:
+                rows = self._conn.execute(
+                    "SELECT DISTINCT category FROM facts WHERE category IS NOT NULL"
+                ).fetchall()
+                categories = [row["category"] for row in rows]
+            else:
+                categories = [category]
+
+            for cat in categories:
+                row = self._conn.execute(
+                    "SELECT COUNT(*) FROM facts WHERE category = ?", (cat,)
+                ).fetchone()
+                count = row[0] if row else 0
+                if count <= max_capacity:
+                    continue
+
+                victim_rows = self._conn.execute(
+                    """
+                    SELECT fact_id FROM facts
+                    WHERE category = ?
+                    ORDER BY trust_score ASC, helpful_count ASC, created_at ASC, fact_id ASC
+                    LIMIT ?
+                    """,
+                    (cat, count - max_capacity),
+                ).fetchall()
+                for fact_id in [int(row["fact_id"]) for row in victim_rows]:
+                    if self.remove_fact(fact_id):
+                        removed += 1
+
+        return removed
+
     def list_facts(self, category: Optional[str] = None, min_trust: float = 0.0,
                    limit: int = 50) -> List[Dict]:
         """Browse facts ordered by trust_score descending."""
@@ -1087,4 +1126,5 @@ class IndexManager:
             if fact["trust_score"] <= 0.05 and fact["helpful_count"] == 0:
                 self._store.remove_fact(fact["fact_id"])
                 removed += 1
+        removed += self._store.prune_to_snr()
         return removed
