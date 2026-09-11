@@ -205,6 +205,7 @@ def _run_agy(
     # `pwd && ls -la`, was denied, exited 1, and the cycle logged it as the
     # unrelated "no plan generated".
     cmd += ["--dangerously-skip-permissions"]
+    cmd += [f"--print-timeout={timeout}s"]
     if edit:
         cmd += ["--mode", "accept-edits"]
         if cwd:
