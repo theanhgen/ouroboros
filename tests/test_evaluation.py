@@ -160,6 +160,39 @@ def test_check_pr_outcomes_updates_success_records(mock_run, _mock_feedback, tmp
     assert load_history(tmp_path)[0].outcome == "merged"
 
 
+@patch("ouroboros.evaluation.git_ops.get_pr_feedback", return_value="Great")
+@patch("ouroboros.evaluation.git_ops.auto_merge_pr", return_value=True)
+@patch("ouroboros.evaluation.git_ops.get_pr_checks_status", return_value="pass")
+@patch("subprocess.run")
+def test_check_pr_outcomes_retries_auto_merge_when_checks_pass(mock_run, mock_checks, mock_auto_merge, _mock_feedback, tmp_path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    history_file = config_dir / "improvement_history.json"
+    history_file.write_text(json.dumps([
+        {
+            "task_id": "xyz",
+            "task_type": "fix_bug",
+            "description": "bug fix",
+            "test_delta": {},
+            "pr_url": "https://github.com/test/pr/2",
+            "outcome": "success",
+            "feedback": "",
+            "timestamp": 2000.0,
+        }
+    ]))
+
+    # First gh call returns OPEN, second gh call (after auto_merge_pr) returns MERGED
+    mock_run.side_effect = [
+        MagicMock(stdout="OPEN\n"),
+        MagicMock(stdout="MERGED\n"),
+    ]
+
+    history = check_pr_outcomes(tmp_path, enable_auto_merge=True)
+
+    assert mock_auto_merge.called
+    assert history[0].outcome == "merged"
+
+
 # -- centralised JSON IO -----------------------------------------------------
 
 def test_history_write_is_atomic(tmp_path, monkeypatch):

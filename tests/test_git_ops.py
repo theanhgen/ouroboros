@@ -112,6 +112,25 @@ def test_commit_auto_state_commits_state_files(mock_git, mock_branch):
 
 @patch("ouroboros.git_ops.current_branch", return_value="main")
 @patch("ouroboros.git_ops._git")
+def test_commit_auto_state_rolls_back_commit_on_push_failure(mock_git, mock_branch):
+    import subprocess
+    mock_git.side_effect = [
+        MagicMock(stdout=" M config/state.json\n"),
+        MagicMock(),  # git add
+        MagicMock(stdout="config/state.json\n"),  # diff --cached
+        MagicMock(),  # git commit
+        subprocess.CalledProcessError(1, ["git", "push"], stderr="rejected non-fast-forward"),
+        MagicMock(),  # git reset --mixed HEAD~1
+    ]
+    with pytest.raises(subprocess.CalledProcessError):
+        commit_auto_state(Path("/tmp/repo"))
+
+    reset_call = mock_git.call_args_list[-1]
+    assert reset_call[0][1:] == ("reset", "--mixed", "HEAD~1")
+
+
+@patch("ouroboros.git_ops.current_branch", return_value="main")
+@patch("ouroboros.git_ops._git")
 def test_commit_auto_state_handles_renamed_state_paths(mock_git, mock_branch):
     rel_path = 'docs/wiki/new -> state "note" \u00e9.md'
     porcelain_path = r'"docs/wiki/old -> state.md" -> "docs/wiki/new -> state \"note\" \303\251.md"'

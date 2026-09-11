@@ -185,7 +185,12 @@ def commit_auto_state(repo: Path) -> bool:
         return False
 
     _git(repo, "commit", "-m", "chore: auto-commit state files before improvement cycle")
-    _git(repo, "push", "origin", current_branch(repo), timeout=60)
+    try:
+        _git(repo, "push", "origin", current_branch(repo), timeout=60)
+    except Exception:
+        log.warning("Push failed after auto-committing state files; rolling back local commit")
+        _git(repo, "reset", "--mixed", "HEAD~1", check=False)
+        raise
     log.info("Auto-committed state files: %s", ", ".join(to_add))
     return True
 

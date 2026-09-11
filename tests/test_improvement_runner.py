@@ -205,3 +205,42 @@ def test_the_configured_daily_cap_reaches_the_cycle(
 
     safety = mock_run_cycle.call_args.args[2]
     assert safety.max_improvements_per_day == 5
+
+
+@patch("ouroboros.improvement_runner.time.time", return_value=1_700_000_000)
+@patch("ouroboros.improvement_runner.save_scheduler_state")
+@patch("ouroboros.improvement_runner.load_scheduler_state", return_value={"consecutive_failures": 0, "next_due_ts": None})
+@patch("ouroboros.improvement_runner._load_feed_context_state", return_value={})
+@patch("ouroboros.improvement_runner.llm.make_client")
+@patch("ouroboros.improvement_runner.llm.load_openai_key", return_value="key")
+@patch("ouroboros.improvement_runner.run_improvement_cycle")
+@patch("ouroboros.improvement_runner.git_ops.has_open_improvement_prs", return_value=False)
+@patch("ouroboros.improvement_runner.git_ops.is_clean", return_value=True)
+@patch("ouroboros.improvement_runner.git_ops.pull_latest")
+@patch("ouroboros.improvement_runner.check_pr_outcomes")
+@patch("ouroboros.improvement_runner.get_repo_root")
+@patch("ouroboros.improvement_runner.load_runner_config")
+def test_run_scheduled_self_improvement_pulls_latest_first(
+    mock_cfg,
+    mock_repo_root,
+    mock_check_prs,
+    mock_pull_latest,
+    _mock_is_clean,
+    _mock_has_open_prs,
+    mock_run_cycle,
+    _mock_load_key,
+    _mock_make_client,
+    _mock_feed_state,
+    _mock_load_state,
+    _mock_save_state,
+    _mock_time,
+):
+    mock_cfg.return_value = _cfg()
+    mock_repo_root.return_value = "/tmp/repo"
+    mock_run_cycle.return_value = ImprovementResult(task=None, status="idle")
+
+    run_scheduled_self_improvement(force=True)
+
+    mock_pull_latest.assert_called_once_with("/tmp/repo")
+    mock_check_prs.assert_called_once_with("/tmp/repo", enable_auto_merge=False)
+

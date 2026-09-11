@@ -226,6 +226,12 @@ def run_scheduled_self_improvement(
 
     repo_root = get_repo_root()
 
+    # Pull latest upstream commits so the cycle builds on fresh main
+    try:
+        git_ops.pull_latest(repo_root)
+    except Exception as exc:
+        log.warning("Failed to pull latest before improvement cycle: %s", exc)
+
     # Auto-commit volatile state files so the worktree is clean for the PR branch.
     try:
         if git_ops.commit_auto_state(repo_root):
@@ -244,7 +250,7 @@ def run_scheduled_self_improvement(
         save_scheduler_state(state)
         return ScheduledImprovementRun("skipped_dirty_repo", state["last_error"])
 
-    check_pr_outcomes(repo_root)
+    check_pr_outcomes(repo_root, enable_auto_merge=getattr(cfg, "enable_auto_merge", False))
     open_prs = git_ops.has_open_improvement_prs(repo_root)
     if open_prs is not False:
         # None means the lookup failed; defer rather than risk a second PR for
@@ -334,9 +340,10 @@ def run_scheduled_self_improvement(
 
     issue_url = _maybe_create_followup_issue(repo_root, cfg, result)
     if issue_url:
+        desc = result.task.description[:80] if result.task else result.status
         _send_notification(
             cfg,
-            f"Created follow-up issue for blocked improvement: {result.task.description[:80]}\n{issue_url}",
+            f"Created follow-up issue for blocked improvement: {desc}\n{issue_url}",
         )
     _set_failure_state(
         state,
@@ -347,8 +354,9 @@ def run_scheduled_self_improvement(
         issue_url=issue_url,
     )
     save_scheduler_state(state)
+    detail_msg = result.details or (result.task.description if result.task else result.status)
     return ScheduledImprovementRun(
         result.status,
-        result.details or result.task.description,
+        detail_msg,
         issue_url=issue_url,
     )

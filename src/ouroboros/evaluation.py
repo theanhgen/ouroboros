@@ -220,7 +220,10 @@ def _load_legacy_history(repo_root: Optional[Path] = None) -> List[dict]:
     return data
 
 
-def check_pr_outcomes(repo_root: Optional[Path] = None) -> List[EvaluationRecord]:
+def check_pr_outcomes(
+    repo_root: Optional[Path] = None,
+    enable_auto_merge: bool = False,
+) -> List[EvaluationRecord]:
     """Poll open PRs and update their outcomes in history."""
     root = repo_root or get_repo_root()
     history = load_history(root)
@@ -243,6 +246,20 @@ def check_pr_outcomes(repo_root: Optional[Path] = None) -> List[EvaluationRecord
                 timeout=30,
             )
             state = result.stdout.strip()
+            if state == "OPEN" and enable_auto_merge:
+                checks_status = git_ops.get_pr_checks_status(root, record.pr_url)
+                if checks_status == "pass":
+                    log.info("PR %s checks passed; attempting auto-merge", record.pr_url)
+                    if git_ops.auto_merge_pr(root, record.pr_url):
+                        res = subprocess.run(
+                            ["gh", "pr", "view", record.pr_url, "--json", "state", "-q", ".state"],
+                            cwd=root,
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                            timeout=10,
+                        )
+                        state = res.stdout.strip()
             if state in ("MERGED", "CLOSED"):
                 feedback = git_ops.get_pr_feedback(root, record.pr_url)
                 if feedback is None:
