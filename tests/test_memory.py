@@ -491,6 +491,9 @@ def test_fact_retriever_probe_returns_single_entity_matches(temp_store):
     assert [result["fact_id"] for result in results] == [first_id, second_id]
     assert unrelated_id not in {result["fact_id"] for result in results}
     assert all(result["score"] == pytest.approx(0.5) for result in results)
+    assert _fact_by_id(temp_store, first_id)["retrieval_count"] == 1
+    assert _fact_by_id(temp_store, second_id)["retrieval_count"] == 1
+    assert _fact_by_id(temp_store, unrelated_id)["retrieval_count"] == 0
 
 
 def test_fact_retriever_reason_returns_multi_entity_joint_matches(temp_store):
@@ -498,11 +501,11 @@ def test_fact_retriever_reason_returns_multi_entity_joint_matches(temp_store):
         'Ada Lovelace documented the "Analytical Engine".',
         category="history",
     )
-    temp_store.add_fact(
+    ada_only_id = temp_store.add_fact(
         'Ada Lovelace corresponded with "Charles Babbage".',
         category="history",
     )
-    temp_store.add_fact(
+    engine_only_id = temp_store.add_fact(
         'Charles Babbage proposed the "Analytical Engine".',
         category="history",
     )
@@ -515,6 +518,56 @@ def test_fact_retriever_reason_returns_multi_entity_joint_matches(temp_store):
 
     assert [result["fact_id"] for result in results] == [joint_id]
     assert results[0]["score"] == pytest.approx(0.5)
+    assert _fact_by_id(temp_store, joint_id)["retrieval_count"] == 1
+    assert _fact_by_id(temp_store, ada_only_id)["retrieval_count"] == 0
+    assert _fact_by_id(temp_store, engine_only_id)["retrieval_count"] == 0
+
+
+def test_fact_retriever_probe_and_reason_count_hrr_scored_results(temp_store):
+    if not hrr.HAS_NUMPY:
+        pytest.skip("NumPy is required for HRR retrieval assertions")
+
+    probe_ids = [
+        temp_store.add_fact("alpha vector retrieval target", category="hrr_probe"),
+        temp_store.add_fact("beta vector retrieval alternate", category="hrr_probe"),
+    ]
+    probe_results = FactRetriever(temp_store).probe(
+        "unlinked probe entity",
+        category="hrr_probe",
+        limit=1,
+    )
+
+    assert len(probe_results) == 1
+    assert _fact_by_id(temp_store, probe_results[0]["fact_id"])["retrieval_count"] == 1
+    assert [
+        _fact_by_id(temp_store, fact_id)["retrieval_count"]
+        for fact_id in probe_ids
+        if fact_id != probe_results[0]["fact_id"]
+    ] == [0]
+
+    reason_ids = [
+        temp_store.add_fact("gamma vector reasoning target", category="hrr_reason"),
+        temp_store.add_fact("delta vector reasoning alternate", category="hrr_reason"),
+        temp_store.add_fact("epsilon vector reasoning reserve", category="hrr_reason"),
+    ]
+    reason_results = FactRetriever(temp_store).reason(
+        ["unlinked reason one", "unlinked reason two"],
+        category="hrr_reason",
+        limit=2,
+    )
+
+    returned_reason_ids = {result["fact_id"] for result in reason_results}
+    assert len(reason_results) == 2
+    assert [
+        _fact_by_id(temp_store, fact_id)["retrieval_count"]
+        for fact_id in reason_ids
+        if fact_id in returned_reason_ids
+    ] == [1, 1]
+    assert [
+        _fact_by_id(temp_store, fact_id)["retrieval_count"]
+        for fact_id in reason_ids
+        if fact_id not in returned_reason_ids
+    ] == [0]
 
 
 def test_fact_retriever_contradict_detects_shared_entity_divergence(temp_store):
