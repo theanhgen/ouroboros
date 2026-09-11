@@ -179,6 +179,60 @@ ERROR tests/test_foo.py::TestClass::test_method - RuntimeError: fixture failed
     assert fail.line == 10
     assert "fixture failed" in fail.traceback
 
+def test_parse_pytest_output_parameterized_test_with_spaces():
+    output = """
+_____________________ test_format[param with spaces] _____________________
+tests/test_foo.py:21: in test_format
+    assert actual
+E   AssertionError: expected value
+=========================== short test summary info ============================
+FAILED tests/test_foo.py::test_format[param with spaces] - AssertionError: expected value
+3 passed, 1 failed in 0.52s
+"""
+    result = _parse_pytest_output(output)
+    assert result["failed"] == 1
+    assert len(result["failures"]) == 1
+    fail = result["failures"][0]
+    assert fail.test_name == "test_format[param with spaces]"
+    assert fail.file == "tests/test_foo.py"
+    assert fail.line == 21
+    assert fail.message == "AssertionError: expected value"
+    assert "expected value" in fail.traceback
+
+def test_parse_pytest_output_parameterized_test_without_message():
+    output = """
+=========================== short test summary info ============================
+FAILED tests/test_foo.py::test_format[param with spaces]
+3 passed, 1 failed in 0.52s
+"""
+    result = _parse_pytest_output(output)
+    assert result["failed"] == 1
+    assert len(result["failures"]) == 1
+    fail = result["failures"][0]
+    assert fail.test_name == "test_format[param with spaces]"
+    assert fail.file == "tests/test_foo.py"
+    assert fail.message == ""
+
+def test_parse_pytest_output_parameterized_class_fixture_error():
+    output = """
+____________ ERROR at setup of TestClass.test_method[param with spaces] ____________
+tests/test_foo.py:33: in bad_fixture
+    raise RuntimeError("fixture failed")
+E   RuntimeError: fixture failed
+=========================== short test summary info ============================
+ERROR tests/test_foo.py::TestClass::test_method[param with spaces] - RuntimeError: fixture failed
+3 passed, 1 error in 0.52s
+"""
+    result = _parse_pytest_output(output)
+    assert result["errors"] == 1
+    assert len(result["failures"]) == 1
+    fail = result["failures"][0]
+    assert fail.test_name == "TestClass::test_method[param with spaces]"
+    assert fail.file == "tests/test_foo.py"
+    assert fail.line == 33
+    assert fail.message == "RuntimeError: fixture failed"
+    assert "fixture failed" in fail.traceback
+
 def test_parse_pytest_output_no_tests():
     output = "no tests ran in 0.01s"
     result = _parse_pytest_output(output)
