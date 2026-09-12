@@ -61,3 +61,4 @@
 2026-09-12 | fix_bug | Fix test failure parsing in _parse_pytest_output within src/ | success | tests: 1185 -> 1188
 2026-09-12 | fix_bug | Fix status badge formatting in generate_changelog_page withi | failed | Forbidden file modification: config/state.json
 2026-09-12 | fix_bug | Fix pytest collection error parsing in _parse_pytest_output  | success | tests: 1188 -> 1191
+2026-09-12 | fix_bug | Fix HRR similarity calculation in FactRetriever.probe and Fa | success | tests: 1191 -> 1194
