@@ -36,6 +36,15 @@ def _set_fact_state(store, fact_id, **fields):
     store._conn.commit()
 
 
+def _set_fact_hrr(store, fact_id, content, entities):
+    vector = hrr.encode_fact(content, entities, store.hrr_dim)
+    store._conn.execute(
+        "UPDATE facts SET hrr_vector = ? WHERE fact_id = ?",
+        (hrr.phases_to_bytes(vector), fact_id),
+    )
+    store._conn.commit()
+
+
 def test_memory_store_index_code_returns_fact_ids(temp_store):
     code_content = textwrap.dedent('''
         """Module docs."""
@@ -652,6 +661,95 @@ def test_fact_retriever_reason_returns_multi_entity_joint_matches(temp_store):
     assert _fact_by_id(temp_store, joint_id)["retrieval_count"] == 1
     assert _fact_by_id(temp_store, ada_only_id)["retrieval_count"] == 0
     assert _fact_by_id(temp_store, engine_only_id)["retrieval_count"] == 0
+
+
+def test_hrr_unbind_role_entity_recovers_bundled_entities():
+    if not hrr.HAS_NUMPY:
+        pytest.skip("NumPy is required for HRR similarity assertions")
+
+    dim = 1024
+    role_entity = hrr.encode_atom("__hrr_role_entity__", dim)
+    fact_vec = hrr.encode_fact(
+        "lowercase analytical engine memo",
+        ["Ada Lovelace", "Analytical Engine"],
+        dim,
+    )
+
+    recovered = hrr.unbind(fact_vec, role_entity)
+    ada_sim = hrr.similarity(recovered, hrr.encode_atom("ada lovelace", dim))
+    engine_sim = hrr.similarity(recovered, hrr.encode_atom("analytical engine", dim))
+    unrelated_sim = hrr.similarity(recovered, hrr.encode_atom("grace hopper", dim))
+
+    assert ada_sim > unrelated_sim + 0.20
+    assert engine_sim > unrelated_sim + 0.20
+    assert max(ada_sim, engine_sim) > 0.30
+    assert abs(unrelated_sim) < 0.15
+
+
+def test_fact_retriever_probe_hrr_similarity_ranking(temp_store):
+    if not hrr.HAS_NUMPY:
+        pytest.skip("NumPy is required for HRR retrieval assertions")
+
+    target_content = "lowercase vector target memo"
+    unrelated_content = "lowercase vector unrelated memo"
+    target_id = temp_store.add_fact(target_content, category="hrr_probe_rank")
+    unrelated_id = temp_store.add_fact(unrelated_content, category="hrr_probe_rank")
+    _set_fact_hrr(temp_store, target_id, target_content, ["Ada Lovelace"])
+    _set_fact_hrr(temp_store, unrelated_id, unrelated_content, ["Grace Hopper"])
+
+    results = FactRetriever(temp_store).probe(
+        "Ada Lovelace",
+        category="hrr_probe_rank",
+        limit=2,
+    )
+
+    assert [result["fact_id"] for result in results] == [target_id, unrelated_id]
+    assert results[0]["score"] > results[1]["score"] + 0.05
+
+
+def test_fact_retriever_reason_hrr_similarity_ranking(temp_store):
+    if not hrr.HAS_NUMPY:
+        pytest.skip("NumPy is required for HRR retrieval assertions")
+
+    targets = ["Ada Lovelace", "Analytical Engine"]
+    role_entity = hrr.encode_atom("__hrr_role_entity__", temp_store.hrr_dim)
+    target_vecs = [hrr.encode_atom(target.lower(), temp_store.hrr_dim) for target in targets]
+
+    partial_vec = hrr.encode_fact("lowercase partial vector memo", [targets[0]], temp_store.hrr_dim)
+    partial_recovered = hrr.unbind(partial_vec, role_entity)
+    partial_min = min(hrr.similarity(partial_recovered, tv) for tv in target_vecs)
+    unrelated_entity = None
+    for candidate in ("Grace Hopper", "COBOL", "FORTRAN", "Compiler Design"):
+        candidate_vec = hrr.encode_fact("lowercase unrelated vector memo", [candidate], temp_store.hrr_dim)
+        candidate_recovered = hrr.unbind(candidate_vec, role_entity)
+        candidate_min = min(hrr.similarity(candidate_recovered, tv) for tv in target_vecs)
+        if partial_min > candidate_min + 0.02:
+            unrelated_entity = candidate
+            break
+    assert unrelated_entity is not None
+
+    joint_content = "lowercase joint vector memo"
+    partial_content = "lowercase partial vector memo"
+    unrelated_content = "lowercase unrelated vector memo"
+    joint_id = temp_store.add_fact(joint_content, category="hrr_reason_rank")
+    partial_id = temp_store.add_fact(partial_content, category="hrr_reason_rank")
+    unrelated_id = temp_store.add_fact(unrelated_content, category="hrr_reason_rank")
+    _set_fact_hrr(temp_store, joint_id, joint_content, targets)
+    _set_fact_hrr(temp_store, partial_id, partial_content, [targets[0]])
+    _set_fact_hrr(temp_store, unrelated_id, unrelated_content, [unrelated_entity])
+
+    results = FactRetriever(temp_store).reason(
+        targets,
+        category="hrr_reason_rank",
+        limit=3,
+    )
+
+    assert [result["fact_id"] for result in results] == [
+        joint_id,
+        partial_id,
+        unrelated_id,
+    ]
+    assert results[0]["score"] > results[1]["score"] + 0.05
 
 
 def test_fact_retriever_probe_and_reason_count_hrr_scored_results(temp_store):
