@@ -777,9 +777,7 @@ class FactRetriever:
 
         conn = self.store._conn
         role_entity = hrr.encode_atom("__hrr_role_entity__", self.hrr_dim)
-        entity_vec = hrr.encode_atom(entity.lower(), self.hrr_dim)
-        probe_key = hrr.bind(entity_vec, role_entity)
-        role_content = hrr.encode_atom("__hrr_role_content__", self.hrr_dim)
+        target_vec = hrr.encode_atom(entity.lower(), self.hrr_dim)
 
         where = "WHERE hrr_vector IS NOT NULL"
         params: list = []
@@ -801,9 +799,8 @@ class FactRetriever:
         for row in rows:
             fact = dict(row)
             fact_vec = hrr.bytes_to_phases(fact.pop("hrr_vector"))
-            residual = hrr.unbind(fact_vec, probe_key)
-            content_vec = hrr.bind(hrr.encode_text(fact["content"], self.hrr_dim), role_content)
-            sim = hrr.similarity(residual, content_vec)
+            recovered = hrr.unbind(fact_vec, role_entity)
+            sim = hrr.similarity(recovered, target_vec)
             fact["score"] = (sim + 1.0) / 2.0 * fact["trust_score"]
             scored.append(fact)
 
@@ -824,12 +821,10 @@ class FactRetriever:
 
         conn = self.store._conn
         role_entity = hrr.encode_atom("__hrr_role_entity__", self.hrr_dim)
-        role_content = hrr.encode_atom("__hrr_role_content__", self.hrr_dim)
-
-        probe_keys = []
-        for entity in entities:
-            ev = hrr.encode_atom(entity.lower(), self.hrr_dim)
-            probe_keys.append(hrr.bind(ev, role_entity))
+        target_vecs = [
+            hrr.encode_atom(entity.lower(), self.hrr_dim)
+            for entity in entities
+        ]
 
         where = "WHERE hrr_vector IS NOT NULL"
         params: list = []
@@ -851,11 +846,11 @@ class FactRetriever:
         for row in rows:
             fact = dict(row)
             fact_vec = hrr.bytes_to_phases(fact.pop("hrr_vector"))
-            entity_scores = []
-            for pk in probe_keys:
-                residual = hrr.unbind(fact_vec, pk)
-                sim = hrr.similarity(residual, role_content)
-                entity_scores.append(sim)
+            recovered = hrr.unbind(fact_vec, role_entity)
+            entity_scores = [
+                hrr.similarity(recovered, target_vec)
+                for target_vec in target_vecs
+            ]
             min_sim = min(entity_scores)
             fact["score"] = (min_sim + 1.0) / 2.0 * fact["trust_score"]
             scored.append(fact)
