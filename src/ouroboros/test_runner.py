@@ -80,20 +80,24 @@ def _parse_pytest_output(output: str) -> dict:
     if cov_match:
         result["coverage"] = float(cov_match.group(1))
 
-    # Parse FAILED and ERROR lines like "FAILED tests/test_foo.py::test_bar - AssertionError: ..."
+    # Parse FAILED and ERROR summary lines. Collection errors omit the
+    # "::test_name" delimiter, e.g. "ERROR tests/test_foo.py - ImportError".
     for match in re.finditer(
-        r"^(?:FAILED|ERROR)\s+([\w/._-]+)::(.*?)(?:\s+-\s+(.*))?$",
+        r"^(?:FAILED|ERROR)\s+([\w/._-]+)(?:::([^\n]+?))?(?:\s+-\s+(.*))?$",
         output,
         re.MULTILINE,
     ):
         file_path = match.group(1)
-        test_name = match.group(2)
+        test_name = match.group(2) or ""
         message = match.group(3) or ""
 
         # Extract traceback for this test
         tb = ""
-        dot_name = test_name.replace("::", ".")
-        header_pattern = rf"(?:ERROR at (?:setup|teardown)\s+of\s+)?(?:{re.escape(test_name)}|{re.escape(dot_name)})"
+        if test_name:
+            dot_name = test_name.replace("::", ".")
+            header_pattern = rf"(?:ERROR at (?:setup|teardown)\s+of\s+)?(?:{re.escape(test_name)}|{re.escape(dot_name)})"
+        else:
+            header_pattern = rf"ERROR collecting (?:[^\n]*[/\\])?{re.escape(file_path)}"
         tb_pattern = (
             r"_" + "{2,}" + r"\s+" + header_pattern + r"\s+_" + "{2,}"
             + r"(.*?)(?=_{2,}\s+\w|={2,}|$)"
@@ -101,6 +105,15 @@ def _parse_pytest_output(output: str) -> dict:
         tb_match = re.search(tb_pattern, output, re.DOTALL)
         if tb_match:
             tb = tb_match.group(1).strip()
+
+        if not message and not test_name and tb:
+            error_lines = [
+                line.strip()
+                for line in re.findall(r"^E\s+(.+)$", tb, re.MULTILINE)
+                if line.strip()
+            ]
+            if error_lines:
+                message = error_lines[-1]
 
         # Try to extract line number from traceback sections
         line_num = None

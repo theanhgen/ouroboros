@@ -103,6 +103,77 @@ ERROR tests/test_foo.py::test_setup - RuntimeError: fixture failed
     assert fail.file == "tests/test_foo.py"
     assert fail.message == "RuntimeError: fixture failed"
 
+def test_parse_pytest_output_collection_error_with_message():
+    output = """
+____________________ ERROR collecting tests/test_mod.py ____________________
+ImportError while importing test module '/repo/tests/test_mod.py'.
+Traceback:
+tests/test_mod.py:3: in <module>
+    from app import missing
+E   ImportError: cannot import name 'missing' from 'app'
+=========================== short test summary info ============================
+ERROR tests/test_mod.py - ImportError: cannot import name 'missing' from 'app'
+1 error in 0.52s
+"""
+    result = _parse_pytest_output(output)
+    assert result["errors"] == 1
+    assert len(result["failures"]) == 1
+    fail = result["failures"][0]
+    assert fail.test_name == ""
+    assert fail.file == "tests/test_mod.py"
+    assert fail.line == 3
+    assert fail.message == "ImportError: cannot import name 'missing' from 'app'"
+    assert "ImportError while importing test module" in fail.traceback
+
+def test_parse_pytest_output_collection_error_without_message():
+    output = """
+____________________ ERROR collecting tests/test_mod.py ____________________
+ImportError while importing test module '/repo/tests/test_mod.py'.
+Traceback:
+tests/test_mod.py:1: in <module>
+    import missing_dep
+E   ModuleNotFoundError: No module named 'missing_dep'
+=========================== short test summary info ============================
+ERROR tests/test_mod.py
+1 error in 0.52s
+"""
+    result = _parse_pytest_output(output)
+    assert result["errors"] == 1
+    assert len(result["failures"]) == 1
+    fail = result["failures"][0]
+    assert fail.test_name == ""
+    assert fail.file == "tests/test_mod.py"
+    assert fail.line == 1
+    assert fail.message == "ModuleNotFoundError: No module named 'missing_dep'"
+    assert "missing_dep" in fail.traceback
+
+def test_parse_pytest_output_collection_error_mixed_with_failure():
+    output = """
+_____________________________ test_bar ______________________________
+tests/test_foo.py:12: in test_bar
+    assert False
+E   AssertionError: boom
+____________________ ERROR collecting tests/test_mod.py ____________________
+tests/test_mod.py:2: in <module>
+    raise RuntimeError("import boom")
+E   RuntimeError: import boom
+=========================== short test summary info ============================
+FAILED tests/test_foo.py::test_bar - AssertionError: boom
+ERROR tests/test_mod.py - RuntimeError: import boom
+1 failed, 1 error in 0.52s
+"""
+    result = _parse_pytest_output(output)
+    assert result["failed"] == 1
+    assert result["errors"] == 1
+    assert len(result["failures"]) == 2
+    failures = {fail.file: fail for fail in result["failures"]}
+    assert failures["tests/test_foo.py"].test_name == "test_bar"
+    assert failures["tests/test_foo.py"].line == 12
+    assert "AssertionError: boom" in failures["tests/test_foo.py"].traceback
+    assert failures["tests/test_mod.py"].test_name == ""
+    assert failures["tests/test_mod.py"].line == 2
+    assert failures["tests/test_mod.py"].message == "RuntimeError: import boom"
+
 def test_parse_pytest_output_class_method_traceback():
     output = """
 __________________________ TestClass.test_method ___________________________
