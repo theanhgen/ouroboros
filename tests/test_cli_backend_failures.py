@@ -69,6 +69,17 @@ def test_nothing_printed_after_a_quota_error_names_the_quota(tmp_path, fast_poll
         backends._run_agy(agy, "hi", timeout=20)
 
 
+def test_a_reset_near_the_deadline_is_not_killed_as_time_passes(tmp_path, fast_poll):
+    """The logged interval is measured when agy wrote the line, not when we read it.
+
+    Comparing that fixed interval against a shrinking deadline killed a call whose
+    reset was in fact closer than the deadline: at t=1s of a 12s call, a "Resets in
+    11s" line looks later than the 11s remaining, though only 10s of it are left.
+    """
+    agy = _fake_agy(tmp_path, reset="11s", stdout="OK", sleep=3)
+    assert backends._run_agy(agy, "hi", timeout=12) == ("OK", None)
+
+
 def test_a_non_zero_exit_is_a_backend_error(tmp_path, fast_poll):
     agy = _fake_agy(tmp_path, exit_code=1)
     with pytest.raises(backends.CLIBackendError, match="agy exited 1"):

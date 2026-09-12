@@ -259,6 +259,12 @@ def _run_agy(
     cmd += ["--log-file", log_path]
 
     deadline = time.monotonic() + timeout
+    # "Resets in 54m30s" is an interval measured when agy WROTE that line, so it is anchored to
+    # an absolute time once, at first sight. Re-comparing the fixed interval against a shrinking
+    # deadline would eventually kill a call whose reset had in fact come closer than the deadline.
+    # Anchoring errs late, never early: the line is at most one poll old when it is read.
+    reset_at: Optional[float] = None
+    quota_message = ""
     proc = subprocess.Popen(
         cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         stdin=subprocess.DEVNULL,
@@ -272,8 +278,10 @@ def _run_agy(
                 break
             except subprocess.TimeoutExpired:
                 quota = _agy_quota_error(log_path)
-                if quota and quota[1] is not None and quota[1] > deadline - time.monotonic():
-                    raise CLIBackendError(f"agy quota exhausted: {quota[0]} (log: {log_path})")
+                if quota and quota[1] is not None and reset_at is None:
+                    reset_at, quota_message = time.monotonic() + quota[1], quota[0]
+                if reset_at is not None and reset_at > deadline:
+                    raise CLIBackendError(f"agy quota exhausted: {quota_message} (log: {log_path})")
                 if time.monotonic() >= deadline:
                     raise subprocess.TimeoutExpired(cmd, timeout)
     finally:
