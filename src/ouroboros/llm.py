@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from openai import OpenAI
 
 from .model_defaults import DEFAULT_OPENAI_MODEL
+from .backends import CLIBackendError
 from . import lifecycle
 from .retry import is_retryable, retry_with_backoff
 from . import prompts
@@ -407,8 +408,22 @@ def identify_improvements(
         if is_retryable(e):
             log.warning("identify_improvements: call failed after retries (%s)", e)
             return None, str(e)
+        # Nor a CLI backend that could not answer at all (quota, timeout, no
+        # output): the fallback runs the same CLI again. On 2026-09-11 that was a
+        # second 10-minute wait per cycle, and its empty reply was what got
+        # reported -- as "Expecting value: line 1 column 1 (char 0)".
+        if isinstance(e, CLIBackendError):
+            log.warning("identify_improvements: backend failed (%s)", e)
+            return None, str(e)
         log.warning("identify_improvements: primary call failed (%s), retrying as plain JSON", e)
-        content, usage = chat_completion(client, system_prompt, user_prompt + "\nOutput JSON.", model)
+        call_errors: list = []
+        content, usage = chat_completion(
+            client, system_prompt, user_prompt + "\nOutput JSON.", model,
+            on_error=call_errors.append,
+        )
+        if call_errors:
+            log.warning("identify_improvements: fallback call failed: %s", call_errors[0])
+            return None, call_errors[0]
         try:
             if "{" in content:
                 content = content[content.find("{"):content.rfind("}") + 1]

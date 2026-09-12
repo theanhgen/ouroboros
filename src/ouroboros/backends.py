@@ -27,8 +27,11 @@ Notes:
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
@@ -50,6 +53,47 @@ _EXTRA_BIN_DIRS = (
 )
 
 _DEFAULT_TIMEOUT = 600
+
+
+class CLIBackendError(RuntimeError):
+    """The CLI produced no usable reply: it exited non-zero, ran out of quota,
+    timed out, or printed nothing.
+
+    Asking the same CLI again in a different shape cannot fix any of these,
+    which is what separates this from a reply that merely failed to parse.
+    """
+
+
+# agy retries RESOURCE_EXHAUSTED on its own, with backoff, until
+# --print-timeout, and says so only in its log. On 2026-09-11 the account's
+# quota was gone for hours: every identify call knew within a second
+# ("Individual quota reached ... Resets in 1h4m22s") yet sat out the whole
+# timeout and printed nothing, which surfaced as "Failed to parse LLM response:
+# Expecting value: line 1 column 1 (char 0)". So _run_agy points agy's log at a
+# file it owns and watches it: once the reset is further off than the
+# deadline, waiting cannot succeed.
+_QUOTA_POLL_SECONDS = 2.0
+_QUOTA_MESSAGE = re.compile(r"RESOURCE_EXHAUSTED \(code \d+\): (.*?)\), retrying")
+_QUOTA_RESET = re.compile(r"Resets in (?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?")
+
+
+def _agy_quota_error(log_path: str) -> Optional[Tuple[str, Optional[float]]]:
+    """Return (message, seconds until reset) for the last quota error agy logged."""
+    try:
+        with open(log_path, encoding="utf-8", errors="replace") as fh:
+            hits = [line for line in fh if "RESOURCE_EXHAUSTED" in line and "quota" in line.lower()]
+    except OSError:
+        return None
+    if not hits:
+        return None
+    line = hits[-1]
+    found = _QUOTA_MESSAGE.search(line)
+    reset = _QUOTA_RESET.search(line)
+    seconds = None
+    if reset and any(reset.groups()):
+        hours, minutes, secs = reset.groups()
+        seconds = int(hours or 0) * 3600 + int(minutes or 0) * 60 + float(secs or 0)
+    return (found.group(1) if found else line.strip()), seconds
 
 
 def resolve_binary(name: str) -> Optional[str]:
@@ -159,7 +203,7 @@ def _run_claude(
         cmd += ["--permission-mode", "acceptEdits"]
     proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     if proc.returncode != 0:
-        raise RuntimeError(f"claude exited {proc.returncode}: {proc.stderr[:500]}")
+        raise CLIBackendError(f"claude exited {proc.returncode}: {proc.stderr[:500]}")
     return parse_claude_output(proc.stdout)
 
 
@@ -182,7 +226,7 @@ def _run_codex(
     cmd.append(prompt)
     proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     if proc.returncode != 0:
-        raise RuntimeError(f"codex exited {proc.returncode}: {proc.stderr[:500]}")
+        raise CLIBackendError(f"codex exited {proc.returncode}: {proc.stderr[:500]}")
     # codex does not expose token usage in a stable machine-readable form.
     return parse_codex_output(proc.stdout), None
 
@@ -210,11 +254,57 @@ def _run_agy(
         cmd += ["--mode", "accept-edits"]
         if cwd:
             cmd += ["--add-dir", cwd]
-    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
+    fd, log_path = tempfile.mkstemp(prefix="ouroboros-agy-", suffix=".log")
+    os.close(fd)
+    cmd += ["--log-file", log_path]
+
+    deadline = time.monotonic() + timeout
+    # "Resets in 54m30s" is an interval measured when agy WROTE that line, so it is anchored to
+    # an absolute time once, at first sight. Re-comparing the fixed interval against a shrinking
+    # deadline would eventually kill a call whose reset had in fact come closer than the deadline.
+    # Anchoring errs late, never early: the line is at most one poll old when it is read.
+    reset_at: Optional[float] = None
+    quota_message = ""
+    proc = subprocess.Popen(
+        cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        stdin=subprocess.DEVNULL,
+    )
+    try:
+        while True:
+            try:
+                stdout, stderr = proc.communicate(
+                    timeout=max(0.0, min(_QUOTA_POLL_SECONDS, deadline - time.monotonic()))
+                )
+                break
+            except subprocess.TimeoutExpired:
+                quota = _agy_quota_error(log_path)
+                if quota and quota[1] is not None and reset_at is None:
+                    reset_at, quota_message = time.monotonic() + quota[1], quota[0]
+                if reset_at is not None and reset_at > deadline:
+                    raise CLIBackendError(f"agy quota exhausted: {quota_message} (log: {log_path})")
+                if time.monotonic() >= deadline:
+                    raise subprocess.TimeoutExpired(cmd, timeout)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.communicate()
+
+    quota = _agy_quota_error(log_path)
     if proc.returncode != 0:
-        raise RuntimeError(f"agy exited {proc.returncode}: {proc.stderr[:500]}")
+        if quota:
+            raise CLIBackendError(f"agy quota exhausted: {quota[0]} (log: {log_path})")
+        raise CLIBackendError(f"agy exited {proc.returncode}: {stderr[:500]}")
+    text = parse_agy_output(stdout)
+    if not text and quota:
+        # An expired --print-timeout exits 0 with nothing on stdout.
+        raise CLIBackendError(f"agy quota exhausted: {quota[0]} (log: {log_path})")
+    # Kept on every failure path above, for whoever reads the error.
+    try:
+        os.unlink(log_path)
+    except OSError:
+        pass
     # agy print mode does not expose token usage.
-    return parse_agy_output(proc.stdout), None
+    return text, None
 
 
 # --------------------------------------------------------------------------- #
@@ -292,13 +382,23 @@ class CLIClient:
 
     def _invoke(self, system: str, user: str, want_json: bool) -> Tuple[str, Optional[Dict[str, int]]]:
         prompt = _messages_to_prompt(system, user, want_json)
-        if self.backend == "claude":
-            return _run_claude(self.binary, prompt, model=self.model, timeout=self.timeout)
-        if self.backend == "codex":
-            return _run_codex(self.binary, prompt, model=self.model, timeout=self.timeout)
-        if self.backend == "agy":
-            return _run_agy(self.binary, prompt, model=self.model, timeout=self.timeout)
-        raise RuntimeError(f"Unsupported CLI backend: {self.backend}")
+        try:
+            if self.backend == "claude":
+                text, usage = _run_claude(self.binary, prompt, model=self.model, timeout=self.timeout)
+            elif self.backend == "codex":
+                text, usage = _run_codex(self.binary, prompt, model=self.model, timeout=self.timeout)
+            elif self.backend == "agy":
+                text, usage = _run_agy(self.binary, prompt, model=self.model, timeout=self.timeout)
+            else:
+                raise RuntimeError(f"Unsupported CLI backend: {self.backend}")
+        except subprocess.TimeoutExpired as exc:
+            raise CLIBackendError(f"{self.backend} timed out after {self.timeout}s") from exc
+        # An empty reply is never a usable completion. Returning it sent every
+        # caller that parses JSON to json.loads("") and a report of "Expecting
+        # value: line 1 column 1 (char 0)" in place of what the backend did.
+        if not text.strip():
+            raise CLIBackendError(f"{self.backend} exited 0 but printed nothing")
+        return text, usage
 
 
 def make_backend_client(
