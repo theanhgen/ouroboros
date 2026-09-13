@@ -62,3 +62,4 @@
 2026-09-12 | fix_bug | Fix status badge formatting in generate_changelog_page withi | failed | Forbidden file modification: config/state.json
 2026-09-12 | fix_bug | Fix pytest collection error parsing in _parse_pytest_output  | success | tests: 1188 -> 1191
 2026-09-12 | fix_bug | Fix HRR similarity calculation in FactRetriever.probe and Fa | success | tests: 1191 -> 1194
+2026-09-13 | fix_bug | Make MemoryStore.index_code replace stale code facts for the | success | tests: 1208 -> 1210
