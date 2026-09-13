@@ -75,6 +75,113 @@ def test_memory_store_index_code_returns_fact_ids(temp_store):
     assert "[code] src/helper.py: def helper docstring: Helper docs." in fact_contents
 
 
+def test_index_code_replaces_stale_facts_for_same_file(temp_store):
+    old_content = textwrap.dedent('''
+        class OldWidget:
+            """Legacy Entity."""
+            pass
+
+        def stale_function():
+            return None
+    ''').strip()
+    current_content = textwrap.dedent('''
+        class CurrentWidget:
+            """Current Entity."""
+            pass
+
+        def current_function():
+            return None
+    ''').strip()
+    other_content = "class OtherWidget:\n    pass"
+
+    old_ids = set(temp_store.index_code("src/widget.py", old_content))
+    other_ids = set(temp_store.index_code("src/other.py", other_content))
+
+    current_ids = set(temp_store.index_code("src/widget.py", current_content))
+    facts = temp_store.list_facts(category="code", limit=20)
+    fact_ids = {fact["fact_id"] for fact in facts}
+    fact_contents = {fact["content"] for fact in facts}
+
+    assert old_ids.isdisjoint(fact_ids)
+    assert current_ids <= fact_ids
+    assert other_ids <= fact_ids
+    assert not any("OldWidget" in content for content in fact_contents)
+    assert not any("stale_function" in content for content in fact_contents)
+    assert "[code] src/widget.py: class CurrentWidget" in fact_contents
+    assert "[code] src/widget.py: def current_function()" in fact_contents
+    assert "[code] src/other.py: class OtherWidget" in fact_contents
+    assert temp_store.search_facts("OldWidget", category="code") == []
+    assert temp_store.search_facts("stale_function", category="code") == []
+    assert any(
+        "CurrentWidget" in result["content"]
+        for result in temp_store.search_facts("CurrentWidget", category="code")
+    )
+    assert any(
+        "OtherWidget" in result["content"]
+        for result in temp_store.search_facts("OtherWidget", category="code")
+    )
+
+    placeholders = ",".join("?" for _ in old_ids)
+    linked_stale_entities = temp_store._conn.execute(
+        f"SELECT COUNT(*) FROM fact_entities WHERE fact_id IN ({placeholders})",
+        list(old_ids),
+    ).fetchone()[0]
+    assert linked_stale_entities == 0
+    if hrr.HAS_NUMPY:
+        bank = temp_store._conn.execute(
+            "SELECT fact_count FROM memory_banks WHERE bank_name = ?",
+            ("cat:code",),
+        ).fetchone()
+        assert bank["fact_count"] == len(facts)
+
+
+def test_index_code_is_idempotent_for_unchanged_content(temp_store):
+    code_content = textwrap.dedent('''
+        """Stable module."""
+
+        class StableWidget:
+            pass
+
+        def stable_function():
+            return None
+    ''').strip()
+
+    first_ids = temp_store.index_code("src/stable.py", code_content)
+    _set_fact_state(
+        temp_store, first_ids[0],
+        trust_score=0.91, retrieval_count=4, helpful_count=2,
+    )
+    before = [
+        dict(row)
+        for row in temp_store._conn.execute(
+            """
+            SELECT fact_id, content, category, tags, trust_score,
+                   retrieval_count, helpful_count, created_at, updated_at
+            FROM facts WHERE category = ? ORDER BY fact_id
+            """,
+            ("code",),
+        )
+    ]
+
+    second_ids = temp_store.index_code("src/stable.py", code_content)
+    after = [
+        dict(row)
+        for row in temp_store._conn.execute(
+            """
+            SELECT fact_id, content, category, tags, trust_score,
+                   retrieval_count, helpful_count, created_at, updated_at
+            FROM facts WHERE category = ? ORDER BY fact_id
+            """,
+            ("code",),
+        )
+    ]
+
+    assert second_ids == first_ids
+    assert len(after) == len(first_ids)
+    assert len({row["content"] for row in after}) == len(after)
+    assert after == before
+
+
 def test_index_file_python_ast(temp_store):
     manager = IndexManager(storage=temp_store)
 

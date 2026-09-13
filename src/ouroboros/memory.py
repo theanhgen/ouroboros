@@ -336,10 +336,46 @@ class MemoryStore:
         if not facts:
             facts.append(f"[code] {file_path}: {content[:500]}")
 
-        fact_ids: List[int] = []
-        for fact_content in facts:
-            fact_ids.append(self.add_fact(fact_content, category="code", tags=file_path))
-        return fact_ids
+        with self._lock:
+            existing_rows = self._conn.execute(
+                """
+                SELECT fact_id, content FROM facts
+                WHERE category = ? AND tags = ?
+                """,
+                ("code", file_path),
+            ).fetchall()
+            existing_by_content = {
+                row["content"]: int(row["fact_id"]) for row in existing_rows
+            }
+            current_contents = set(facts)
+            stale_ids = [
+                int(row["fact_id"])
+                for row in existing_rows
+                if row["content"] not in current_contents
+            ]
+            if stale_ids:
+                placeholders = ",".join("?" for _ in stale_ids)
+                self._conn.execute(
+                    f"DELETE FROM fact_entities WHERE fact_id IN ({placeholders})",
+                    stale_ids,
+                )
+                self._conn.execute(
+                    f"DELETE FROM facts WHERE fact_id IN ({placeholders})",
+                    stale_ids,
+                )
+                self._conn.commit()
+
+            fact_ids: List[int] = []
+            has_new_facts = False
+            for fact_content in facts:
+                if fact_content in existing_by_content:
+                    fact_ids.append(existing_by_content[fact_content])
+                else:
+                    has_new_facts = True
+                    fact_ids.append(self.add_fact(fact_content, category="code", tags=file_path))
+            if stale_ids or has_new_facts:
+                self._rebuild_bank("code")
+            return fact_ids
 
     def search_facts(self, query: str, category: Optional[str] = None,
                      min_trust: float = 0.3, limit: int = 10) -> List[Dict]:
