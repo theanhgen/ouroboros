@@ -921,10 +921,12 @@ def _run_improvement_cycle(
     # ReAct tool-loop and uses the JSON path. generate/review route to their
     # own backends downstream (generate_changes / make_backend_client).
     identify_client = backends.make_backend_client(
-        getattr(config, "identify_backend", "openai"), openai_client=client
+        getattr(config, "identify_backend", "openai"), openai_client=client,
+        model=getattr(config, "identify_model", None),
     )
     plan_client = backends.make_backend_client(
-        getattr(config, "plan_backend", "openai"), openai_client=client
+        getattr(config, "plan_backend", "openai"), openai_client=client,
+        model=getattr(config, "plan_model", None),
     )
 
     def _fire(event_type: str, message: str, data: Dict[str, Any] | None = None) -> None:
