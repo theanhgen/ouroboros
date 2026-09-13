@@ -288,6 +288,8 @@ def run_scheduled_self_improvement(
         plan_backend=getattr(cfg, "plan_backend", "openai"),
         generator_backend=getattr(cfg, "generator_backend", "openai"),
         generator_model=getattr(cfg, "generator_model", "") or None,
+        identify_model=getattr(cfg, "identify_model", "") or None,
+        plan_model=getattr(cfg, "plan_model", "") or None,
         **reviewer_safety_kwargs(cfg),
     )
 

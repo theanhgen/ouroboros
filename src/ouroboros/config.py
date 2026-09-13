@@ -48,6 +48,11 @@ class SafetyConfig:
     generator_backend: str = "openai"
     reviewer_backend: str = "openai"
     generator_model: Optional[str] = None
+    # Optional CLI model overrides for identify/plan, as generator_model is for
+    # generate. Unset leaves the CLI on its own default (for codex, the model in
+    # ~/.codex/config.toml).
+    identify_model: Optional[str] = None
+    plan_model: Optional[str] = None
 
     # Reviewer-only OpenAI-compatible backend routing.
     #

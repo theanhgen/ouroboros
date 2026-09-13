@@ -263,6 +263,8 @@ class RunnerConfig:
     generator_backend: str = "openai"
     reviewer_backend: str = "openai"
     generator_model: str = ""
+    identify_model: str = ""
+    plan_model: str = ""
     # Reviewer routing, independent of the generation model. Empty
     # reviewer_model means "use improvement_model", which is what the loop did
     # unconditionally before these were configurable. Setting reviewer_base_url
@@ -392,6 +394,8 @@ def load_runner_config() -> RunnerConfig:
         generator_backend=str(data.get("generator_backend", "openai")),
         reviewer_backend=str(data.get("reviewer_backend", "openai")),
         generator_model=str(data.get("generator_model", "")),
+        identify_model=str(data.get("identify_model", "")),
+        plan_model=str(data.get("plan_model", "")),
         reviewer_model=str(data.get("reviewer_model") or ""),
         reviewer_base_url=str(data.get("reviewer_base_url") or ""),
         reviewer_api_key=reviewer_api_key,
@@ -1676,6 +1680,8 @@ def run_loop() -> int:
                             plan_backend=getattr(cfg, "plan_backend", "openai"),
                             generator_backend=getattr(cfg, "generator_backend", "openai"),
                             generator_model=getattr(cfg, "generator_model", "") or None,
+                            identify_model=getattr(cfg, "identify_model", "") or None,
+                            plan_model=getattr(cfg, "plan_model", "") or None,
                             **_reviewer_safety_kwargs(cfg),
                         )
 
