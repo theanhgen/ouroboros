@@ -1,13 +1,12 @@
 """Self-benchmarking -- track improvement metrics over time."""
 
-import json
 import logging
 import os
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .storage import save_json_file
+from .storage import load_json_file, save_json_file, update_json_file
 
 log = logging.getLogger(__name__)
 
@@ -63,14 +62,7 @@ def _quarantine_corrupt(path: Path) -> Path:
 
 
 def load_metrics(repo_root: Path) -> List[Dict[str, Any]]:
-    path = _metrics_path(repo_root)
-    if not path.exists():
-        return []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (json.JSONDecodeError, KeyError):
-        return []
+    data = load_json_file(_metrics_path(repo_root), default=[])
     snapshots = _coerce_snapshots(data)
     return snapshots if snapshots is not None else []
 
@@ -181,8 +173,6 @@ def _append_snapshot(repo_root: Path, snapshot: Dict[str, Any]) -> None:
     hook and the None check below keep an unreadable history off the write
     path entirely.
     """
-    from .storage import update_json_file
-
     path = _metrics_path(repo_root)
 
     def append(data: Any) -> Dict[str, Any]:

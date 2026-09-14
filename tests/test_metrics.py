@@ -34,6 +34,16 @@ class TestMetrics:
         assert len(loaded) == 1
         assert loaded[0]["src_lines"] == 100
 
+    def test_load_metrics_accepts_supported_file_shapes(self):
+        path = self.config_dir / "metrics.json"
+        path.write_text(json.dumps([{"timestamp": 1}]), encoding="utf-8")
+        assert load_metrics(self.tmp_dir) == [{"timestamp": 1}]
+
+        path.write_text(
+            json.dumps({"snapshots": [{"timestamp": 2}]}), encoding="utf-8"
+        )
+        assert load_metrics(self.tmp_dir) == [{"timestamp": 2}]
+
     def test_save_metrics_bounded(self):
         # Create 205 snapshots
         snapshots = [{"timestamp": i, "src_lines": i} for i in range(205)]
@@ -43,6 +53,10 @@ class TestMetrics:
         assert len(loaded) == 200
         assert loaded[0]["timestamp"] == 5  # Should have dropped the first 5
 
+        saved = json.loads((self.config_dir / "metrics.json").read_text())
+        assert list(saved) == ["snapshots"]
+        assert len(saved["snapshots"]) == 200
+
     def test_load_metrics_malformed_file_returns_list(self):
         # A corrupt metrics.json must never leak a non-list to callers
         path = self.config_dir / "metrics.json"
@@ -51,6 +65,11 @@ class TestMetrics:
             path.write_text(raw, encoding="utf-8")
             loaded = load_metrics(self.tmp_dir)
             assert loaded == [], f"{raw!r} produced {loaded!r}"
+
+    def test_load_metrics_binary_garbage_returns_list(self):
+        path = self.config_dir / "metrics.json"
+        path.write_bytes(b"\x00\x81\xfe" * 100)
+        assert load_metrics(self.tmp_dir) == []
 
     @patch("ouroboros.evaluation.load_history")
     def test_record_snapshot(self, mock_load_history):
