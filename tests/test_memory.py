@@ -135,6 +135,103 @@ def test_index_code_replaces_stale_facts_for_same_file(temp_store):
         assert bank["fact_count"] == len(facts)
 
 
+def test_remove_code_file_deletes_exact_normalized_code_path(temp_store):
+    deleted_content = textwrap.dedent('''
+        class DeletedWidget:
+            """Deleted Entity."""
+            pass
+
+        def removed_function():
+            """Removed Function Entity."""
+            return "gone"
+    ''').strip()
+    survivor_content = textwrap.dedent('''
+        class SurvivorWidget:
+            pass
+
+        def survivor_function():
+            return "alive"
+    ''').strip()
+    neighbor_content = "class NeighborWidget:\n    pass"
+
+    manager = IndexManager(storage=temp_store)
+    deleted_ids = set(temp_store.index_code(r"src\deleted.py", deleted_content))
+    survivor_ids = set(temp_store.index_code("src/survivor.py", survivor_content))
+    neighbor_ids = set(temp_store.index_code("src/deleted_extra.py", neighbor_content))
+    note_id = temp_store.add_fact(
+        'DeletedWidget archival note tagged "Deleted Entity".',
+        category="notes",
+        tags="src/deleted.py",
+    )
+
+    deleted_rows = [
+        fact for fact in temp_store.list_facts(category="code", limit=20)
+        if fact["fact_id"] in deleted_ids
+    ]
+    assert {fact["tags"] for fact in deleted_rows} == {"src/deleted.py"}
+    assert any("[code] src/deleted.py: class DeletedWidget" == fact["content"]
+               for fact in deleted_rows)
+
+    assert manager.remove_file("src/./deleted.py") == len(deleted_ids)
+    assert temp_store.remove_code_file(r"src\deleted.py") == 0
+    assert temp_store.remove_code_file("src/missing.py") == 0
+
+    facts = temp_store.list_facts(category="code", limit=20)
+    fact_ids = {fact["fact_id"] for fact in facts}
+    fact_contents = {fact["content"] for fact in facts}
+    retriever = FactRetriever(temp_store)
+
+    assert deleted_ids.isdisjoint(fact_ids)
+    assert survivor_ids <= fact_ids
+    assert neighbor_ids <= fact_ids
+    assert _fact_by_id(temp_store, note_id) is not None
+    assert temp_store.search_facts("DeletedWidget", category="code") == []
+    assert temp_store.search_facts("removed_function", category="code") == []
+    assert retriever.search("DeletedWidget", category="code") == []
+    assert any("SurvivorWidget" in result["content"]
+               for result in temp_store.search_facts("SurvivorWidget", category="code"))
+    assert any("SurvivorWidget" in result["content"]
+               for result in retriever.search("SurvivorWidget", category="code"))
+    assert "[code] src/deleted_extra.py: class NeighborWidget" in fact_contents
+    assert temp_store.search_facts("archival", category="notes")[0]["fact_id"] == note_id
+
+    placeholders = ",".join("?" for _ in deleted_ids)
+    linked_deleted_entities = temp_store._conn.execute(
+        f"SELECT COUNT(*) FROM fact_entities WHERE fact_id IN ({placeholders})",
+        list(deleted_ids),
+    ).fetchone()[0]
+    assert linked_deleted_entities == 0
+
+    if hrr.HAS_NUMPY:
+        bank = temp_store._conn.execute(
+            "SELECT fact_count, vector FROM memory_banks WHERE bank_name = ?",
+            ("cat:code",),
+        ).fetchone()
+        remaining_vectors = [
+            hrr.bytes_to_phases(row["hrr_vector"])
+            for row in temp_store._conn.execute(
+                """
+                SELECT hrr_vector FROM facts
+                WHERE category = ? AND hrr_vector IS NOT NULL
+                ORDER BY fact_id
+                """,
+                ("code",),
+            )
+        ]
+        assert bank["fact_count"] == len(remaining_vectors) == len(survivor_ids | neighbor_ids)
+        assert hrr.similarity(
+            hrr.bytes_to_phases(bank["vector"]),
+            hrr.bundle(*remaining_vectors),
+        ) == pytest.approx(1.0)
+
+        assert manager.remove_file("src/survivor.py") == len(survivor_ids)
+        assert temp_store.remove_code_file("src/deleted_extra.py") == len(neighbor_ids)
+        assert temp_store._conn.execute(
+            "SELECT 1 FROM memory_banks WHERE bank_name = ?",
+            ("cat:code",),
+        ).fetchone() is None
+
+
 def test_index_code_is_idempotent_for_unchanged_content(temp_store):
     code_content = textwrap.dedent('''
         """Stable module."""

@@ -198,6 +198,28 @@ def _fts5_match_query(text: str, *, match_all: bool = True,
     return (" " if match_all else " OR ").join(quoted)
 
 
+def _normalize_code_path(file_path: str) -> str:
+    """Normalize path spelling for code-memory identity without filesystem IO."""
+    path = str(file_path).replace("\\", "/")
+    absolute = path.startswith("/")
+    parts: List[str] = []
+    for part in path.split("/"):
+        if not part or part == ".":
+            continue
+        if part == "..":
+            if parts and parts[-1] != "..":
+                parts.pop()
+            elif not absolute:
+                parts.append(part)
+            continue
+        parts.append(part)
+
+    normalized = "/".join(parts)
+    if absolute:
+        return f"/{normalized}" if normalized else "/"
+    return normalized or "."
+
+
 # ---------------------------------------------------------------------------
 # Code indexing
 # ---------------------------------------------------------------------------
@@ -318,6 +340,7 @@ class MemoryStore:
         failures, and Python files with no extractable facts fall back to a
         content prefix. Returns the created or existing fact IDs.
         """
+        file_path = _normalize_code_path(file_path)
         facts: List[str] = []
 
         if file_path.lower().endswith(".py"):
@@ -376,6 +399,34 @@ class MemoryStore:
             if stale_ids or has_new_facts:
                 self._rebuild_bank("code")
             return fact_ids
+
+    def remove_code_file(self, file_path: str) -> int:
+        """Delete code facts for exactly one normalized path and rebuild code bank."""
+        file_path = _normalize_code_path(file_path)
+        with self._lock:
+            rows = self._conn.execute(
+                """
+                SELECT fact_id FROM facts
+                WHERE category = ? AND tags = ?
+                """,
+                ("code", file_path),
+            ).fetchall()
+            fact_ids = [int(row["fact_id"]) for row in rows]
+            if not fact_ids:
+                return 0
+
+            placeholders = ",".join("?" for _ in fact_ids)
+            self._conn.execute(
+                f"DELETE FROM fact_entities WHERE fact_id IN ({placeholders})",
+                fact_ids,
+            )
+            self._conn.execute(
+                f"DELETE FROM facts WHERE fact_id IN ({placeholders})",
+                fact_ids,
+            )
+            self._conn.commit()
+            self._rebuild_bank("code")
+            return len(fact_ids)
 
     def search_facts(self, query: str, category: Optional[str] = None,
                      min_trust: float = 0.3, limit: int = 10) -> List[Dict]:
@@ -1042,6 +1093,10 @@ class IndexManager:
     def index_file(self, file_path: str, content: str) -> None:
         """Index a code file as a fact, delegating parsing and storage to MemoryStore."""
         self._store.index_code(file_path, content)
+
+    def remove_file(self, file_path: str) -> int:
+        """Remove code facts for a file, delegating path handling to MemoryStore."""
+        return self._store.remove_code_file(file_path)
 
     def index_failure(self, task_id: str, description: str, failure_msg: str) -> None:
         """Index a failed improvement attempt."""
