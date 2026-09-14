@@ -65,3 +65,4 @@
 2026-09-13 | fix_bug | Make MemoryStore.index_code replace stale code facts for the | success | tests: 1208 -> 1210
 2026-09-14 | add_feature | Add deterministic failure triage in `improvement.py`: group  | failed | Forbidden file modification: config/state.json
 2026-09-14 | add_feature | Extend evaluation summaries to report attempts, successes, f | failed | no code generated
+2026-09-14 | fix_bug | Make record_improvement persist cycle and token metrics to t | failed | no code generated
