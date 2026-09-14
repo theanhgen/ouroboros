@@ -64,3 +64,4 @@
 2026-09-12 | fix_bug | Fix HRR similarity calculation in FactRetriever.probe and Fa | success | tests: 1191 -> 1194
 2026-09-13 | fix_bug | Make MemoryStore.index_code replace stale code facts for the | success | tests: 1208 -> 1210
 2026-09-14 | add_feature | Add deterministic failure triage in `improvement.py`: group  | failed | Forbidden file modification: config/state.json
+2026-09-14 | add_feature | Extend evaluation summaries to report attempts, successes, f | failed | no code generated
