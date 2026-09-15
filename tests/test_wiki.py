@@ -4,7 +4,11 @@ import tempfile
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from ouroboros.wiki import (
+    _write_page,
     generate_architecture_page,
     generate_metrics_page,
     generate_changelog_page,
@@ -101,6 +105,53 @@ class TestWiki:
         assert "crash on startup" in content
         assert "Reason: NameError" in content
         assert "Feedback: Check global scope" in content
+
+    def test_write_page_replace_failure_preserves_existing_and_cleans_temp(self):
+        self.wiki_dir.mkdir(parents=True)
+        page = self.wiki_dir / "architecture.md"
+        page.write_text("original", encoding="utf-8")
+
+        with patch("ouroboros.wiki.os.replace", side_effect=OSError("replace failed")) as mock_replace:
+            with pytest.raises(OSError, match="replace failed"):
+                _write_page(self.tmp_dir, "architecture.md", "new")
+
+        temp_path = Path(mock_replace.call_args.args[0])
+        assert temp_path.parent == self.wiki_dir
+        assert temp_path.name.startswith(".architecture.md.")
+        assert page.read_text(encoding="utf-8") == "original"
+        assert sorted(p.name for p in self.wiki_dir.iterdir()) == ["architecture.md"]
+
+    def test_write_page_write_failure_preserves_existing_and_cleans_temp(self):
+        self.wiki_dir.mkdir(parents=True)
+        page = self.wiki_dir / "metrics.md"
+        page.write_text("original", encoding="utf-8")
+        created_paths = []
+        real_named_temporary_file = tempfile.NamedTemporaryFile
+
+        class FailingTempFile:
+            def __init__(self, *args, **kwargs):
+                self._file = real_named_temporary_file(*args, **kwargs)
+                self.name = self._file.name
+                created_paths.append(Path(self.name))
+
+            def __enter__(self):
+                self._file.__enter__()
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return self._file.__exit__(exc_type, exc, tb)
+
+            def write(self, content):
+                raise OSError("write failed")
+
+        with patch("ouroboros.wiki.tempfile.NamedTemporaryFile", FailingTempFile):
+            with pytest.raises(OSError, match="write failed"):
+                _write_page(self.tmp_dir, "metrics.md", "new")
+
+        assert created_paths
+        assert page.read_text(encoding="utf-8") == "original"
+        assert all(not path.exists() for path in created_paths)
+        assert sorted(p.name for p in self.wiki_dir.iterdir()) == ["metrics.md"]
 
     @patch("ouroboros.wiki.generate_architecture_page")
     @patch("ouroboros.wiki.generate_metrics_page")
