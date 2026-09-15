@@ -70,3 +70,4 @@
 2026-09-15 | add_feature | Add deletion-aware code-memory indexing: implement `MemorySt | success | tests: 1212 -> 1213
 2026-09-15 | fix_bug | Make `agent_generate_changes` isolate runtime state files su | failed | Forbidden file modification: config/state.json
 2026-09-15 | fix_bug | Update `MemoryStore.update_fact` so moving a fact between ca | success | tests: 1213 -> 1214
+2026-09-15 | fix_bug | Make `wiki._write_page` atomically replace generated Markdow | success | tests: 1214 -> 1216
