@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import tempfile
 import time
 from collections import Counter
 from pathlib import Path
@@ -21,7 +22,25 @@ def _wiki_path(repo_root: Path) -> Path:
 
 def _write_page(repo_root: Path, filename: str, content: str) -> Path:
     path = _wiki_path(repo_root) / filename
-    path.write_text(content, encoding="utf-8")
+    temp_path: Optional[Path] = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            delete=False,
+        ) as tmp:
+            temp_path = Path(tmp.name)
+            tmp.write(content)
+        os.replace(temp_path, path)
+    except Exception:
+        if temp_path is not None:
+            try:
+                temp_path.unlink()
+            except FileNotFoundError:
+                pass
+        raise
     return path
 
 
