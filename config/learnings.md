@@ -68,3 +68,4 @@
 2026-09-14 | fix_bug | Make record_improvement persist cycle and token metrics to t | failed | no code generated
 2026-09-14 | refactor | Consolidate JSON persistence in evaluation.load_history/reco | success | tests: 1210 -> 1212
 2026-09-15 | add_feature | Add deletion-aware code-memory indexing: implement `MemorySt | success | tests: 1212 -> 1213
+2026-09-15 | fix_bug | Make `agent_generate_changes` isolate runtime state files su | failed | Forbidden file modification: config/state.json
