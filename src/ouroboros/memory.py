@@ -479,6 +479,8 @@ class MemoryStore:
             ).fetchone()
             if row is None:
                 return False
+            old_category = row["category"]
+            new_category = category if category is not None else old_category
 
             assignments = ["updated_at = CURRENT_TIMESTAMP"]
             params: list = []
@@ -510,8 +512,9 @@ class MemoryStore:
                 self._conn.commit()
                 self._compute_hrr_vector(fact_id, content)
 
-            cat = category or row["category"]
-            self._rebuild_bank(cat)
+            if new_category != old_category:
+                self._rebuild_bank(old_category)
+            self._rebuild_bank(new_category)
             return True
 
     def remove_fact(self, fact_id: int) -> bool:

@@ -438,6 +438,49 @@ def test_memory_store_crud_entities_search_and_feedback(temp_store):
         temp_store.record_feedback(fact_id, helpful=True)
 
 
+def test_update_fact_category_migration_updates_memory_bank_counts(temp_store):
+    if not hrr.HAS_NUMPY:
+        pytest.skip("NumPy is required for memory bank assertions")
+
+    source_ids = [
+        temp_store.add_fact(f"source category fact {i}", category="source")
+        for i in range(3)
+    ]
+    destination_id = temp_store.add_fact("destination category fact", category="destination")
+
+    source_before = temp_store._conn.execute(
+        "SELECT fact_count FROM memory_banks WHERE bank_name = ?",
+        ("cat:source",),
+    ).fetchone()
+    destination_before = temp_store._conn.execute(
+        "SELECT fact_count FROM memory_banks WHERE bank_name = ?",
+        ("cat:destination",),
+    ).fetchone()
+    assert source_before["fact_count"] == 3
+    assert destination_before["fact_count"] == 1
+
+    assert temp_store.update_fact(source_ids[0], category="destination")
+
+    source_facts = temp_store.list_facts(category="source")
+    destination_facts = temp_store.list_facts(category="destination")
+    assert {fact["fact_id"] for fact in source_facts} == set(source_ids[1:])
+    assert {fact["fact_id"] for fact in destination_facts} == {
+        source_ids[0],
+        destination_id,
+    }
+
+    source_after = temp_store._conn.execute(
+        "SELECT fact_count FROM memory_banks WHERE bank_name = ?",
+        ("cat:source",),
+    ).fetchone()
+    destination_after = temp_store._conn.execute(
+        "SELECT fact_count FROM memory_banks WHERE bank_name = ?",
+        ("cat:destination",),
+    ).fetchone()
+    assert source_after["fact_count"] == 2
+    assert destination_after["fact_count"] == 2
+
+
 def test_prune_to_snr_capacity_limit(tmp_path):
     store = MemoryStore(db_path=tmp_path / "snr.db", hrr_dim=16)
     try:
