@@ -73,3 +73,4 @@
 2026-09-15 | fix_bug | Make `wiki._write_page` atomically replace generated Markdow | success | tests: 1214 -> 1216
 2026-09-15 | fix_bug | Make `revert_changes` enforce repository and symlink safety  | failed | Forbidden file modification: src/ouroboros/improvement.py
 2026-09-16 | fix_bug | Make `MemoryStore.index_code` parse the new source and build | failed | reviewer rejected
+2026-09-16 | fix_bug | Harden ToolRunner.execute so read_file_content and read_file | failed | no code generated
