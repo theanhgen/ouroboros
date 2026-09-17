@@ -6,6 +6,7 @@ import logging
 import os
 import subprocess
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Tuple
 
@@ -440,6 +441,61 @@ def auto_merge_pr(repo: Path, pr_url: str, strategy: str = "squash") -> bool:
         return False
     except (FileNotFoundError, subprocess.TimeoutExpired):
         log.warning("Could not auto-merge PR %s (gh CLI unavailable or timeout)", pr_url)
+        return False
+
+
+def get_pr_age_hours(repo: Path, pr_url: str) -> Optional[float]:
+    """Hours since the PR was opened, or None when that cannot be determined.
+
+    None rather than 0.0 on failure: callers use this to decide whether to
+    close someone's unmerged work, and a gh outage must not read as either
+    "brand new" or "long abandoned".
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "view", pr_url, "--json", "createdAt", "-q", ".createdAt"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        created = result.stdout.strip()
+        if not created:
+            return None
+        # gh emits RFC 3339 with a literal trailing Z, which fromisoformat only
+        # accepts from 3.11 onwards; the Pi is not guaranteed to be there yet.
+        stamp = datetime.fromisoformat(created.replace("Z", "+00:00"))
+        return (datetime.now(timezone.utc) - stamp).total_seconds() / 3600.0
+    except (subprocess.CalledProcessError, FileNotFoundError,
+            subprocess.TimeoutExpired, ValueError):
+        log.warning("Could not determine age of PR %s", pr_url)
+        return None
+
+
+def close_pr(repo: Path, pr_url: str, comment: str) -> bool:
+    """Close a PR with an explanatory comment. Returns True on success.
+
+    The branch is deliberately left in place. Closing here is an unblocking
+    action, not a judgement on the work, and the branch is the only route back
+    to it.
+    """
+    try:
+        subprocess.run(
+            ["gh", "pr", "close", pr_url, "--comment", comment],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        log.info("Closed stale PR: %s", pr_url)
+        return True
+    except subprocess.CalledProcessError as e:
+        log.warning("Failed to close PR %s: %s", pr_url, (e.stderr or "").strip())
+        return False
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        log.warning("Could not close PR %s (gh CLI unavailable or timeout)", pr_url)
         return False
 
 

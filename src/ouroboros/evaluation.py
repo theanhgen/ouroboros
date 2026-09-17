@@ -34,6 +34,14 @@ _DEFAULT_PRICING = (2.50, 10.00)
 HISTORY_FILE = "config/improvement_history.json"
 TERMINAL_OUTCOMES = frozenset({"closed", "failed", "merged", "reverted", "skipped"})
 
+# An open improvement PR blocks every later cycle by design, so one that never
+# merges stops the agent indefinitely rather than slowing it down: PR #86 sat
+# open from 2026-08-27 to 2026-09-11 and cost 224 [skipped_open_pr] cycles with
+# nothing in the log to say why. Warn first so a PR waiting on a human review is
+# visible, and only close once it is clear nobody is coming.
+STALE_PR_WARN_HOURS = 24.0
+STALE_PR_CLOSE_HOURS = 72.0
+
 
 @dataclass
 class EvaluationRecord:
@@ -260,6 +268,35 @@ def check_pr_outcomes(
                             timeout=10,
                         )
                         state = res.stdout.strip()
+
+            if state == "OPEN":
+                # A PR that never merges does not slow the agent down, it stops
+                # it: has_open_improvement_prs gates every later cycle on this
+                # one staying open. Warn while a human might still be coming,
+                # then close so the agent can make progress again. The branch is
+                # left behind, so closing costs nothing that cannot be recovered.
+                age_hours = git_ops.get_pr_age_hours(root, record.pr_url)
+                if age_hours is not None and age_hours >= STALE_PR_CLOSE_HOURS:
+                    if git_ops.close_pr(
+                        root,
+                        record.pr_url,
+                        "Closed automatically: this improvement PR has been open for "
+                        f"{age_hours:.0f}h (threshold {STALE_PR_CLOSE_HOURS:.0f}h) and is "
+                        "blocking every later self-improvement cycle. The branch is kept "
+                        "-- reopen or re-push if this work is still wanted.",
+                    ):
+                        log.warning(
+                            "Closed stale improvement PR %s after %.0fh to unblock "
+                            "the improvement cycle", record.pr_url, age_hours,
+                        )
+                        state = "CLOSED"
+                elif age_hours is not None and age_hours >= STALE_PR_WARN_HOURS:
+                    log.error(
+                        "Improvement PR %s has been open %.0fh and is blocking every "
+                        "self-improvement cycle; it will be closed automatically at %.0fh",
+                        record.pr_url, age_hours, STALE_PR_CLOSE_HOURS,
+                    )
+
             if state in ("MERGED", "CLOSED"):
                 feedback = git_ops.get_pr_feedback(root, record.pr_url)
                 if feedback is None:
