@@ -84,7 +84,18 @@ class SafetyConfig:
         "git_ops.py",
         "evaluation.py",
         "policies.py",
+        # The author allowlist below is only a boundary while the agent cannot
+        # edit the code that enforces it. github_improvement.py turns issue text
+        # written by strangers into code changes, so it is immutable too.
+        "github_improvement.py",
     )
+
+    # GitHub logins whose issues may drive an autonomous fix. This repository is
+    # public and the issue body reaches a code-editing, auto-merging agent, so
+    # without this gate anyone who can open an issue can steer it. An empty
+    # tuple means "trust nobody", which disables issue-driven improvement
+    # instead of opening it to everyone.
+    github_issue_author_allowlist: Tuple[str, ...] = ("theanhgen",)
 
     # Modules generated code may not import, checked by
     # policies.validate_import_policy. Matching covers submodules, so "socket"

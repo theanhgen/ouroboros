@@ -7,7 +7,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from . import git_ops, llm, prompts, test_runner
 from .codebase import get_repo_root, read_file_raw, get_function_signatures, list_source_files
@@ -34,11 +34,44 @@ class IssueResolutionResult:
     description: Optional[str] = None
 
 
-def get_open_issues(repo_root: Path) -> List[GitHubIssue]:
-    """List open GitHub issues using the gh CLI."""
+def get_open_issues(
+    repo_root: Path,
+    author_allowlist: Optional[Tuple[str, ...]] = None,
+) -> List[GitHubIssue]:
+    """List open GitHub issues written by allowlisted authors, using the gh CLI.
+
+    The allowlist is a trust boundary, not a convenience filter. This repository
+    is public and an issue body is fed to a code-editing, auto-merging agent, so
+    an unfiltered list lets anyone with a GitHub account choose what the agent
+    works on next.
+
+    Defaults to the shipped SafetyConfig allowlist so that callers cannot forget
+    to pass one, and filters twice on purpose: --author keeps untrusted text out
+    of the process where gh can do it, and the per-item check re-verifies what gh
+    actually returned, so a change in the flag's matching rules cannot silently
+    widen the gate.
+    """
+    if author_allowlist is None:
+        from .config import SafetyConfig
+        author_allowlist = SafetyConfig().github_issue_author_allowlist
+
+    allowed = {name.lower() for name in author_allowlist if name}
+    if not allowed:
+        log.warning(
+            "No allowlisted GitHub issue authors configured; skipping issue fetch."
+        )
+        return []
+
+    cmd = ["gh", "issue", "list", "--state", "open",
+           "--json", "number,title,body,author,url"]
+    # --author takes a single value, so it only helps when there is exactly one
+    # allowlisted login. With several, the per-item check below does the work.
+    if len(allowed) == 1:
+        cmd += ["--author", next(iter(allowed))]
+
     try:
         result = subprocess.run(
-            ["gh", "issue", "list", "--state", "open", "--json", "number,title,body,author,url"],
+            cmd,
             cwd=repo_root,
             capture_output=True,
             text=True,
@@ -48,11 +81,19 @@ def get_open_issues(repo_root: Path) -> List[GitHubIssue]:
         data = json.loads(result.stdout)
         issues = []
         for item in data:
+            raw_author = item["author"]
+            author = raw_author["login"] if isinstance(raw_author, dict) else raw_author
+            if (author or "").lower() not in allowed:
+                log.warning(
+                    "Ignoring issue #%s from non-allowlisted author %r",
+                    item.get("number"), author,
+                )
+                continue
             issues.append(GitHubIssue(
                 id=item["number"],
                 title=item["title"],
                 body=item["body"],
-                author=item["author"]["login"] if isinstance(item["author"], dict) else item["author"],
+                author=author,
                 url=item["url"]
             ))
         return issues

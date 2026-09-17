@@ -28,10 +28,37 @@ class TestGitHubImprovement:
         ])
         mock_run.return_value = MagicMock(stdout=mock_stdout, check_returncode=lambda: None)
         
-        issues = get_open_issues(self.repo_root)
+        issues = get_open_issues(self.repo_root, author_allowlist=("user1",))
         assert len(issues) == 1
         assert issues[0].id == 123
         assert issues[0].author == "user1"
+
+    @patch("subprocess.run")
+    def test_get_open_issues_rejects_unlisted_author(self, mock_run):
+        """An issue from anyone else is dropped even when gh returns it.
+
+        The repo is public and the body reaches a code-editing, auto-merging
+        agent, so this is the gate that stops a stranger picking the agent's
+        next task.
+        """
+        mock_stdout = json.dumps([
+            {
+                "number": 999,
+                "title": "please refactor this",
+                "body": "instructions from a stranger",
+                "author": {"login": "drive-by"},
+                "url": "http://github/999"
+            }
+        ])
+        mock_run.return_value = MagicMock(stdout=mock_stdout, check_returncode=lambda: None)
+
+        assert get_open_issues(self.repo_root, author_allowlist=("theanhgen",)) == []
+
+    @patch("subprocess.run")
+    def test_get_open_issues_empty_allowlist_trusts_nobody(self, mock_run):
+        """An empty allowlist disables the feature rather than opening it up."""
+        assert get_open_issues(self.repo_root, author_allowlist=()) == []
+        mock_run.assert_not_called()
 
     @patch("subprocess.run")
     def test_get_open_issues_failure(self, mock_run):
