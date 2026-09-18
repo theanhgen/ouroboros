@@ -48,6 +48,28 @@ Live state worth reading:
 - `config/memory.db` — 544 facts.
 - `~/.config/moltbook/agent.json` — the runtime config.
 
+**A pulled config change does NOT take effect until the service restarts.**
+`moltbook.py` loads `cfg` once at startup and only ever reloads it when
+`config_was_modified` is set, which happens in exactly one place
+(`moltbook.py`, the comment-based self-upgrade path). `git_ops.pull_latest`
+returns True only for changes under `src/`, so the git-polling restart that
+deploys code changes deliberately ignores config-only commits. The result is a
+config that is correct on disk, correct in `git log`, and *not* the one the
+running process is using — verifiable only by behaviour, which is how it gets
+missed.
+
+Verify with:
+
+```bash
+ssh rubrum 'systemctl show ouroboros-moltbook.service -p ActiveEnterTimestamp
+            git -C ~/ouroboros log -1 --format=%ci -- config/agent.json'
+```
+
+If the commit is newer than the service start, the change is not live. Fix:
+`sudo systemctl restart ouroboros-moltbook.service`. Measured 2026-09-17:
+`self_question_hours` was committed as 8760 and pushed, the Pi pulled it, and
+the process kept using 8 until it was restarted.
+
 ## 3. How a cycle actually runs
 
 Timer fires every 30 min; a gate lets a real cycle through every 24h and logs
