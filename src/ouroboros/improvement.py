@@ -608,6 +608,23 @@ def _retry_with_root_cause(
     retry_test = run_tests(repo_root)
     log.info("[retry] Tests after corrected code: %s", retry_test.summary())
 
+    # A run that executed nothing (collection error, usage error) reports 0
+    # failed / 0 errors, which the count comparison below reads as "no worse".
+    # Refuse it, as validate_improvement refuses a baseline that did not run.
+    if retry_test.total == 0 and not retry_test.success:
+        log.warning("[retry] Corrected code produced no test results (%s), reverting",
+                    retry_test.summary())
+        revert_changes(retry_changes, repo_root)
+        return None
+
+    # The same coverage gate validate_improvement applies to the first attempt.
+    if test_before.coverage_percent is not None and retry_test.coverage_percent is not None:
+        cov_delta = test_before.coverage_percent - retry_test.coverage_percent
+        if cov_delta > 1.0:
+            log.warning("[retry] Corrected code drops coverage by %.1f%%, reverting", cov_delta)
+            revert_changes(retry_changes, repo_root)
+            return None
+
     if retry_test.failed > test_before.failed or retry_test.errors > test_before.errors:
         log.warning("[retry] Corrected code still regresses, reverting")
         refused = revert_changes(retry_changes, repo_root)

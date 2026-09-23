@@ -778,6 +778,50 @@ def test_the_retry_flow_refuses_a_blocked_change(monkeypatch, tmp_path):
     assert result is None
 
 
+@pytest.mark.parametrize("retry_test", [
+    # hollow: nothing ran, so 0 failed / 0 errors looks "no worse"
+    RunnerOutcome(passed=0, failed=0, errors=0, returncode=4),
+    # coverage dropped past the gate validate_improvement enforces
+    RunnerOutcome(passed=10, failed=0, errors=0, returncode=0, coverage_percent=80.0),
+], ids=["hollow-run", "coverage-drop"])
+def test_the_retry_flow_does_not_accept_what_the_first_attempt_would_revert(
+    monkeypatch, tmp_path, retry_test,
+):
+    """#107: the retry used to check only failure/error counts, so a hollow
+    run or a coverage regression came back as success and went on to a PR."""
+    from ouroboros import improvement
+
+    reverted = []
+    monkeypatch.setattr(improvement, "apply_changes", lambda *a, **kw: None)
+    monkeypatch.setattr(
+        improvement, "revert_changes", lambda changes, root: reverted.append(changes)
+    )
+    monkeypatch.setattr(improvement, "run_tests", lambda root: retry_test)
+    monkeypatch.setattr(
+        improvement.llm, "generate_code",
+        lambda *a, **kw: (
+            [{"file_path": "src/ouroboros/thing.py",
+              "new_content": "VALUE = 2\n",
+              "description": "d"}],
+            None,
+        ),
+    )
+
+    result = improvement._retry_with_root_cause(
+        client=MagicMock(),
+        task=ImprovementTask("t1", "fix_bug", "d", [], "e"),
+        original_changes=[_change(new="VALUE = 1\n")],
+        test_before=RunnerOutcome(passed=10, failed=0, errors=0, returncode=0,
+                                  coverage_percent=90.0),
+        test_after=RunnerOutcome(passed=9, failed=1, errors=0, returncode=1),
+        config=SafetyConfig(),
+        repo_root=tmp_path,
+    )
+
+    assert result is None, "the retry accepted a run the first attempt would revert"
+    assert len(reverted) == 1, "the corrected code was left applied"
+
+
 def test_an_extensionless_script_with_a_python_shebang_is_gated():
     """Suffix alone misses a script named like a command."""
     from ouroboros.config import SafetyConfig
