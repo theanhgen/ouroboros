@@ -405,10 +405,14 @@ def _failure_signature(fail: FailureDetail) -> Tuple[str, str]:
     quoted literals masked, so "assert 3 == 2" and "assert 4 == 2" from the
     same broken helper land together.
     """
-    frames = _TB_FRAME_RE.findall(fail.traceback or "")
-    location = f"{frames[-1][0]}::{frames[-1][1]}" if frames else fail.file
-    exc_lines = _TB_EXC_RE.findall(fail.traceback or "")
-    exception = (exc_lines[0] if exc_lines else fail.message).strip()
+    tb = fail.traceback or ""
+    frames = list(_TB_FRAME_RE.finditer(tb))
+    location = f"{frames[-1].group(1)}::{frames[-1].group(2)}" if frames else fail.file
+    # Take the exception raised at that innermost frame: in a chained
+    # traceback the first "E" line belongs to an earlier section.
+    exc_lines = _TB_EXC_RE.findall(tb, frames[-1].end()) if frames else []
+    exc_lines = exc_lines or _TB_EXC_RE.findall(tb)
+    exception = (exc_lines[0] if exc_lines else fail.message or "").strip()
     exception = re.sub(r"0x[0-9a-fA-F]+", "0x?", exception)
     exception = re.sub(r"'[^']*'|\"[^\"]*\"", "'?'", exception)
     exception = re.sub(r"\d+", "N", exception)
@@ -422,14 +426,15 @@ def _format_failure_triage(test_result: RunnerOutcome) -> str:
     it was before triage existed.
     """
     clusters: Dict[Tuple[str, str], List[FailureDetail]] = {}
-    for fail in test_result.failure_details:
+    failures = test_result.failure_details or []
+    for fail in failures:
         clusters.setdefault(_failure_signature(fail), []).append(fail)
     if not clusters:
         return ""
 
     # Largest first; dict order (first seen) breaks ties deterministically.
     ranked = sorted(clusters.items(), key=lambda kv: -len(kv[1]))
-    total = len(test_result.failure_details)
+    total = len(failures)
     lines = [f"{total} failure(s) in {len(ranked)} distinct root cause cluster(s):"]
     for (location, exception), fails in ranked[:_MAX_TRIAGE_CLUSTERS]:
         tests = ", ".join(f"{f.file}::{f.test_name}" for f in fails[:3])
