@@ -119,6 +119,84 @@ class TestMetrics:
         assert snapshot["policy_size"]["max_lines"] == 200
 
     @patch("ouroboros.evaluation.load_history")
+    def test_policy_blocked_improvement_round_trips_through_metrics(
+        self, mock_load_history
+    ):
+        from ouroboros.improvement import CodeChange, ImprovementResult, ImprovementTask
+        from ouroboros.policies import (
+            validate_change_size,
+            validate_import_policy,
+            validate_modification_scope,
+        )
+
+        mock_load_history.return_value = []
+        python_path = "src/ouroboros/policy_probe.py"
+        python_source = "import pickle\n" + "".join(
+            f"VALUE_{i} = {i}\n" for i in range(201)
+        )
+        changes = [
+            CodeChange("README.md", "", "outside allowed scope\n", "scope probe"),
+            CodeChange(python_path, "", python_source, "import and size probe"),
+        ]
+        changed_lines = sum(len(change.new_content.splitlines()) for change in changes)
+        scope_violations = validate_modification_scope(
+            [change.file_path for change in changes]
+        ).violations
+        import_violations = validate_import_policy(python_path, python_source)
+        size_violations = validate_change_size(
+            len(changes), changed_lines
+        ).violations
+        all_violations = scope_violations + import_violations + size_violations
+        result = ImprovementResult(
+            task=ImprovementTask(
+                "policy-blocked",
+                "add_test",
+                "prove policy-blocked improvements stay blocked in metrics",
+                [change.file_path for change in changes],
+                "regression",
+            ),
+            changes=changes,
+            status="failed",
+            test_after=None,
+            details="; ".join(all_violations),
+        )
+
+        snapshot = record_snapshot(self.tmp_dir, result)
+
+        assert snapshot["last_task_type"] == "add_test"
+        assert snapshot["last_status"] == "failed"
+        assert snapshot["last_decision"] == "blocked"
+        assert snapshot["last_details"] == result.details
+        assert snapshot["tests_executed"] is False
+        assert snapshot["tests_total"] == 0
+        assert snapshot["tests_passed"] == 0
+        assert snapshot["tests_failed"] == 0
+        assert snapshot["tests_errors"] == 0
+        assert snapshot["policy_scope"]["is_valid"] is False
+        assert "README.md" in snapshot["policy_scope"]["violations"][0]
+        assert snapshot["policy_import"]["violations"] == import_violations
+        assert "pickle" in snapshot["policy_import"]["violations"][0]
+        assert snapshot["policy_size"]["num_lines"] == changed_lines
+        assert snapshot["policy_size"]["num_lines"] > snapshot["policy_size"]["max_lines"]
+        assert "Too many lines" in snapshot["policy_size"]["violations"][0]
+
+        loaded = load_metrics(self.tmp_dir)[-1]
+        assert loaded["last_decision"] == "blocked"
+        assert loaded["last_details"] == result.details
+        assert loaded["tests_executed"] is False
+        assert loaded["tests_total"] == 0
+        assert loaded["policy_scope"] == snapshot["policy_scope"]
+        assert loaded["policy_import"] == snapshot["policy_import"]
+        assert loaded["policy_size"] == snapshot["policy_size"]
+
+        summary = get_summary(self.tmp_dir)
+        assert "Last improvement: add_test blocked" in summary
+        assert "Post-change tests: 0 run" in summary
+        assert "README.md" in summary
+        assert "pickle" in summary
+        assert "Too many lines" in summary
+
+    @patch("ouroboros.evaluation.load_history")
     def test_record_snapshot_appends_to_existing_history(self, mock_load_history):
         mock_load_history.return_value = []
         save_metrics(self.tmp_dir, [{"timestamp": 1, "src_lines": 7}])

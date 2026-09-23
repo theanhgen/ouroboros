@@ -119,8 +119,12 @@ def _derive_policy_results(improvement_result: Any) -> Dict[str, Any]:
     if changes is None:
         return {}
 
-    from .improvement import _count_changed_lines
-    from .policies import validate_change_size, validate_modification_scope
+    from .improvement import _count_changed_lines, _is_python_source
+    from .policies import (
+        validate_change_size,
+        validate_import_policy,
+        validate_modification_scope,
+    )
 
     file_paths = [getattr(change, "file_path", "") for change in changes]
     num_lines = sum(
@@ -130,9 +134,16 @@ def _derive_policy_results(improvement_result: Any) -> Dict[str, Any]:
         )
         for change in changes
     )
+    import_violations = []
+    for change in changes:
+        file_path = getattr(change, "file_path", "")
+        new_content = getattr(change, "new_content", "")
+        if _is_python_source(file_path, new_content):
+            import_violations.extend(validate_import_policy(file_path, new_content))
 
     return {
         "policy_scope": validate_modification_scope(file_paths),
+        "policy_import": import_violations,
         "policy_size": validate_change_size(len(file_paths), num_lines),
     }
 
@@ -142,24 +153,45 @@ def _policy_metrics(improvement_result: Any) -> Dict[str, Dict[str, Any]]:
         improvement_result,
         ["policy_scope_result", "modification_scope_result"],
     )
+    import_policy = _first_attr(
+        improvement_result,
+        ["policy_import_result", "import_policy_result"],
+    )
     size = _first_attr(
         improvement_result,
         ["policy_size_result", "change_size_result"],
     )
 
-    if scope is None or size is None:
+    if scope is None or import_policy is None or size is None:
         derived = _derive_policy_results(improvement_result)
         scope = scope if scope is not None else derived.get("policy_scope")
+        import_policy = (
+            import_policy
+            if import_policy is not None
+            else derived.get("policy_import")
+        )
         size = size if size is not None else derived.get("policy_size")
 
     metrics = {}
     serialized_scope = _serialize_policy_result(scope)
+    serialized_import_policy = _serialize_policy_result(import_policy)
     serialized_size = _serialize_policy_result(size)
     if serialized_scope is not None:
         metrics["policy_scope"] = serialized_scope
+    if serialized_import_policy is not None:
+        metrics["policy_import"] = serialized_import_policy
     if serialized_size is not None:
         metrics["policy_size"] = serialized_size
     return metrics
+
+
+def _policy_violation_messages(snapshot: Dict[str, Any]) -> List[str]:
+    messages = []
+    for key in ("policy_scope", "policy_import", "policy_size"):
+        policy = snapshot.get(key)
+        if isinstance(policy, dict):
+            messages.extend(str(v) for v in policy.get("violations", []))
+    return messages
 
 
 def _append_snapshot(repo_root: Path, snapshot: Dict[str, Any]) -> None:
@@ -242,12 +274,34 @@ def record_snapshot(
         snapshot["last_task_type"] = getattr(
             getattr(improvement_result, "task", None), "task_type", "unknown"
         )
-        snapshot["last_status"] = getattr(improvement_result, "status", "unknown")
+        status = getattr(improvement_result, "status", "unknown")
+        snapshot["last_status"] = status
+        details = getattr(improvement_result, "details", "")
+        if details:
+            snapshot["last_details"] = details
         test_after = getattr(improvement_result, "test_after", None)
         if test_after:
             snapshot["tests_passed"] = test_after.passed
             snapshot["tests_failed"] = test_after.failed
-        snapshot.update(_policy_metrics(improvement_result))
+            snapshot["tests_errors"] = test_after.errors
+            snapshot["tests_total"] = test_after.total
+            snapshot["tests_executed"] = True
+        else:
+            snapshot["tests_passed"] = 0
+            snapshot["tests_failed"] = 0
+            snapshot["tests_errors"] = 0
+            snapshot["tests_total"] = 0
+            snapshot["tests_executed"] = False
+        policy_metrics = _policy_metrics(improvement_result)
+        snapshot.update(policy_metrics)
+        has_policy_block = any(
+            policy.get("is_valid") is False
+            for policy in policy_metrics.values()
+            if isinstance(policy, dict)
+        )
+        snapshot["last_decision"] = (
+            "blocked" if status == "failed" and has_policy_block else status
+        )
 
     _append_snapshot(repo_root, snapshot)
 
@@ -272,6 +326,26 @@ def get_summary(repo_root: Path) -> str:
         f"Success rate (30d): {latest.get('success_rate_30d', 0)}%",
         f"  ({latest.get('recent_successes_30d', 0)}/{latest.get('recent_attempts_30d', 0)})",
     ]
+    if "last_status" in latest:
+        task_type = latest.get("last_task_type", "unknown")
+        decision = latest.get("last_decision", latest.get("last_status", "unknown"))
+        lines.append(f"Last improvement: {task_type} {decision}")
+        if "tests_total" in latest:
+            if latest.get("tests_executed"):
+                lines.append(
+                    "Post-change tests: "
+                    f"{latest.get('tests_total', 0)} run "
+                    f"({latest.get('tests_passed', 0)} passed, "
+                    f"{latest.get('tests_failed', 0)} failed, "
+                    f"{latest.get('tests_errors', 0)} errors)"
+                )
+            else:
+                lines.append("Post-change tests: 0 run")
+        violations = _policy_violation_messages(latest)
+        if violations:
+            lines.append(f"Policy violations: {'; '.join(violations)}")
+        elif latest.get("last_details"):
+            lines.append(f"Last details: {latest['last_details']}")
 
     # Trend: compare with snapshot from ~7 days ago
     week_ago = time.time() - 7 * 86400
