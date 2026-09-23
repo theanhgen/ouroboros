@@ -531,9 +531,6 @@ def _collect_changes(
     proc = _git(repo, "status", "--porcelain")
     changes: List[Any] = []
     for status, path in _git_porcelain_changes(proc.stdout):
-        if "D" in status:
-            log.info("agent deleted %s -- deletions unsupported in agent mode, skipping", path)
-            continue
         # Ignore untracked files that already existed before the agent ran
         # (e.g. local db/wal files); only agent-created ones count.
         if status == "??" and path in untracked_before:
@@ -541,10 +538,13 @@ def _collect_changes(
         full = repo / path
         head = _git(repo, "show", f"HEAD:{path}")
         original = head.stdout if head.returncode == 0 else ""
-        try:
-            new_content = full.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
+        if "D" in status:
+            new_content = ""
+        else:
+            try:
+                new_content = full.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
         if new_content == original:
             continue
         # Already dirty before the agent ran and untouched by it: not its work.
