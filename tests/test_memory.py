@@ -386,6 +386,38 @@ def test_index_code_malformed_reindex_preserves_previous_facts(temp_store):
     )
 
 
+def test_index_code_visitor_error_falls_back_instead_of_partial_facts(temp_store, monkeypatch):
+    from ouroboros import memory as memory_mod
+
+    def boom(self, node):
+        raise RuntimeError("visitor failed")
+
+    monkeypatch.setattr(memory_mod.CodeASTVisitor, "visit", boom)
+    content = '"""Doc."""\n\nclass Dropped:\n    pass'
+
+    temp_store.index_code("src/partial.py", content)
+
+    rows = temp_store._conn.execute(
+        "SELECT content FROM facts WHERE category = ? AND tags = ?",
+        ("code", "src/partial.py"),
+    ).fetchall()
+    assert [row["content"] for row in rows] == [f"[code] src/partial.py: {content}"]
+
+
+def test_index_code_repeated_parse_failure_refreshes_fallback(temp_store):
+    first = "def one(:\n    pass"
+    second = "def two(:\n    pass"
+
+    temp_store.index_code("src/broken.py", first)
+    temp_store.index_code("src/broken.py", second)
+
+    rows = temp_store._conn.execute(
+        "SELECT content FROM facts WHERE category = ? AND tags = ?",
+        ("code", "src/broken.py"),
+    ).fetchall()
+    assert [row["content"] for row in rows] == [f"[code] src/broken.py: {second}"]
+
+
 def test_index_file_fallback_non_python(temp_store):
     manager = IndexManager(storage=temp_store)
 
