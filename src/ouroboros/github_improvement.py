@@ -329,7 +329,7 @@ Please provide the fix as a JSON object with 'explanation', 'changes' (list of {
         # Attempt recovery
         try:
             git_ops.checkout_main(repo_root)
-        except: pass
+        except Exception: pass
         return IssueResolutionResult(issue.id, "failed", error=str(e))
 
 
