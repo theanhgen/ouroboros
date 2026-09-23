@@ -594,6 +594,109 @@ def test_a_trailing_space_does_not_hide_a_python_file():
     assert any("pickle" in v for v in violations), violations
 
 
+def _fail(test, tb, file="tests/test_x.py", message=""):
+    from ouroboros.test_runner import FailureDetail
+
+    return FailureDetail(
+        test_name=test, file=file, line=None, message=message, traceback=tb
+    )
+
+
+def _helper_tb(caller_line, got):
+    """--tb=short output for a test that dies inside the same broken helper."""
+    return (
+        f"tests/test_x.py:{caller_line}: in test\n    helper()\n"
+        "src/ouroboros/thing.py:42: in helper\n    assert value == 2\n"
+        f"E   AssertionError: assert {got} == 2"
+    )
+
+
+def _retry_prompt_for(monkeypatch, tmp_path, failure_details):
+    """The prompt _retry_with_root_cause sends to the LLM for these failures."""
+    from ouroboros import improvement
+
+    prompts = []
+    monkeypatch.setattr(
+        improvement.llm, "generate_code",
+        lambda client, prompt, *a, **kw: prompts.append(prompt) or ([], None),
+    )
+    improvement._retry_with_root_cause(
+        client=MagicMock(),
+        task=ImprovementTask("t1", "fix_bug", "d", [], "e"),
+        original_changes=[_change(new="VALUE = 1\n")],
+        test_before=RunnerOutcome(passed=3, failed=0, errors=0, returncode=0),
+        test_after=RunnerOutcome(
+            passed=0, failed=len(failure_details), errors=0, returncode=1,
+            failure_details=failure_details,
+        ),
+        config=SafetyConfig(),
+        repo_root=tmp_path,
+    )
+    assert len(prompts) == 1
+    return prompts[0]
+
+
+def test_retry_prompt_clusters_duplicate_failures_into_one_root_cause(monkeypatch, tmp_path):
+    """Three tests failing in the same helper are one cause, not three (#134):
+    the retry prompt must say so and point the next attempt at it."""
+    prompt = _retry_prompt_for(monkeypatch, tmp_path, [
+        _fail("test_a", _helper_tb(10, 3)),
+        _fail("test_b", _helper_tb(20, 4)),
+        _fail("test_c", _helper_tb(30, 5)),
+    ])
+
+    assert "## Failure triage" in prompt
+    assert "3 failure(s) in 1 distinct root cause cluster(s)" in prompt
+    assert "[3x] AssertionError: assert N == N at src/ouroboros/thing.py::helper" in prompt
+    assert "Suggested next experiment: 3 of 3 failures share" in prompt
+
+
+def test_retry_prompt_ranks_distinct_root_causes_largest_first(monkeypatch, tmp_path):
+    lone = (
+        "tests/test_y.py:5: in test_lone\n    parse('x')\n"
+        "src/ouroboros/parse.py:9: in parse\n    raise ValueError(f'bad {s!r}')\n"
+        "E   ValueError: bad 'x'"
+    )
+    prompt = _retry_prompt_for(monkeypatch, tmp_path, [
+        _fail("test_lone", lone, file="tests/test_y.py"),
+        _fail("test_a", _helper_tb(10, 3)),
+        _fail("test_b", _helper_tb(20, 4)),
+    ])
+
+    assert "3 failure(s) in 2 distinct root cause cluster(s)" in prompt
+    helper = prompt.index("[2x] AssertionError")
+    parse = prompt.index("[1x] ValueError: bad '?' at src/ouroboros/parse.py::parse")
+    assert helper < parse, "the larger cluster must be listed first"
+    assert "2 of 3 failures share" in prompt
+
+
+def test_retry_prompt_without_failure_details_keeps_the_summary_fallback(monkeypatch, tmp_path):
+    prompt = _retry_prompt_for(monkeypatch, tmp_path, [])
+
+    assert "## Failure triage" not in prompt
+    assert "Tests: 0 passed, 0 failed" in prompt
+    assert "## What was attempted" in prompt
+
+
+def test_failure_triage_is_empty_without_details():
+    from ouroboros.improvement import _format_failure_triage
+
+    assert _format_failure_triage(RunnerOutcome(failed=2, returncode=1)) == ""
+
+
+def test_failure_triage_uses_file_and_message_when_there_is_no_traceback():
+    from ouroboros.improvement import _format_failure_triage
+
+    out = _format_failure_triage(RunnerOutcome(failed=2, returncode=1, failure_details=[
+        _fail("", "", file="tests/test_a.py", message="ImportError: no module 'x'"),
+        _fail("", "", file="tests/test_b.py", message="ImportError: no module 'y'"),
+    ]))
+
+    assert "2 distinct root cause cluster(s)" in out
+    assert "ImportError: no module '?' at tests/test_a.py" in out
+    assert "no failure repeats" in out
+
+
 def _tool_runner_repo(tmp_path):
     """A repo_root whose src/ holds one grep-able module."""
     src_dir = tmp_path / "src" / "ouroboros"
