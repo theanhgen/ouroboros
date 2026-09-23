@@ -783,7 +783,16 @@ def test_the_retry_flow_refuses_a_blocked_change(monkeypatch, tmp_path):
     RunnerOutcome(passed=0, failed=0, errors=0, returncode=4),
     # coverage dropped past the gate validate_improvement enforces
     RunnerOutcome(passed=10, failed=0, errors=0, returncode=0, coverage_percent=80.0),
-], ids=["hollow-run", "coverage-drop"])
+    # zero tests with exit 0 (all skipped / unparsed summary): success is True
+    RunnerOutcome(passed=0, failed=0, errors=0, returncode=0, coverage_percent=90.0),
+    # fewer tests ran, no failures counted
+    RunnerOutcome(passed=7, failed=0, errors=0, returncode=0, coverage_percent=90.0),
+    # non-zero exit with no failure or error counted
+    RunnerOutcome(passed=10, failed=0, errors=0, returncode=1, coverage_percent=90.0),
+    # coverage was measured at baseline but is missing now
+    RunnerOutcome(passed=10, failed=0, errors=0, returncode=0),
+], ids=["hollow-run", "coverage-drop", "zero-tests-exit-0", "fewer-tests",
+        "unexplained-exit", "coverage-vanished"])
 def test_the_retry_flow_does_not_accept_what_the_first_attempt_would_revert(
     monkeypatch, tmp_path, retry_test,
 ):
@@ -820,6 +829,27 @@ def test_the_retry_flow_does_not_accept_what_the_first_attempt_would_revert(
 
     assert result is None, "the retry accepted a run the first attempt would revert"
     assert len(reverted) == 1, "the corrected code was left applied"
+
+
+@pytest.mark.parametrize("after", [
+    RunnerOutcome(passed=0, failed=0, errors=0, returncode=2),
+    RunnerOutcome(passed=0, failed=0, errors=0, returncode=0),
+    RunnerOutcome(passed=10, failed=0, errors=0, returncode=0),
+], ids=["hollow-run", "zero-tests-exit-0", "coverage-vanished"])
+def test_the_first_attempt_reverts_a_run_that_did_not_validate(after):
+    """#107: the first attempt also judged only failure/error counts."""
+    before = RunnerOutcome(passed=10, failed=0, errors=0, returncode=0,
+                           coverage_percent=90.0)
+    task = ImprovementTask("abc", "fix_bug", "fix it", ["src/ouroboros/x.py"], "broken")
+    changes = [CodeChange("src/ouroboros/x.py", "old", "new", "fix")]
+
+    with patch("ouroboros.improvement.run_tests", side_effect=[before, after]), \
+         patch("ouroboros.improvement.apply_changes"), \
+         patch("ouroboros.improvement.revert_changes") as mock_revert:
+        result = validate_improvement(task, changes, Path("/tmp/repo"))
+
+    assert result.status == "reverted"
+    mock_revert.assert_called_once()
 
 
 def test_an_extensionless_script_with_a_python_shebang_is_gated():
