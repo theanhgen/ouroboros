@@ -134,6 +134,26 @@ class TestResetWorktree:
         assert (repo / "learnings.md").read_text() == "entry one\nlocal note\n"
         assert (repo / "code.py").read_text() == "original\n"
 
+    def test_deleted_tracked_file_is_collected_then_restored_with_dirty_file(self, repo):
+        (repo / "code.py").write_text("local edit\n")
+        dirty_before = backends._snapshot_tracked_dirty(repo)
+        untracked_before = backends._untracked_files(repo)
+
+        (repo / "learnings.md").unlink()
+        (repo / "code.py").write_text("local edit + agent edit\n")
+
+        changes = backends._collect_changes(repo, untracked_before, _Change, dirty_before)
+        by_path = {change.file_path: change for change in changes}
+        assert set(by_path) == {"code.py", "learnings.md"}
+        assert by_path["learnings.md"].original_content == "entry one\n"
+        assert by_path["learnings.md"].new_content == ""
+        assert by_path["code.py"].new_content == "local edit + agent edit\n"
+
+        backends._reset_worktree(repo, untracked_before, dirty_before)
+
+        assert (repo / "learnings.md").read_text() == "entry one\n"
+        assert (repo / "code.py").read_text() == "local edit\n"
+
     def test_reset_removes_agent_created_untracked_files(self, repo):
         (repo / "local.db").write_text("keep\n")
         untracked_before = backends._untracked_files(repo)
