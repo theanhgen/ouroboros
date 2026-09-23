@@ -1008,3 +1008,40 @@ def test_react_answer_parsing_survives_an_empty_reply():
     assert _tool_args(call("")) == {}
     assert _tool_args(call("{broken")) == {}
     assert _tool_args(call('{"path": "a.py"}')) == {"path": "a.py"}
+
+
+def _read_escape_setup(tmp_path, escape):
+    """A repo under tmp_path/repo, a secret module beside it, and a path escaping to it."""
+    repo = _tool_runner_repo(tmp_path / "repo")
+    secret = tmp_path / "secret.py"
+    secret.write_text("def leaked_secret():\n    return 'TOP-SECRET'\n")
+    if escape == "absolute":
+        return repo, str(secret)
+    if escape == "traversal":
+        return repo, "../secret.py"
+    link = repo / "src" / "ouroboros" / "link.py"
+    link.symlink_to(secret)
+    return repo, "src/ouroboros/link.py"
+
+
+@pytest.mark.parametrize("tool", ["read_file_content", "read_file_metadata"])
+@pytest.mark.parametrize("escape", ["absolute", "traversal", "symlink"])
+def test_read_tools_refuse_paths_outside_the_repository(tmp_path, tool, escape):
+    """The model picks file_path: none of these may read a file outside repo_root."""
+    from ouroboros.improvement import ToolRunner
+
+    repo, file_path = _read_escape_setup(tmp_path, escape)
+    out = ToolRunner(repo).execute(tool, {"file_path": file_path})
+    assert out.startswith("Error reading")
+    assert "outside the repository boundary" in out
+    assert "TOP-SECRET" not in out and "leaked_secret" not in out
+
+
+@pytest.mark.parametrize("tool", ["read_file_content", "read_file_metadata"])
+def test_read_tools_still_read_files_inside_the_repository(tmp_path, tool):
+    from ouroboros.improvement import ToolRunner
+
+    out = ToolRunner(_tool_runner_repo(tmp_path)).execute(
+        tool, {"file_path": "src/ouroboros/sample.py"}
+    )
+    assert "findable_symbol" in out
