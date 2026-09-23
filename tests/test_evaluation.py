@@ -86,6 +86,32 @@ def test_record_improvement(tmp_path):
     assert history[0].pr_url == "https://github.com/test/pr/2"
 
 
+def test_record_improvement_writes_metrics_to_repo_root_database(tmp_path):
+    """Cycle and token metrics land in repo_root's database, not the default one.
+
+    The conftest guard sends a path-less OuroborosStorage() to
+    tmp_path/config/ouroboros.db, so repo_root must be somewhere else for an
+    unscoped write to show up as missing here.
+    """
+    from ouroboros.storage import OuroborosStorage
+
+    repo_root = tmp_path / "other_checkout"
+    task = ImprovementTask("m1", "fix_bug", "fix bug", ["src/x.py"], "broken")
+    result = ImprovementResult(task=task, changes=[], status="success")
+    result.total_usage = {"prompt_tokens": 1000, "completion_tokens": 200}
+
+    record_improvement(result, repo_root, model="gpt-4o")
+
+    target = OuroborosStorage(db_path=repo_root / "config" / "ouroboros.db")
+    cycles = target.get_recent_cycles()
+    assert len(cycles) == 1
+    assert cycles[0]["task_type"] == "fix_bug"
+    assert cycles[0]["model"] == "gpt-4o"
+    assert cycles[0]["tokens_in"] == 1000
+    assert cycles[0]["tokens_out"] == 200
+    assert OuroborosStorage().get_recent_cycles() == []
+
+
 def test_improvements_today(tmp_path):
     import time
 
