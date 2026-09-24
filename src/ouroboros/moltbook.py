@@ -273,6 +273,12 @@ class RunnerConfig:
     reviewer_model: str = ""
     reviewer_base_url: str = ""
     reviewer_api_key: Optional[str] = field(default=None, repr=False)
+    # OpenAI-compatible gateway for every "openai"-backend call (identify,
+    # plan, generate and the main loop). Empty means api.openai.com. The key
+    # comes from LLM_API_KEY or credentials.json llm_api_key. Fallback models
+    # are tried in order by the gateway when the primary is busy (OpenRouter).
+    llm_base_url: str = ""
+    llm_fallback_models: List[str] = field(default_factory=list)
 
 
 def _warn_unknown_config_keys(data: Dict[str, Any], path: str) -> None:
@@ -399,6 +405,8 @@ def load_runner_config() -> RunnerConfig:
         reviewer_model=str(data.get("reviewer_model") or ""),
         reviewer_base_url=str(data.get("reviewer_base_url") or ""),
         reviewer_api_key=reviewer_api_key,
+        llm_base_url=str(data.get("llm_base_url") or ""),
+        llm_fallback_models=[str(m) for m in (data.get("llm_fallback_models") or [])],
     )
 
 
@@ -1153,8 +1161,7 @@ def run_loop() -> int:
         )
 
     # Fail fast if OpenAI key is missing
-    openai_key = llm.load_openai_key()
-    openai_client = llm.make_client(openai_key)
+    openai_client = llm.make_runner_client(cfg)
     import os
     log.info("Moltbook runner starting (dry_run=%s)", cfg.dry_run)
     _notify(cfg, state, f"Moltbook runner started (dry_run={cfg.dry_run}, PID={os.getpid()})")

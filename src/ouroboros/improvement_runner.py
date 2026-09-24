@@ -277,7 +277,7 @@ def run_scheduled_self_improvement(
     if backends.is_cli_backend(identify_backend):
         client = backends.make_backend_client(identify_backend, openai_client=None)
     if client is None:
-        client = llm.make_client(llm.load_openai_key())
+        client = llm.make_runner_client(cfg)
     combined_state = _load_feed_context_state()
     combined_state["self_improvement_scheduler"] = dict(state)
 

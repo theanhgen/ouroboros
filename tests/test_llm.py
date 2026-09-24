@@ -524,3 +524,62 @@ def test_analyze_comments_for_upgrades_renders_a_malformed_author(comment, expec
     assert result == {"has_upgrade": False}
     user_msg = client.chat.completions.create.call_args.kwargs["messages"][1]["content"]
     assert expected in user_msg
+
+
+# -- OpenAI-compatible gateway (OpenRouter) ----------------------------------
+
+from types import SimpleNamespace as _NS
+
+from ouroboros import llm as _llm
+
+
+def test_make_runner_client_defaults_to_openai(monkeypatch):
+    monkeypatch.setattr(_llm, "load_openai_key", lambda: "sk-openai")
+    monkeypatch.setattr(_llm, "load_llm_api_key", lambda: pytest.fail("gateway key read"))
+    client = _llm.make_runner_client(_NS(llm_base_url="", llm_fallback_models=[]))
+    assert client.api_key == "sk-openai"
+    assert "api.openai.com" in str(client.base_url)
+
+
+def test_make_runner_client_uses_gateway_and_its_own_key(monkeypatch):
+    monkeypatch.setattr(_llm, "load_openai_key", lambda: pytest.fail("OpenAI key sent to gateway"))
+    monkeypatch.setattr(_llm, "load_llm_api_key", lambda: "sk-or-test")
+    client = _llm.make_runner_client(_NS(
+        llm_base_url="https://openrouter.ai/api/v1",
+        llm_fallback_models=["b:free", "c:free"],
+    ))
+    assert client.api_key == "sk-or-test"
+    assert "openrouter.ai" in str(client.base_url)
+    assert client._ouroboros_fallback_models == ["b:free", "c:free"]
+
+
+def test_load_llm_api_key_prefers_env(monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "sk-env")
+    assert _llm.load_llm_api_key() == "sk-env"
+
+
+def test_load_llm_api_key_missing_raises(monkeypatch, tmp_path):
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    with pytest.raises(RuntimeError, match="llm_api_key"):
+        _llm.load_llm_api_key()
+
+
+def _recording_client(fallbacks=None):
+    calls = []
+    client = _NS(chat=_NS(completions=_NS(create=lambda **kw: calls.append(kw) or "ok")))
+    if fallbacks is not None:
+        client._ouroboros_fallback_models = fallbacks
+    return client, calls
+
+
+def test_create_completion_sends_fallback_models_primary_first():
+    client, calls = _recording_client(["b:free", "a:free", "c:free"])
+    _llm.create_completion(client, model="a:free", messages=[{"role": "user", "content": "hi"}])
+    assert calls[0]["extra_body"] == {"models": ["a:free", "b:free", "c:free"]}
+
+
+def test_create_completion_without_fallbacks_adds_nothing():
+    client, calls = _recording_client()
+    _llm.create_completion(client, model="gpt-5", messages=[{"role": "user", "content": "hi"}])
+    assert "extra_body" not in calls[0]

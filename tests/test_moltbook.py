@@ -394,6 +394,22 @@ def test_load_runner_config_reads_reviewer_routing(tmp_path):
     assert cfg.reviewer_api_key == "secret"
 
 
+def test_load_runner_config_reads_llm_gateway(tmp_path):
+    cfg = _runner_config_from(
+        tmp_path,
+        {
+            "llm_base_url": "https://openrouter.ai/api/v1",
+            "llm_fallback_models": ["b:free", "c:free"],
+        },
+        {},
+    )
+
+    assert cfg.llm_base_url == "https://openrouter.ai/api/v1"
+    assert cfg.llm_fallback_models == ["b:free", "c:free"]
+    assert RunnerConfig().llm_base_url == ""
+    assert RunnerConfig().llm_fallback_models == []
+
+
 def test_load_runner_config_prefers_explicit_reviewer_api_key(tmp_path):
     cfg = _runner_config_from(
         tmp_path,
