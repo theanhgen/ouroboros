@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+import os
 import time
 import uuid
 import json
@@ -62,6 +63,10 @@ class CodeChange:
     # revert_changes trusts it instead of guessing (#91). None = never went
     # through apply_changes, so revert_changes leaves that file alone.
     existed_before: Optional[bool] = None
+    # The resolved path apply_changes validated and wrote to. revert_changes
+    # writes here instead of rebuilding repo_root / file_path, which a symlink
+    # swapped in while the tests ran would redirect (#142).
+    applied_path: Optional[Path] = None
 
 
 @dataclass
@@ -345,8 +350,40 @@ def apply_changes(
         # Ground truth for the revert: taken from the filesystem here because
         # this is the last moment the pre-change tree still exists.
         change.existed_before = full_path.exists()
+        change.applied_path = full_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(change.new_content, encoding="utf-8")
+
+
+def _revert_target(change: CodeChange, repo_root: Path) -> Optional[Path]:
+    """The path revert_changes may write for ``change``, or None to refuse.
+
+    Tests run between apply and revert, and anything that replaced the file or
+    one of its parent directories with a symlink in the meantime would have
+    the rollback write through it -- outside the repository, or into an
+    immutable file like config.py (#142). The path apply_changes validated is
+    fully resolved, so no component below the root was a symlink then; one
+    that is a symlink now was swapped in, and the change is refused.
+
+    Every component is checked with lstat rather than by comparing the path
+    to its own resolve(): the repository root may itself sit behind a symlink
+    (macOS /var -> /private/var) or be given relative, and that must not
+    block a legitimate rollback. A change with no applied_path (built by hand
+    rather than by apply_changes) is rebuilt lexically, never resolved, so a
+    symlink at file_path is still seen instead of followed.
+    """
+    root = repo_root.resolve()
+    full_path = change.applied_path
+    if full_path is None:
+        full_path = Path(os.path.normpath(root / change.file_path))
+    if root not in full_path.parents:
+        return None
+    probe = root
+    for part in full_path.relative_to(root).parts:
+        probe = probe / part
+        if probe.is_symlink():
+            return None
+    return full_path
 
 
 def revert_changes(changes: List[CodeChange], repo_root: Path) -> None:
@@ -366,7 +403,12 @@ def revert_changes(changes: List[CodeChange], repo_root: Path) -> None:
         # and touching the file would clobber content we never wrote.
         if change.existed_before is None:
             continue
-        full_path = repo_root / change.file_path
+        full_path = _revert_target(change, repo_root)
+        if full_path is None:
+            log.error("Refusing to revert %s: it no longer names the file "
+                      "apply_changes wrote (symlink or outside the repository)",
+                      change.file_path)
+            continue
         if change.existed_before:
             full_path.write_text(change.original_content, encoding="utf-8")
         elif full_path.exists():
