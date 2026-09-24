@@ -902,6 +902,33 @@ def run_improvement_cycle(
         _finalize_backlog(ctx)
 
 
+_MAX_STALE_ATTEMPTS = 2
+
+
+def _stale_task_type(history: List[Any], now: float) -> Optional[str]:
+    """Return the newest task_type whose last attempts made no test progress.
+
+    This used to skip the whole cycle. A skip records nothing, so the newest
+    type never changed and the gate held every cycle until the attempts aged
+    out of its 7-day window: on 2026-09-24 two fix_bug failures -- a Codex
+    quota lockout and a 2500-token generate cap, neither about the task --
+    idled every free-model cycle. Callers now steer away from the type.
+    """
+    recent = [r for r in history if r.timestamp > now - 7 * 86400]
+    if not recent:
+        return None
+    last_type = recent[-1].task_type
+    streak = [r for r in reversed(recent) if r.task_type == last_type]
+    if len(streak) < _MAX_STALE_ATTEMPTS:
+        return None
+    if all(
+        r.test_delta.get("before") == r.test_delta.get("after")
+        for r in streak[:_MAX_STALE_ATTEMPTS]
+    ):
+        return last_type
+    return None
+
+
 def _run_improvement_cycle(
     ctx: Dict[str, Any],
     client: Any,
@@ -960,22 +987,12 @@ def _run_improvement_cycle(
         _fire("cycle_end", f"Skipped: {reason}")
         return None
 
-    # Dedup: skip if recent attempts at the same task_type made no test progress
+    # Stagnation: recent attempts at one task_type made no test progress.
+    # Steer identification away from that type instead of skipping the cycle.
     history = load_history(repo_root)
-    _MAX_STALE_ATTEMPTS = 2
-    recent = [r for r in history if r.timestamp > time.time() - 7 * 86400]
-    if recent:
-        last_type = recent[-1].task_type
-        streak = [r for r in reversed(recent) if r.task_type == last_type]
-        if len(streak) >= _MAX_STALE_ATTEMPTS:
-            all_no_progress = all(
-                r.test_delta.get("before") == r.test_delta.get("after")
-                for r in streak[:_MAX_STALE_ATTEMPTS]
-            )
-            if all_no_progress:
-                log.info("Skipping improvement: %d recent '%s' attempts with no test progress", len(streak), last_type)
-                _fire("cycle_end", f"Skipped: {len(streak)} stale '{last_type}' attempts")
-                return None
+    stale_type = _stale_task_type(history, time.time())
+    if stale_type:
+        log.info("[improve] Steering away from '%s': recent attempts made no test progress", stale_type)
 
     # Step 1: Understand the codebase
     log.info("[improve] Analyzing codebase...")
@@ -1048,6 +1065,11 @@ def _run_improvement_cycle(
     rates_ctx = _build_success_rate_context(history)
     if rates_ctx:
         final_ctx = f"{final_ctx}\n\n{rates_ctx}"
+    if stale_type:
+        final_ctx = (
+            f"{final_ctx}\n\nDo NOT propose a '{stale_type}' task this cycle: the last "
+            f"{_MAX_STALE_ATTEMPTS} '{stale_type}' attempts made no test progress. Pick another task type."
+        )
 
     task_data, id_err = llm.identify_improvements(
         identify_client, codebase_summary, test_results.summary(), history_summary,
@@ -1066,8 +1088,12 @@ def _run_improvement_cycle(
     # Handle Tool Calls -- multi-step ReAct loop (up to 5 rounds)
     if "_tool_calls" in task_data:
         tool_calls = task_data["_tool_calls"]
-        messages = [
+        # Continue the conversation the model started. Restarting it from a
+        # one-line system prompt dropped the task rules, the codebase summary
+        # and the required JSON keys, which a weaker model cannot recover.
+        messages = list(task_data.get("_messages") or [
             {"role": "system", "content": "You are a code quality analyst."},
+        ]) + [
             {"role": "assistant", "tool_calls": tool_calls}
         ]
         for tool_call in tool_calls:
@@ -1091,7 +1117,7 @@ def _run_improvement_cycle(
             msg = resp.choices[0].message
             # If no tool calls, treat as final answer
             if not msg.tool_calls:
-                task_data = json.loads(msg.content)
+                task_data = llm.parse_json_reply(msg.content)
                 if resp.usage:
                     task_data["_usage"] = {
                         "prompt_tokens": resp.usage.prompt_tokens,
@@ -1118,7 +1144,7 @@ def _run_improvement_cycle(
                     messages=messages,
                     response_format={"type": "json_object"}
                 )
-                task_data = json.loads(resp.choices[0].message.content)
+                task_data = llm.parse_json_reply(resp.choices[0].message.content)
                 if resp.usage:
                     task_data["_usage"] = {
                         "prompt_tokens": resp.usage.prompt_tokens,
@@ -1127,6 +1153,10 @@ def _run_improvement_cycle(
                     }
 
     task = ImprovementTask.from_llm_response(task_data)
+    if stale_type and task.task_type == stale_type:
+        log.info("Skipping improvement: model proposed stale task type '%s' again", stale_type)
+        _fire("cycle_end", f"Skipped: stale '{stale_type}' proposed again")
+        return None
     ctx["task"] = task
 
     duplicate_of = _already_completed(task, history)

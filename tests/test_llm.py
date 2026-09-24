@@ -655,3 +655,20 @@ def test_generate_code_reports_unparseable_reply():
     )
     assert changes is None
     assert errors and errors[0].startswith("UnparseableResponse")
+
+
+def test_identify_tool_calls_carry_the_original_messages():
+    """The ReAct loop continues this conversation instead of restarting it."""
+    msg = _NS(tool_calls=["call"], content=None)
+    resp = _NS(choices=[_NS(message=msg)], usage=_NS(prompt_tokens=1, completion_tokens=1))
+    client = _NS(chat=_NS(completions=_NS(create=lambda **kw: resp)))
+    data, err = _llm.identify_improvements(client, "SUMMARY", "tests", "history", model="m:free")
+    assert err is None
+    roles = [m["role"] for m in data["_messages"]]
+    assert roles == ["system", "user"]
+    assert "task_type" in data["_messages"][0]["content"]
+    assert "SUMMARY" in data["_messages"][1]["content"]
+
+
+def test_parse_json_reply_tolerates_fences():
+    assert _llm.parse_json_reply('```json\n{"task_type": "add_test"}\n```') == {"task_type": "add_test"}

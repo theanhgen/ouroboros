@@ -139,6 +139,17 @@ def create_completion(client: Any, **kwargs: Any) -> Any:
     return client.chat.completions.create(**kwargs)
 
 
+def parse_json_reply(content: Optional[str]) -> dict:
+    """Parse a JSON object out of a model reply that may carry fences or prose."""
+    text = content or ""
+    if "{" in text:
+        text = text[text.find("{"):text.rfind("}") + 1]
+    data = json.loads(text)
+    if not isinstance(data, dict):
+        raise ValueError(f"expected a JSON object, got {type(data).__name__}")
+    return data
+
+
 def fit_messages_to_budget(
     messages: List[Dict[str, Any]], model: str
 ) -> List[Dict[str, Any]]:
@@ -461,7 +472,10 @@ def identify_improvements(
         # Real OpenAI tool-calls; CLI backends return tool_calls=None and fall
         # through to JSON parsing below.
         if msg.tool_calls:
-            return {"_tool_calls": msg.tool_calls, "_usage": {
+            return {"_tool_calls": msg.tool_calls, "_messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ], "_usage": {
                 "prompt_tokens": resp.usage.prompt_tokens,
                 "completion_tokens": resp.usage.completion_tokens,
             }}, None
