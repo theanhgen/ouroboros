@@ -112,6 +112,7 @@ def get_summary(
     kb: Optional[Dict[str, Any]] = None,
     force_refresh: bool = False,
     path: Optional[str] = None,
+    model: Optional[str] = None,
 ) -> str:
     """Return a cached summary of KB entries, regenerating if stale.
 
@@ -146,7 +147,11 @@ def get_summary(
     # Generate new summary
     from . import llm as _llm
 
-    summary = _llm.generate_kb_summary(client, entries)
+    summary = (
+        _llm.generate_kb_summary(client, entries, model=model)
+        if model
+        else _llm.generate_kb_summary(client, entries)
+    )
     if summary:
         kb["summary_cache"] = summary
         kb["summary_updated_at"] = now

@@ -96,15 +96,23 @@ def test_scheduled_runner_carries_role_models_into_safety_config(
     assert safety.plan_model == "gpt-5.6-luna"
 
 
-def test_run_codex_through_gateway_uses_its_provider_and_key(monkeypatch):
-    """codex_base_url moves codex off the ChatGPT account onto the gateway."""
+def test_run_codex_through_gateway_keeps_the_key_out_of_env_and_argv(monkeypatch, tmp_path):
+    """codex_base_url moves codex off the ChatGPT account onto the gateway,
+    with the key in a private CODEX_HOME that is removed afterwards."""
+    import os
+
     seen = {}
 
     def fake_run(cmd, **kwargs):
-        seen["cmd"], seen["env"] = cmd, kwargs.get("env")
+        env = kwargs["env"]
+        home = env["CODEX_HOME"]
+        seen.update(cmd=cmd, env=env, home=home,
+                    config=open(os.path.join(home, "config.toml")).read(),
+                    mode=os.stat(home).st_mode & 0o777)
         return subprocess.CompletedProcess(cmd, 0, stdout="done", stderr="")
 
     monkeypatch.setattr(backends.subprocess, "run", fake_run)
+    monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("LLM_API_KEY", "sk-or-test")
     backends._run_codex(
         "/bin/codex", "prompt", model="cohere/north-mini-code:free",
@@ -113,18 +121,16 @@ def test_run_codex_through_gateway_uses_its_provider_and_key(monkeypatch):
 
     cmd = seen["cmd"]
     assert cmd[:4] == ["/bin/codex", "exec", "--sandbox", "workspace-write"]
-    assert (
-        'model_providers.ouroboros={name="ouroboros",'
-        'base_url="https://openrouter.ai/api/v1",'
-        'env_key="OUROBOROS_LLM_API_KEY",wire_api="responses"}'
-    ) in cmd
-    assert 'model_provider="ouroboros"' in cmd
     # Any model id is passed through, not only gpt-* ones.
     assert 'model="cohere/north-mini-code:free"' in cmd
     assert cmd[-1] == "prompt"
-    # The key travels in the environment, never on the command line.
-    assert seen["env"]["OUROBOROS_LLM_API_KEY"] == "sk-or-test"
+    assert 'base_url = "https://openrouter.ai/api/v1"' in seen["config"]
+    assert 'experimental_bearer_token = "sk-or-test"' in seen["config"]
+    assert seen["mode"] == 0o700
+    # Neither argv nor the environment the agent's commands inherit holds it.
     assert not any("sk-or-test" in part for part in cmd)
+    assert "sk-or-test" not in seen["env"].values()
+    assert not os.path.exists(seen["home"])
 
 
 def test_run_codex_without_gateway_keeps_the_default_env(monkeypatch):

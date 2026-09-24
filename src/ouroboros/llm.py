@@ -516,7 +516,9 @@ def plan_code_change(
         f"Target files: {task.get('target_files')}\n\n"
         f"## Relevant Code\n{code}"
     )
-    content, usage = chat_completion(client, system, user, model, max_tokens=800,
+    # Reasoning models spend part of the cap thinking; at 800 with
+    # reasoning.effort=high the plan text itself was cut off mid-step.
+    content, usage = chat_completion(client, system, user, model, max_tokens=2500,
                                      on_error=on_error)
     return (content if content else None, usage)
 

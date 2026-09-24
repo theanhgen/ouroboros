@@ -636,7 +636,9 @@ def _build_success_rate_context(history: List[EvaluationRecord]) -> str:
     return "\n".join(lines)
 
 
-def _assemble_feed_context(client: Any, state: Dict[str, Any]) -> str:
+def _assemble_feed_context(
+    client: Any, state: Dict[str, Any], model: Optional[str] = None
+) -> str:
     """Build additional context string from feed intelligence state keys."""
     parts = []
 
@@ -673,7 +675,7 @@ def _assemble_feed_context(client: Any, state: Dict[str, Any]) -> str:
         from .knowledge_base import load_kb, get_summary
         kb = load_kb()
         if kb.get("entries"):
-            summary = get_summary(client, kb=kb)
+            summary = get_summary(client, kb=kb, model=model)
             if summary:
                 parts.append(f"### Knowledge Base Summary\n{summary}")
     except Exception:
@@ -990,7 +992,7 @@ def _run_improvement_cycle(
     memory = IndexManager()
     memory_ctx = memory.retrieve_relevant_context(codebase_summary[:1000])
 
-    additional_context = _assemble_feed_context(client, state)
+    additional_context = _assemble_feed_context(client, state, model=model)
     final_ctx = f"{system_ctx}\n{memory_ctx}\n{additional_context}" if additional_context else f"{system_ctx}\n{memory_ctx}"
 
     # Failure-driven task prioritization
