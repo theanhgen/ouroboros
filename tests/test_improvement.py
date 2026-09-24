@@ -668,3 +668,18 @@ def test_stale_task_type_ignores_attempts_that_never_ran_tests():
         timestamp=now - 60, task_type="fix_bug", test_delta={"before": ran, "after": ran}
     )
     assert _stale_task_type([tested, tested], now) == "fix_bug"
+
+
+def test_react_answer_parsing_survives_an_empty_reply():
+    """An empty forced final answer ended the cycle with an unhandled
+    JSONDecodeError (2026-09-25 00:29); it is now 'nothing identified'."""
+    from types import SimpleNamespace
+    from ouroboros.improvement import _parse_react_answer, _tool_args
+
+    assert _parse_react_answer("") is None
+    assert _parse_react_answer(None) is None
+    assert _parse_react_answer('```json\n{"task_type": "add_test"}\n```') == {"task_type": "add_test"}
+    call = lambda args: SimpleNamespace(function=SimpleNamespace(name="read_file", arguments=args))
+    assert _tool_args(call("")) == {}
+    assert _tool_args(call("{broken")) == {}
+    assert _tool_args(call('{"path": "a.py"}')) == {"path": "a.py"}
