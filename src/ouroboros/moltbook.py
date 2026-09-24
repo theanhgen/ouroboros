@@ -974,6 +974,40 @@ def _check_engagement(
 
 _GIT_POLL_INTERVAL = 60  # Check for upstream changes every 60s during sleep
 
+# The commit this process's code came from, recorded on the first check.
+_START_HEAD: Optional[str] = None
+
+
+def _source_changed(repo_root: Path) -> bool:
+    """Pull, then say whether src/ differs from what this process runs.
+
+    pull_latest only reports a change its own pull made. Anything else that
+    moves HEAD first -- a manual pull, the self-improve timer's pull -- left
+    the loop on stale code: on 2026-09-24 it ran pre-#160 code with #160 and
+    #161 already checked out, until an unrelated src/ commit came in through
+    its own poll. Comparing against the starting commit catches both.
+    """
+    global _START_HEAD
+    from . import git_ops as _git_ops
+
+    if _START_HEAD is None:
+        try:
+            _START_HEAD = _git_ops._git(repo_root, "rev-parse", "HEAD").stdout.strip()
+        except Exception:
+            log.debug("Could not record starting HEAD", exc_info=True)
+    pulled = _git_ops.pull_latest(repo_root)
+    if pulled or not _START_HEAD:
+        return pulled
+    try:
+        head = _git_ops._git(repo_root, "rev-parse", "HEAD").stdout.strip()
+        if head == _START_HEAD:
+            return False
+        diff = _git_ops._git(repo_root, "diff", "--name-only", _START_HEAD, head).stdout
+    except Exception:
+        log.debug("Could not compare against starting HEAD", exc_info=True)
+        return False
+    return any(line.startswith("src/") for line in diff.splitlines())
+
 
 def _interruptible_sleep(seconds: int, *, check_git: bool = False) -> None:
     """Sleep that returns early when shutdown is requested.
@@ -995,9 +1029,8 @@ def _interruptible_sleep(seconds: int, *, check_git: bool = False) -> None:
             break
         # Check for upstream source changes
         try:
-            from . import git_ops as _git_ops
             repo_root = Path(__file__).resolve().parents[2]
-            if _git_ops.pull_latest(repo_root):
+            if _source_changed(repo_root):
                 log.info("Source files changed during sleep, exiting for systemd restart...")
                 os._exit(0)
         except Exception:
@@ -1183,9 +1216,8 @@ def run_loop() -> int:
             now = int(time.time())
 
             # -- Pull latest and restart if source changed --
-            from . import git_ops as _git_ops
             repo_root = Path(__file__).resolve().parents[2]
-            source_changed = _git_ops.pull_latest(repo_root)
+            source_changed = _source_changed(repo_root)
             if source_changed:
                 log.info("Source files changed after pull, exiting for systemd restart...")
                 save_state(state)
@@ -1277,7 +1309,7 @@ def run_loop() -> int:
                             _comment_client,
                             post.get("title", ""),
                             post.get("content", ""),
-                            model=DEFAULT_OPENAI_MODEL,
+                            model=cfg.improvement_model,
                             codebase_context=_comment_codebase_ctx,
                         )
                         if comment_text is None:
@@ -1460,7 +1492,7 @@ def run_loop() -> int:
                     ):
                         try:
                             _odds_client = openai_client
-                            _odds_model = DEFAULT_OPENAI_MODEL
+                            _odds_model = cfg.improvement_model
                             digest = llm.pick_oddities(_odds_client, posts, model=_odds_model)
                             if digest:
                                 _notify(cfg, state, f"Daily Oddities Digest:\n\n{digest}")
@@ -1478,7 +1510,7 @@ def run_loop() -> int:
                 from .codebase import get_codebase_summary, get_repo_root
                 sq_codebase = get_codebase_summary(get_repo_root())
                 _sq_client = openai_client
-                _sq_model = DEFAULT_OPENAI_MODEL
+                _sq_model = cfg.improvement_model
                 answer = llm.answer_question(_sq_client, question.question, codebase_summary=sq_codebase, model=_sq_model)
                 record_question(state, question, answer=answer)
                 state["last_self_question"] = now

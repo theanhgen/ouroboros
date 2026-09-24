@@ -390,7 +390,17 @@ def chat_completion(
                 "prompt_tokens": resp.usage.prompt_tokens,
                 "completion_tokens": resp.usage.completion_tokens,
             }
-        return resp.choices[0].message.content or "", usage
+        choice = resp.choices[0]
+        if getattr(choice, "finish_reason", None) == "length":
+            # A cut-off plan reads as a complete one, and cut-off JSON as none
+            # at all. Reasoning models spend max_tokens on thinking first, so
+            # this is what a too-small cap looks like on the free models.
+            msg = f"TruncatedResponse: hit max_tokens={max_tokens} (finish_reason=length)"
+            log.warning("completion truncated: %s", msg)
+            if on_error is not None:
+                on_error(msg)
+            return "", usage
+        return choice.message.content or "", usage
     except Exception as exc:
         log.exception("completion failed")
         if on_error is not None:
@@ -518,7 +528,8 @@ def plan_code_change(
     )
     # Reasoning models spend part of the cap thinking; at 800 with
     # reasoning.effort=high the plan text itself was cut off mid-step.
-    content, usage = chat_completion(client, system, user, model, max_tokens=2500,
+    # A truncated reply is now a failure, so leave real headroom.
+    content, usage = chat_completion(client, system, user, model, max_tokens=4000,
                                      on_error=on_error)
     return (content if content else None, usage)
 
@@ -541,18 +552,28 @@ def generate_code(
     content, usage = chat_completion(
         client, system, user, model,
         response_format={"type": "json_object"},
-        max_tokens=2500,
+        # Whole-file rewrites: 2500 was ~7.5 KB, smaller than most target files.
+        max_tokens=16000,
         on_error=on_error,
     )
-    
+    if not content:
+        return None, usage
+
     try:
         if "{" in content:
             content = content[content.find("{"):content.rfind("}")+1]
         result = json.loads(content)
-        return result.get("changes", []), usage
-    except Exception:
-        log.exception("generate_code failed to parse JSON")
+    except Exception as exc:
+        log.warning("generate_code failed to parse JSON: %s; reply starts %r", exc, content[:300])
+        if on_error is not None:
+            on_error(f"UnparseableResponse: {exc}")
         return None, usage
+    changes = result.get("changes", []) if isinstance(result, dict) else []
+    if not changes:
+        log.warning("generate_code: reply parsed but held no changes; starts %r", content[:300])
+        if on_error is not None:
+            on_error("EmptyChanges: reply had no 'changes' list")
+    return changes, usage
 
 
 def review_code_changes(
