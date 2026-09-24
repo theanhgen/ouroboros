@@ -73,7 +73,15 @@ def _load_feed_context_state() -> Dict[str, Any]:
         return json.load(f)
 
 
+# Floor for improvement_interval_minutes: below the timer's own period it only
+# changes which tick runs, and a cycle takes minutes anyway.
+_MIN_INTERVAL_MINUTES = 10
+
+
 def _normal_delay_seconds(cfg: Any) -> int:
+    minutes = int(getattr(cfg, "improvement_interval_minutes", 0) or 0)
+    if minutes > 0:
+        return max(_MIN_INTERVAL_MINUTES, minutes) * 60
     return max(1, int(cfg.improvement_interval_hours)) * 3600
 
 
@@ -291,6 +299,8 @@ def run_scheduled_self_improvement(
         identify_model=getattr(cfg, "identify_model", "") or None,
         plan_model=getattr(cfg, "plan_model", "") or None,
         codex_base_url=getattr(cfg, "codex_base_url", "") or None,
+        codex_fallback_models=tuple(getattr(cfg, "llm_fallback_models", None) or ()),
+        codex_reasoning_effort=getattr(cfg, "llm_reasoning_effort", "") or None,
         **reviewer_safety_kwargs(cfg),
     )
 

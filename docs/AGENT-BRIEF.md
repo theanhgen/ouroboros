@@ -72,9 +72,11 @@ the process kept using 8 until it was restarted.
 
 ## 3. How a cycle actually runs
 
-Timer fires every 30 min; a gate lets a real cycle through every 24h and logs
-`[skipped_due]` otherwise. **The ceiling is ~1 improvement attempt per day.**
-Do not mistake the 30-minute ticks for activity.
+Timer fires every 15 min; a gate lets a real cycle through every
+`improvement_interval_minutes` (15 since 2026-09-24, on free OpenRouter
+models) and logs `[skipped_due]` otherwise. The ceiling is
+`max_improvements_per_day` (96) attempts per rolling 24h, and one open
+improvement PR at a time.
 
 ```
   start ─→ rate limit (3/day) ──────────── over ────────→ stop

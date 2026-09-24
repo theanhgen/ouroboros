@@ -244,3 +244,11 @@ def test_run_scheduled_self_improvement_pulls_latest_first(
     mock_pull_latest.assert_called_once_with("/tmp/repo")
     mock_check_prs.assert_called_once_with("/tmp/repo", enable_auto_merge=False)
 
+
+
+def test_interval_minutes_overrides_hours_with_a_floor():
+    from ouroboros.improvement_runner import _normal_delay_seconds
+
+    assert _normal_delay_seconds(_cfg(improvement_interval_hours=4)) == 4 * 3600
+    assert _normal_delay_seconds(_cfg(improvement_interval_minutes=15)) == 15 * 60
+    assert _normal_delay_seconds(_cfg(improvement_interval_minutes=1)) == 10 * 60

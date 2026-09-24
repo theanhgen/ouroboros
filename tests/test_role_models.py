@@ -166,3 +166,55 @@ def test_agent_generate_passes_codex_base_url(monkeypatch, tmp_path):
         "plan", tmp_path, config, "codex", model="m:free",
     )
     assert seen["base_url"] == "https://openrouter.ai/api/v1"
+
+
+def test_run_codex_passes_reasoning_effort_through_gateway(monkeypatch, tmp_path):
+    seen = {}
+
+    def fake_run(cmd, **kwargs):
+        seen["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, stdout="done", stderr="")
+
+    monkeypatch.setattr(backends.subprocess, "run", fake_run)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("LLM_API_KEY", "sk-or-test")
+    backends._run_codex(
+        "/bin/codex", "prompt", model="a:free", edit=True,
+        base_url="https://openrouter.ai/api/v1", reasoning_effort="high",
+    )
+    assert 'model_reasoning_effort="high"' in seen["cmd"]
+
+
+def test_codex_falls_back_to_the_next_gateway_model(monkeypatch, tmp_path):
+    """A free model that 429s upstream must not end the generate step."""
+    tried, resets = [], []
+
+    def fake_run_codex(binary, prompt, *, model=None, base_url=None, reasoning_effort=None, **kw):
+        tried.append((model, reasoning_effort))
+        if model == "a:free":
+            raise backends.CLIBackendError("codex exited 1: 429")
+        return "done", None
+
+    monkeypatch.setattr(backends, "_run_codex", fake_run_codex)
+    monkeypatch.setattr(backends, "_reset_worktree", lambda *a: resets.append(a))
+    cfg = SafetyConfig(
+        codex_base_url="https://openrouter.ai/api/v1",
+        codex_fallback_models=("a:free", "b:free", "c:free"),
+        codex_reasoning_effort="high",
+    )
+    text, _ = backends._run_codex_with_fallbacks(
+        "/bin/codex", "p", "a:free", tmp_path, cfg, 60, set(), {}
+    )
+    assert text == "done"
+    assert tried == [("a:free", "high"), ("b:free", "high")]
+    assert len(resets) == 1
+
+
+def test_codex_without_gateway_does_not_fall_back(monkeypatch, tmp_path):
+    def fake_run_codex(*a, **kw):
+        raise backends.CLIBackendError("codex exited 1")
+
+    monkeypatch.setattr(backends, "_run_codex", fake_run_codex)
+    cfg = SafetyConfig(codex_fallback_models=("b:free",))
+    with pytest.raises(backends.CLIBackendError):
+        backends._run_codex_with_fallbacks("/bin/codex", "p", None, tmp_path, cfg, 60, set(), {})

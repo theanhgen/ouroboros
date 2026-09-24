@@ -66,6 +66,12 @@ class SafetyConfig:
     # Set, codex runs generator_model there with the llm_api_key credential
     # instead of on the ChatGPT account.
     codex_base_url: Optional[str] = None
+    # With codex_base_url set: models tried in order after generator_model
+    # when a run fails (free models 429 upstream often), and the reasoning
+    # effort passed as model_reasoning_effort. Codex speaks the Responses API,
+    # so OpenRouter's in-request `models` fallback is not available there.
+    codex_fallback_models: Tuple[str, ...] = ()
+    codex_reasoning_effort: Optional[str] = None
 
     # Self-improvement limits
     max_improvements_per_day: int = 3
