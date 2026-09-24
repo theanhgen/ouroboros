@@ -583,3 +583,23 @@ def test_create_completion_without_fallbacks_adds_nothing():
     client, calls = _recording_client()
     _llm.create_completion(client, model="gpt-5", messages=[{"role": "user", "content": "hi"}])
     assert "extra_body" not in calls[0]
+
+
+def test_create_completion_sends_reasoning_effort_with_fallbacks():
+    client, calls = _recording_client(["b:free"])
+    client._ouroboros_reasoning_effort = "high"
+    _llm.create_completion(client, model="a:free", messages=[{"role": "user", "content": "hi"}])
+    assert calls[0]["extra_body"] == {
+        "models": ["a:free", "b:free"],
+        "reasoning": {"effort": "high"},
+    }
+
+
+def test_make_runner_client_carries_reasoning_effort(monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "sk-or-test")
+    client = _llm.make_runner_client(_NS(
+        llm_base_url="https://openrouter.ai/api/v1",
+        llm_fallback_models=[],
+        llm_reasoning_effort="high",
+    ))
+    assert client._ouroboros_reasoning_effort == "high"

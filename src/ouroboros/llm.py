@@ -44,6 +44,7 @@ def make_client(
     api_key: str,
     base_url: Optional[str] = None,
     fallback_models: Optional[List[str]] = None,
+    reasoning_effort: str = "",
 ) -> Any:
     """Create a reusable OpenAI client instance.
 
@@ -57,12 +58,17 @@ def make_client(
     list: free models are rate-limited upstream often enough that a single
     pinned one fails whole cycles, and the gateway retries the next model
     itself instead of spending our backoff on the same busy one.
+
+    reasoning_effort rides along the same way, as OpenRouter's
+    ``reasoning.effort``. The gateway drops it for models that do not reason,
+    so one setting covers a fallback list that mixes both kinds.
     """
     if base_url:
         client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0)
     else:
         client = OpenAI(api_key=api_key, max_retries=0)
     client._ouroboros_fallback_models = list(fallback_models or [])
+    client._ouroboros_reasoning_effort = reasoning_effort or ""
     return client
 
 
@@ -96,6 +102,7 @@ def make_runner_client(cfg: Any) -> Any:
         load_llm_api_key(),
         base_url=base_url,
         fallback_models=getattr(cfg, "llm_fallback_models", None),
+        reasoning_effort=getattr(cfg, "llm_reasoning_effort", "") or "",
     )
 
 
@@ -118,12 +125,17 @@ def create_completion(client: Any, **kwargs: Any) -> Any:
     messages = kwargs.get("messages")
     if messages:
         kwargs["messages"] = fit_messages_to_budget(messages, kwargs.get("model", ""))
-    fallbacks = getattr(client, "_ouroboros_fallback_models", None)
-    if fallbacks and isinstance(fallbacks, list) and "extra_body" not in kwargs:
-        primary = kwargs.get("model", "")
-        kwargs["extra_body"] = {
-            "models": [primary] + [m for m in fallbacks if m != primary]
-        }
+    if "extra_body" not in kwargs:
+        extra: Dict[str, Any] = {}
+        fallbacks = getattr(client, "_ouroboros_fallback_models", None)
+        if fallbacks and isinstance(fallbacks, list):
+            primary = kwargs.get("model", "")
+            extra["models"] = [primary] + [m for m in fallbacks if m != primary]
+        effort = getattr(client, "_ouroboros_reasoning_effort", None)
+        if effort and isinstance(effort, str):
+            extra["reasoning"] = {"effort": effort}
+        if extra:
+            kwargs["extra_body"] = extra
     return client.chat.completions.create(**kwargs)
 
 
