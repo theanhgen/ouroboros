@@ -578,3 +578,16 @@ def test_a_float_field_parses_and_validates_as_a_float():
     assert validate("community_post_interval_hours", 0.5) is None
     assert validate("community_post_interval_hours", 0) is not None
     assert validate("community_post_interval_hours", "soon") is not None
+
+
+def test_improve_run_without_model_defers_to_config():
+    """The timer passes no --model; it must get improvement_model, not a
+    hardcoded OpenAI id (which broke routing the loop to OpenRouter)."""
+    from ouroboros.cli import build_parser, cmd_improve_run
+
+    args = build_parser().parse_args(["improve", "run"])
+    assert args.model is None
+    with patch("ouroboros.improvement_runner.run_scheduled_self_improvement") as run:
+        run.return_value = argparse.Namespace(status="idle", message="", pr_url=None, issue_url=None)
+        cmd_improve_run(args)
+    assert run.call_args.kwargs["model"] is None
