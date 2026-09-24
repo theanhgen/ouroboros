@@ -80,3 +80,4 @@
 2026-09-24 | fix_bug | Fix data-loss bug in MemoryStore.index_code: ensure fact str | failed | no code generated
 2026-09-24 | refactor | Consolidate duplicated 'History / prompt context / state pat | failed | no plan generated
 2026-09-24 | add_feature | Implement code-aware indexing in MemoryStore using AST to ex | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-09-25 | add_feature | Implement code-aware indexing in MemoryStore using AST to ex | failed | planning call failed: TruncatedResponse: hit max_tokens=12000 (finish_reason=lengt
