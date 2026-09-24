@@ -40,15 +40,63 @@ def load_openai_key() -> str:
     raise RuntimeError("Missing OpenAI API key.")
 
 
-def make_client(api_key: str) -> Any:
+def make_client(
+    api_key: str,
+    base_url: Optional[str] = None,
+    fallback_models: Optional[List[str]] = None,
+) -> Any:
     """Create a reusable OpenAI client instance.
 
     max_retries=0 because retry.retry_with_backoff owns retrying. The SDK
     defaults to 2 internal retries, which would compound with our attempts --
     4 x 3 = up to 12 transmissions for one logical call, and an outer backoff
     that cannot see the inner ones.
+
+    base_url points the client at an OpenAI-compatible gateway (OpenRouter).
+    fallback_models rides along on every request as OpenRouter's ``models``
+    list: free models are rate-limited upstream often enough that a single
+    pinned one fails whole cycles, and the gateway retries the next model
+    itself instead of spending our backoff on the same busy one.
     """
-    return OpenAI(api_key=api_key, max_retries=0)
+    if base_url:
+        client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0)
+    else:
+        client = OpenAI(api_key=api_key, max_retries=0)
+    client._ouroboros_fallback_models = list(fallback_models or [])
+    return client
+
+
+def load_llm_api_key() -> str:
+    """Return the key for the configured llm_base_url gateway.
+
+    Kept apart from the OpenAI key: sending an OpenAI key to a third-party
+    gateway would leak it, and sending a gateway key to OpenAI just fails.
+    """
+    key = os.environ.get("LLM_API_KEY")
+    if key:
+        return key
+    cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
+    if os.path.exists(cred_path):
+        with open(cred_path, "r", encoding="utf-8") as f:
+            key = json.load(f).get("llm_api_key")
+        if key:
+            return key
+    raise RuntimeError("llm_base_url is set but no LLM_API_KEY / llm_api_key was found.")
+
+
+def make_runner_client(cfg: Any) -> Any:
+    """Build the API client the runner config asks for.
+
+    With llm_base_url unset this is the plain OpenAI client, as before.
+    """
+    base_url = getattr(cfg, "llm_base_url", "") or ""
+    if not base_url:
+        return make_client(load_openai_key())
+    return make_client(
+        load_llm_api_key(),
+        base_url=base_url,
+        fallback_models=getattr(cfg, "llm_fallback_models", None),
+    )
 
 
 @retry_with_backoff(cancelled=lifecycle.is_shutting_down)
@@ -70,6 +118,12 @@ def create_completion(client: Any, **kwargs: Any) -> Any:
     messages = kwargs.get("messages")
     if messages:
         kwargs["messages"] = fit_messages_to_budget(messages, kwargs.get("model", ""))
+    fallbacks = getattr(client, "_ouroboros_fallback_models", None)
+    if fallbacks and isinstance(fallbacks, list) and "extra_body" not in kwargs:
+        primary = kwargs.get("model", "")
+        kwargs["extra_body"] = {
+            "models": [primary] + [m for m in fallbacks if m != primary]
+        }
     return client.chat.completions.create(**kwargs)
 
 
