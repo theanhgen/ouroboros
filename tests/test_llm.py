@@ -603,3 +603,19 @@ def test_make_runner_client_carries_reasoning_effort(monkeypatch):
         llm_reasoning_effort="high",
     ))
     assert client._ouroboros_reasoning_effort == "high"
+
+
+def test_kb_summary_uses_the_given_model(monkeypatch, tmp_path):
+    """The cycle's model reaches the KB summary; the hardcoded OpenAI id 400s
+    on OpenRouter every cycle."""
+    from ouroboros import knowledge_base
+
+    seen = {}
+    monkeypatch.setattr(
+        _llm, "generate_kb_summary",
+        lambda client, entries, model=None: seen.setdefault("model", model) or "s",
+    )
+    kb = {"entries": [{"insight": "x", "ts": 1}]}
+    knowledge_base.get_summary(object(), kb=kb, force_refresh=True,
+                               path=str(tmp_path / "kb.json"), model="cohere/m:free")
+    assert seen["model"] == "cohere/m:free"

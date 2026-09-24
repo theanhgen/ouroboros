@@ -207,6 +207,33 @@ def _run_claude(
     return parse_claude_output(proc.stdout)
 
 
+def _private_codex_home(base_url: str) -> str:
+    """Write a throwaway CODEX_HOME whose only provider is the gateway.
+
+    Mode 0700/0600 under ~/.cache (codex refuses helper binaries under /tmp).
+    Having no ChatGPT auth there also means codex cannot quietly fall back to
+    the account this exists to keep the loop off.
+    """
+    from .llm import load_llm_api_key  # local import avoids a cycle
+
+    root = Path(os.path.expanduser("~/.cache"))
+    root.mkdir(parents=True, exist_ok=True)
+    home = tempfile.mkdtemp(prefix="ouroboros-codex-", dir=str(root))
+    os.chmod(home, 0o700)
+    config = (
+        'model_provider = "ouroboros"\n'
+        "[model_providers.ouroboros]\n"
+        'name = "ouroboros"\n'
+        f"base_url = {json.dumps(base_url)}\n"
+        'wire_api = "responses"\n'
+        f"experimental_bearer_token = {json.dumps(load_llm_api_key())}\n"
+    )
+    fd = os.open(os.path.join(home, "config.toml"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(config)
+    return home
+
+
 def _run_codex(
     binary: str,
     prompt: str,
@@ -222,29 +249,31 @@ def _run_codex(
     if edit:
         # `codex exec` is read-only by default; allow it to edit the working tree.
         cmd += ["--sandbox", "workspace-write"]
+    codex_home = None
     if base_url:
         # Run codex against an OpenAI-compatible gateway (OpenRouter) instead
         # of the ChatGPT account, whose weekly limit the loop used to exhaust.
-        # Codex only speaks the Responses API to custom providers now.
-        from .llm import load_llm_api_key  # local import avoids a cycle
-
-        env = {**os.environ, "OUROBOROS_LLM_API_KEY": load_llm_api_key()}
-        cmd += [
-            "-c", "model_providers.ouroboros={name=\"ouroboros\","
-            f"base_url={json.dumps(base_url)},"
-            "env_key=\"OUROBOROS_LLM_API_KEY\",wire_api=\"responses\"}",
-            "-c", "model_provider=\"ouroboros\"",
-        ]
+        # The key goes in a private CODEX_HOME config, not the environment:
+        # codex hands a provider's env_key to every command the agent runs,
+        # whatever shell_environment_policy says (checked on codex 0.156.1),
+        # so a generated test could print it into a PR.
+        codex_home = _private_codex_home(base_url)
+        env = {k: v for k, v in os.environ.items() if k not in ("CODEX_HOME", "LLM_API_KEY")}
+        env["CODEX_HOME"] = codex_home
         if model:
             cmd += ["-c", f"model={json.dumps(model)}"]
     # Only override the model when an explicit codex/openai model id is given.
     elif model and str(model).startswith(("gpt", "o3", "o4", "codex")):
         cmd += ["-c", f'model="{model}"']
     cmd.append(prompt)
-    proc = subprocess.run(
-        cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout,
-        stdin=subprocess.DEVNULL, env=env,
-    )
+    try:
+        proc = subprocess.run(
+            cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout,
+            stdin=subprocess.DEVNULL, env=env,
+        )
+    finally:
+        if codex_home:
+            shutil.rmtree(codex_home, ignore_errors=True)
     if proc.returncode != 0:
         raise CLIBackendError(f"codex exited {proc.returncode}: {proc.stderr[:500]}")
     # codex does not expose token usage in a stable machine-readable form.
