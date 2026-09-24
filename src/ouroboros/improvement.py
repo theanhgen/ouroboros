@@ -3,6 +3,7 @@
 import datetime
 import logging
 import os
+import stat
 import time
 import uuid
 import json
@@ -358,42 +359,55 @@ def apply_changes(
 def _revert_target(change: CodeChange, repo_root: Path) -> Optional[Path]:
     """The path revert_changes may write for ``change``, or None to refuse.
 
-    Tests run between apply and revert, and anything that replaced the file or
-    one of its parent directories with a symlink in the meantime would have
-    the rollback write through it -- outside the repository, or into an
+    Tests run between apply and revert, and anything that replaced one of the
+    file's parent directories with a symlink in the meantime would have the
+    rollback write through it -- outside the repository, or into an
     immutable file like config.py (#142). The path apply_changes validated is
-    fully resolved, so no component below the root was a symlink then; one
-    that is a symlink now was swapped in, and the change is refused.
+    fully resolved, so no component below the root was a symlink then; a
+    parent that is a symlink now was swapped in, and the change is refused.
+    What sits at the file itself is handled by revert_changes, which replaces
+    the entry rather than writing through it.
 
     Every component is checked with lstat rather than by comparing the path
     to its own resolve(): the repository root may itself sit behind a symlink
     (macOS /var -> /private/var) or be given relative, and that must not
     block a legitimate rollback. A change with no applied_path (built by hand
     rather than by apply_changes) is rebuilt lexically, never resolved, so a
-    symlink at file_path is still seen instead of followed.
+    symlink at file_path is still seen instead of followed, and is put through
+    the same path policy apply_changes enforces.
     """
     root = repo_root.resolve()
     full_path = change.applied_path
     if full_path is None:
         full_path = Path(os.path.normpath(root / change.file_path))
+        if root not in full_path.parents:
+            return None
+        config = SafetyConfig()
+        if not (_is_path_allowed(change.file_path, config) and _is_path_allowed(
+                full_path.relative_to(root).as_posix(), config)):
+            return None
     if root not in full_path.parents:
         return None
     probe = root
-    for part in full_path.relative_to(root).parts:
+    for part in full_path.relative_to(root).parts[:-1]:
         probe = probe / part
         if probe.is_symlink():
             return None
     return full_path
 
 
-def revert_changes(changes: List[CodeChange], repo_root: Path) -> None:
+def revert_changes(changes: List[CodeChange], repo_root: Path) -> List[str]:
     """Undo what ``apply_changes`` wrote, in reverse order of application.
 
     Reverse order because two entries can name the same file (a create
     followed by an edit of it). Applied forwards, the create is undone first
     -- the file is unlinked -- and then the edit resurrects it, leaving a
     stray file behind and the worktree dirty, which blocks every later cycle.
+
+    Returns the file_paths it refused to restore, so the caller does not
+    report a tree as reverted while it still holds what the tests left.
     """
+    refused: List[str] = []
     for change in reversed(changes):
         # An existing empty file carries original_content == "" just like a
         # brand new one, so emptiness cannot say whether the file is ours to
@@ -404,16 +418,28 @@ def revert_changes(changes: List[CodeChange], repo_root: Path) -> None:
         if change.existed_before is None:
             continue
         full_path = _revert_target(change, repo_root)
-        if full_path is None:
+        try:
+            st = os.lstat(full_path) if full_path is not None else None
+        except FileNotFoundError:
+            st = None
+        if full_path is None or (st is not None and stat.S_ISDIR(st.st_mode)):
             log.error("Refusing to revert %s: it no longer names the file "
-                      "apply_changes wrote (symlink or outside the repository)",
-                      change.file_path)
+                      "apply_changes wrote (symlink, directory or outside "
+                      "the repository)", change.file_path)
+            refused.append(change.file_path)
             continue
+        # Whatever the tests left at the file itself -- a symlink, a hard
+        # link to another file, a FIFO -- is replaced, never written through
+        # or opened (#142). Unlinking removes only this directory entry.
+        if st is not None and (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1):
+            full_path.unlink()
+            st = None
         if change.existed_before:
             full_path.write_text(change.original_content, encoding="utf-8")
-        elif full_path.exists():
+        elif st is not None:
             # File was newly created, remove it
             full_path.unlink()
+    return refused
 
 
 def _format_failure_details(test_result: RunnerOutcome) -> str:
@@ -505,7 +531,13 @@ def _retry_with_root_cause(
 
     if retry_test.failed > test_before.failed or retry_test.errors > test_before.errors:
         log.warning("[retry] Corrected code still regresses, reverting")
-        revert_changes(retry_changes, repo_root)
+        refused = revert_changes(retry_changes, repo_root)
+        if refused:
+            return ImprovementResult(
+                task=task, changes=retry_changes, test_before=test_before,
+                test_after=retry_test, status="failed",
+                details=f"Revert refused for: {', '.join(refused)}",
+            )
         return None
 
     if on_event:
@@ -599,8 +631,10 @@ def validate_improvement(
         if cov_delta > 1.0:
             log.warning("Coverage regression detected: %.1f%% drop", cov_delta)
             result.details = f"Coverage regression: dropped from {result.test_before.coverage_percent}% to {result.test_after.coverage_percent}%"
-            revert_changes(changes, repo_root)
-            result.status = "reverted"
+            refused = revert_changes(changes, repo_root)
+            result.status = "failed" if refused else "reverted"
+            if refused:
+                result.details += f"; revert refused for: {', '.join(refused)}"
             return result
 
     if has_regression:
@@ -609,10 +643,10 @@ def validate_improvement(
             "Test regression detected (%s), reverting",
             regression_type,
         )
-        revert_changes(changes, repo_root)
+        refused = revert_changes(changes, repo_root)
 
         # Attempt retry with root cause analysis
-        if client and config.max_retry_on_failure > 0:
+        if client and config.max_retry_on_failure > 0 and not refused:
             log.info("[retry] Attempting root cause analysis and retry...")
             retry_result = _retry_with_root_cause(
                 client, task, changes,
@@ -635,6 +669,9 @@ def validate_improvement(
                 f"{result.test_after.errors} after"
             )
         result.status = "reverted"
+        if refused:
+            result.status = "failed"
+            result.details += f"; revert refused for: {', '.join(refused)}"
         return result
 
     result.status = "success"

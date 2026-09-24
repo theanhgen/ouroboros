@@ -402,6 +402,107 @@ def test_revert_still_restores_when_the_repo_root_is_a_symlink(tmp_path, monkeyp
     assert (pkg / "foo.py").read_text() == "original\n"
 
 
+def test_revert_does_not_write_through_a_hard_link_swapped_in_after_apply(tmp_path):
+    """A hard link is not a symlink, so the lstat walk cannot see it: writing
+    through a name hard-linked to config.py rewrites config.py (#142)."""
+    import os
+
+    repo = tmp_path / "repo"
+    pkg = repo / "src" / "ouroboros"
+    pkg.mkdir(parents=True)
+    (pkg / "config.py").write_text("ALLOW_SELF_MODIFICATION = False\n")
+    target = pkg / "foo.py"
+    target.write_text("original\n")
+
+    changes = [CodeChange("src/ouroboros/foo.py", "original\n", "modified\n", "d")]
+    apply_changes(changes, repo)
+
+    target.unlink()
+    os.link(pkg / "config.py", target)
+
+    assert revert_changes(changes, repo) == []
+
+    assert (pkg / "config.py").read_text() == "ALLOW_SELF_MODIFICATION = False\n"
+    assert target.read_text() == "original\n"
+
+
+def test_revert_replaces_a_fifo_instead_of_blocking_on_it(tmp_path):
+    """Opening a FIFO for writing blocks until a reader appears, which would
+    hang the rollback forever (#142)."""
+    import os
+
+    repo = tmp_path / "repo"
+    pkg = repo / "src" / "ouroboros"
+    pkg.mkdir(parents=True)
+    target = pkg / "foo.py"
+    target.write_text("original\n")
+
+    changes = [CodeChange("src/ouroboros/foo.py", "original\n", "modified\n", "d")]
+    apply_changes(changes, repo)
+
+    target.unlink()
+    os.mkfifo(target)
+
+    assert revert_changes(changes, repo) == []
+    assert target.read_text() == "original\n"
+
+
+def test_revert_refuses_and_reports_a_directory_swapped_in_after_apply(tmp_path):
+    """A directory where the file was cannot be written or unlinked; the
+    revert reports it instead of crashing mid-rollback (#142)."""
+    repo = tmp_path / "repo"
+    pkg = repo / "src" / "ouroboros"
+    pkg.mkdir(parents=True)
+    changes = [
+        CodeChange("src/ouroboros/other.py", "", "B = 1\n", "create"),
+        CodeChange("src/ouroboros/new.py", "", "A = 1\n", "create"),
+    ]
+    apply_changes(changes, repo)
+
+    (pkg / "new.py").unlink()
+    (pkg / "new.py").mkdir()
+
+    assert revert_changes(changes, repo) == ["src/ouroboros/new.py"]
+    assert (pkg / "new.py").is_dir()
+    assert not (pkg / "other.py").exists()
+
+
+def test_revert_without_applied_path_honours_forbidden_paths(tmp_path):
+    """The no-applied_path fallback must refuse what apply_changes would:
+    config.py is immutable (#142)."""
+    repo = tmp_path / "repo"
+    pkg = repo / "src" / "ouroboros"
+    pkg.mkdir(parents=True)
+    (pkg / "config.py").write_text("ALLOW_SELF_MODIFICATION = False\n")
+
+    refused = revert_changes(
+        [CodeChange("src/ouroboros/config.py", "X = 1\n", "Y = 1\n", "d",
+                    existed_before=True)],
+        repo,
+    )
+
+    assert refused == ["src/ouroboros/config.py"]
+    assert (pkg / "config.py").read_text() == "ALLOW_SELF_MODIFICATION = False\n"
+
+
+@patch("ouroboros.improvement.run_tests")
+@patch("ouroboros.improvement.revert_changes", return_value=["src/ouroboros/x.py"])
+def test_validate_improvement_does_not_report_a_refused_revert_as_reverted(
+        mock_revert, mock_run_tests):
+    mock_run_tests.side_effect = [
+        RunnerOutcome(passed=5, failed=0, errors=0, returncode=0),
+        RunnerOutcome(passed=3, failed=2, errors=0, returncode=1),
+    ]
+    task = ImprovementTask("abc", "fix_bug", "fix it", ["src/ouroboros/x.py"], "broken")
+    changes = [CodeChange("src/ouroboros/x.py", "old", "new", "fix")]
+
+    with patch("ouroboros.improvement.apply_changes"):
+        result = validate_improvement(task, changes, Path("/tmp/repo"))
+
+    assert result.status == "failed"
+    assert "src/ouroboros/x.py" in result.details
+
+
 def test_build_failed_attempts_context_uses_outcome_only():
     history = [
         EvaluationRecord(
@@ -513,7 +614,7 @@ def test_validate_improvement_success(mock_run_tests):
 
 
 @patch("ouroboros.improvement.run_tests")
-@patch("ouroboros.improvement.revert_changes")
+@patch("ouroboros.improvement.revert_changes", return_value=[])
 def test_validate_improvement_regression(mock_revert, mock_run_tests):
     mock_run_tests.side_effect = [
         RunnerOutcome(passed=5, failed=0, errors=0, returncode=0),  # before
