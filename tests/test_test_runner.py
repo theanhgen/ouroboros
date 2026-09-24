@@ -350,3 +350,24 @@ def test_parse_pytest_output_no_tests():
     assert result["errors"] == 0
     assert result["skipped"] == 0
     assert result["failures"] == []
+
+def test_all_skipped_run_is_not_success():
+    # Regression (#147): pytest exits 0 when every collected test is skipped.
+    # The skipped count must be parsed and exposed, and a run in which no test
+    # actually executed must not report success.
+    output = "sss\n3 skipped in 0.02s"
+    parsed = _parse_pytest_output(output)
+    assert parsed["skipped"] == 3
+    assert parsed["passed"] == 0
+    r = RunnerOutcome(
+        passed=parsed["passed"], failed=parsed["failed"],
+        errors=parsed["errors"], skipped=parsed["skipped"], returncode=0,
+    )
+    assert r.total == 0
+    assert not r.success
+    assert "3 skipped" in r.summary()
+
+def test_parse_pytest_output_skipped_mixed():
+    result = _parse_pytest_output("4 passed, 2 skipped in 0.30s")
+    assert result["passed"] == 4
+    assert result["skipped"] == 2

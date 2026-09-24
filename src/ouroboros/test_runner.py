@@ -33,12 +33,13 @@ class RunnerOutcome:
 
     @property
     def success(self) -> bool:
-        if self.returncode != 0 or self.failed > 0 or self.errors > 0:
-            return False
-        # Prevent hollow success: at least one test must pass if any tests were collected
-        if self.total > 0 and self.passed == 0:
-            return False
-        return True
+        # Fail closed when nothing executed: pytest exits 0 when every
+        # collected test is skipped, and a run with zero passed tests cannot
+        # validate anything (#147).
+        return (
+            self.returncode == 0 and self.failed == 0 and self.errors == 0
+            and self.passed > 0
+        )
 
     @property
     def total(self) -> int:
