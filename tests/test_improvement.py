@@ -631,3 +631,20 @@ def test_grep_codebase_still_reports_a_real_failure(tmp_path):
     assert out.startswith("Error running grep:")
     assert out != "Error running grep:"
     assert "No matches found." not in out
+
+
+def test_stale_task_type_names_the_stuck_type_instead_of_blocking():
+    from types import SimpleNamespace
+    from ouroboros.improvement import _stale_task_type
+
+    now = 1_800_000_000
+    rec = lambda t, before, after, age=3600: SimpleNamespace(
+        timestamp=now - age, task_type=t, test_delta={"before": before, "after": after}
+    )
+    assert _stale_task_type([], now) is None
+    assert _stale_task_type([rec("fix_bug", 1, 1), rec("fix_bug", 1, 1)], now) == "fix_bug"
+    # One of the two made progress: not stale.
+    assert _stale_task_type([rec("fix_bug", 1, 2), rec("fix_bug", 1, 1)], now) is None
+    # Older than the 7-day window: ignored.
+    old = 8 * 86400
+    assert _stale_task_type([rec("fix_bug", 1, 1, old), rec("fix_bug", 1, 1, old)], now) is None
