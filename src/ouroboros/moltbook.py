@@ -279,6 +279,9 @@ class RunnerConfig:
     # are tried in order by the gateway when the primary is busy (OpenRouter).
     llm_base_url: str = ""
     llm_fallback_models: List[str] = field(default_factory=list)
+    # OpenRouter reasoning.effort ("low" | "medium" | "high") sent with every
+    # gateway call. Empty sends nothing and leaves each model on its default.
+    llm_reasoning_effort: str = ""
 
 
 def _warn_unknown_config_keys(data: Dict[str, Any], path: str) -> None:
@@ -407,6 +410,7 @@ def load_runner_config() -> RunnerConfig:
         reviewer_api_key=reviewer_api_key,
         llm_base_url=str(data.get("llm_base_url") or ""),
         llm_fallback_models=[str(m) for m in (data.get("llm_fallback_models") or [])],
+        llm_reasoning_effort=str(data.get("llm_reasoning_effort") or ""),
     )
 
 
