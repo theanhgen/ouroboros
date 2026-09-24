@@ -83,3 +83,4 @@
 2026-09-25 | add_feature | Implement code-aware indexing in MemoryStore using AST to ex | failed | planning call failed: TruncatedResponse: hit max_tokens=12000 (finish_reason=lengt
 2026-09-25 | refactor | Extract common 'History / prompt context / state path / JSON | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where fact strin | success | tests: 1286 -> 1286
+2026-09-25 | refactor | Create a shared storage_helpers module to consolidate duplic | failed | reviewer rejected
