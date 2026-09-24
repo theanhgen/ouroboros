@@ -215,16 +215,36 @@ def _run_codex(
     cwd: Optional[str] = None,
     edit: bool = False,
     timeout: int = _DEFAULT_TIMEOUT,
+    base_url: Optional[str] = None,
 ) -> Tuple[str, Optional[Dict[str, int]]]:
     cmd = [binary, "exec"]
+    env = None
     if edit:
         # `codex exec` is read-only by default; allow it to edit the working tree.
         cmd += ["--sandbox", "workspace-write"]
+    if base_url:
+        # Run codex against an OpenAI-compatible gateway (OpenRouter) instead
+        # of the ChatGPT account, whose weekly limit the loop used to exhaust.
+        # Codex only speaks the Responses API to custom providers now.
+        from .llm import load_llm_api_key  # local import avoids a cycle
+
+        env = {**os.environ, "OUROBOROS_LLM_API_KEY": load_llm_api_key()}
+        cmd += [
+            "-c", "model_providers.ouroboros={name=\"ouroboros\","
+            f"base_url={json.dumps(base_url)},"
+            "env_key=\"OUROBOROS_LLM_API_KEY\",wire_api=\"responses\"}",
+            "-c", "model_provider=\"ouroboros\"",
+        ]
+        if model:
+            cmd += ["-c", f"model={json.dumps(model)}"]
     # Only override the model when an explicit codex/openai model id is given.
-    if model and str(model).startswith(("gpt", "o3", "o4", "codex")):
+    elif model and str(model).startswith(("gpt", "o3", "o4", "codex")):
         cmd += ["-c", f'model="{model}"']
     cmd.append(prompt)
-    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
+    proc = subprocess.run(
+        cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout,
+        stdin=subprocess.DEVNULL, env=env,
+    )
     if proc.returncode != 0:
         raise CLIBackendError(f"codex exited {proc.returncode}: {proc.stderr[:500]}")
     # codex does not expose token usage in a stable machine-readable form.
@@ -614,7 +634,10 @@ def agent_generate_changes(
         if backend == "claude":
             _text, usage = _run_claude(binary, prompt, model=model, cwd=str(repo), edit=True, timeout=timeout)
         elif backend == "codex":
-            _text, usage = _run_codex(binary, prompt, model=model, cwd=str(repo), edit=True, timeout=timeout)
+            _text, usage = _run_codex(
+                binary, prompt, model=model, cwd=str(repo), edit=True, timeout=timeout,
+                base_url=getattr(config, "codex_base_url", None) or None,
+            )
         elif backend == "agy":
             _text, usage = _run_agy(binary, prompt, model=model, cwd=str(repo), edit=True, timeout=timeout)
         else:

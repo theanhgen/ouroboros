@@ -290,6 +290,7 @@ def run_scheduled_self_improvement(
         generator_model=getattr(cfg, "generator_model", "") or None,
         identify_model=getattr(cfg, "identify_model", "") or None,
         plan_model=getattr(cfg, "plan_model", "") or None,
+        codex_base_url=getattr(cfg, "codex_base_url", "") or None,
         **reviewer_safety_kwargs(cfg),
     )
 

@@ -282,6 +282,8 @@ class RunnerConfig:
     # OpenRouter reasoning.effort ("low" | "medium" | "high") sent with every
     # gateway call. Empty sends nothing and leaves each model on its default.
     llm_reasoning_effort: str = ""
+    # Same idea for the codex CLI backend: see SafetyConfig.codex_base_url.
+    codex_base_url: str = ""
 
 
 def _warn_unknown_config_keys(data: Dict[str, Any], path: str) -> None:
@@ -411,6 +413,7 @@ def load_runner_config() -> RunnerConfig:
         llm_base_url=str(data.get("llm_base_url") or ""),
         llm_fallback_models=[str(m) for m in (data.get("llm_fallback_models") or [])],
         llm_reasoning_effort=str(data.get("llm_reasoning_effort") or ""),
+        codex_base_url=str(data.get("codex_base_url") or ""),
     )
 
 
@@ -1693,6 +1696,7 @@ def run_loop() -> int:
                             generator_model=getattr(cfg, "generator_model", "") or None,
                             identify_model=getattr(cfg, "identify_model", "") or None,
                             plan_model=getattr(cfg, "plan_model", "") or None,
+                            codex_base_url=getattr(cfg, "codex_base_url", "") or None,
                             **_reviewer_safety_kwargs(cfg),
                         )
 
