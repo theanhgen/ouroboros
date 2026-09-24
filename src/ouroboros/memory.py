@@ -352,12 +352,16 @@ class MemoryStore:
 
                 visitor = CodeASTVisitor(file_path)
                 visitor.visit(tree)
-                facts.extend(visitor.facts)
+                for fact in visitor.facts:
+                    facts.append(fact.strip())
             except Exception as e:
                 log.warning("Failed to parse Python file %s with AST: %s", file_path, e)
 
         if not facts:
-            facts.append(f"[code] {file_path}: {content[:500]}")
+            # Strip the whole fallback fact line to match add_fact's normalization
+            stripped = f"[code] {file_path}: {content[:500]}".strip()
+            if stripped:
+                facts.append(stripped)
 
         with self._lock:
             existing_rows = self._conn.execute(
@@ -1217,3 +1221,48 @@ class IndexManager:
                 removed += 1
         removed += self._store.prune_to_snr()
         return removed
+
+
+# ---------------------------------------------------------------------------
+# Regression test for index_code normalization (can be run manually)
+# ---------------------------------------------------------------------------
+
+def test_index_code_normalization() -> None:
+    """Ensure facts are normalized consistently, preventing data loss."""
+    import tempfile
+    import shutil
+    from pathlib import Path
+
+    # Create a temporary directory for the database
+    tmpdir = tempfile.mkdtemp(prefix="ouroboros_test_")
+    db_path = Path(tmpdir) / "memory.db"
+    try:
+        store = MemoryStore(db_path=db_path)
+
+        # Test 1: file content ending with newline
+        file_path = "/test/foo.py"
+        content_with_newline = "def hello():\n    pass\n"
+        ids1 = store.index_code(file_path, content_with_newline)
+        count1 = store.fact_count()
+        ids2 = store.index_code(file_path, content_with_newline)
+        count2 = store.fact_count()
+        assert ids1 == ids2, f"Fact IDs differ on re‑indexing of unchanged file (got {ids1} vs {ids2})"
+        assert count1 == count2, f"Fact count changed after re‑indexing (got {count1} vs {count2})"
+
+        # Test 2: content with leading/trailing spaces and newline
+        content_stripped = "   def foo():\n       pass   \n   "
+        ids3 = store.index_code("/test/bar.py", content_stripped)
+        count3 = store.fact_count()
+        ids4 = store.index_code("/test/bar.py", content_stripped)
+        count4 = store.fact_count()
+        assert ids3 == ids4, f"Fact IDs differ with stripped content (got {ids3} vs {ids4})"
+        assert count3 == count4, f"Fact count changed with stripped content (got {count3} vs {count4})"
+
+        print("✓ All regression tests passed")
+    finally:
+        store.close()
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    test_index_code_normalization()
