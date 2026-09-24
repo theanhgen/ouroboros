@@ -206,7 +206,7 @@ def generate_changelog_page(repo_root: Path) -> str:
         lines.append(f"## {date}")
         lines.append("")
         for r in records:
-            status_icon = {"merged": "[MERGED]", "success": "[OK]", "reverted": "[REVERTED]", "failed": "[FAILED]"}.get(r.outcome, f"[{r.outcome.upper()}]")
+            status_icon = {"merged": "[MERGED]", "success": "[OK]", "reverted": "[REVERTED]", "failed": "[FAILED]"}.get(r.outcome, f"[{(r.outcome or 'unknown').upper()}]")
             line = f"- {status_icon} **{r.task_type}**: {r.description}"
             if r.pr_url:
                 line += f" ([PR]({r.pr_url}))"
