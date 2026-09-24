@@ -134,7 +134,10 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
         
         prompt_tokens = result.total_usage.get("prompt_tokens", 0)
         completion_tokens = result.total_usage.get("completion_tokens", 0)
-        input_rate, output_rate = MODEL_PRICING.get(model, _DEFAULT_PRICING)
+        if model.endswith(":free"):  # OpenRouter free tier
+            input_rate, output_rate = 0.0, 0.0
+        else:
+            input_rate, output_rate = MODEL_PRICING.get(model, _DEFAULT_PRICING)
         cost = (prompt_tokens / 1_000_000 * input_rate) + (completion_tokens / 1_000_000 * output_rate)
         
         storage.record_metrics(MetricRecord(

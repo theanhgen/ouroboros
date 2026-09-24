@@ -619,3 +619,39 @@ def test_kb_summary_uses_the_given_model(monkeypatch, tmp_path):
     knowledge_base.get_summary(object(), kb=kb, force_refresh=True,
                                path=str(tmp_path / "kb.json"), model="cohere/m:free")
     assert seen["model"] == "cohere/m:free"
+
+
+def _reply_client(content, finish_reason="stop"):
+    resp = _NS(
+        choices=[_NS(message=_NS(content=content), finish_reason=finish_reason)],
+        usage=_NS(prompt_tokens=1, completion_tokens=1),
+    )
+    return _NS(chat=_NS(completions=_NS(create=lambda **kw: resp)))
+
+
+def test_chat_completion_treats_truncation_as_failure():
+    errors = []
+    content, _ = _llm.chat_completion(
+        _reply_client("1. Step one\n2. Ste", finish_reason="length"),
+        "sys", "user", "m:free", max_tokens=10, on_error=errors.append,
+    )
+    assert content == ""
+    assert errors and errors[0].startswith("TruncatedResponse")
+
+
+def test_generate_code_reports_empty_changes():
+    errors = []
+    changes, _ = _llm.generate_code(
+        _reply_client('{"changes": []}'), "plan", {}, "", model="m:free", on_error=errors.append
+    )
+    assert changes == []
+    assert errors and errors[0].startswith("EmptyChanges")
+
+
+def test_generate_code_reports_unparseable_reply():
+    errors = []
+    changes, _ = _llm.generate_code(
+        _reply_client("{not json}"), "plan", {}, "", model="m:free", on_error=errors.append
+    )
+    assert changes is None
+    assert errors and errors[0].startswith("UnparseableResponse")

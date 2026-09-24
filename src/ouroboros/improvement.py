@@ -249,6 +249,7 @@ def generate_changes(
     file_contents: Dict[str, str],
     config: SafetyConfig,
     model: str = DEFAULT_OPENAI_MODEL,
+    on_error: Optional[Callable[[str], None]] = None,
 ) -> tuple[Optional[List[CodeChange]], Optional[dict]]:
     """Generate code changes from a plan. Returns (changes, usage)."""
     # Agent-mode backend: let the CLI edit the working tree directly, then take
@@ -275,7 +276,9 @@ def generate_changes(
         f"- Task type: {task.task_type}"
     )
 
-    raw_changes, usage = llm.generate_code(client, plan, file_contents, constraints, model=model)
+    raw_changes, usage = llm.generate_code(
+        client, plan, file_contents, constraints, model=model, on_error=on_error
+    )
     if not raw_changes:
         return None, usage
 
@@ -1189,17 +1192,27 @@ def _run_improvement_cycle(
     # Step 5: Generate code changes
     log.info("[improve] Generating code changes...")
     _fire("generating", f"Generating code for: {task.description[:100]}")
-    changes, gen_usage = generate_changes(client, task, plan, relevant_code, config, model=model)
+    gen_errors: List[str] = []
+    changes, gen_usage = generate_changes(
+        client, task, plan, relevant_code, config, model=model, on_error=gen_errors.append
+    )
     if gen_usage:
         improvement_result.total_usage["prompt_tokens"] += gen_usage.get("prompt_tokens", 0)
         improvement_result.total_usage["completion_tokens"] += gen_usage.get("completion_tokens", 0)
 
     if not changes:
-        log.warning("[improve] Failed to generate code changes")
+        # Same reason as for the plan: "no code generated" hid whether the call
+        # failed, was truncated, or answered with nothing.
+        cause = f" ({gen_errors[0]})" if gen_errors else ""
+        log.warning("[improve] Failed to generate code changes%s", cause)
         improvement_result.status = "failed"
+        improvement_result.details = (
+            f"Generation failed: {gen_errors[0]}" if gen_errors
+            else "Failed to generate code changes (model returned nothing)"
+        )
         _fire("failed", f"Failed to generate code: {task.description[:100]}")
         record_improvement(improvement_result, repo_root, model=model)
-        _append_learning(repo_root, f"{_today()} | {task.task_type} | {task.description[:60]} | failed | no code generated")
+        _append_learning(repo_root, f"{_today()} | {task.task_type} | {task.description[:60]} | failed | " + (f"generation failed: {gen_errors[0][:60]}" if gen_errors else "no code generated"))
         return improvement_result
 
     improvement_result.changes = changes

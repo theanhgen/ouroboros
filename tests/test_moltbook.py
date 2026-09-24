@@ -1052,3 +1052,33 @@ def test_load_runner_config_is_quiet_about_a_valid_file(tmp_path, caplog):
 
     assert cfg.max_improvements_per_day == 5
     assert caplog.text == ""
+
+
+def test_source_changed_catches_an_out_of_band_pull(monkeypatch):
+    """A pull made by someone else still restarts the loop (2026-09-24)."""
+    from types import SimpleNamespace
+    from ouroboros import git_ops, moltbook as mb
+
+    heads = iter(["aaa", "bbb"])
+    def fake_git(repo, *args, **kw):
+        if args[0] == "rev-parse":
+            return SimpleNamespace(stdout=next(heads) + "\n")
+        return SimpleNamespace(stdout="src/ouroboros/llm.py\n")
+    monkeypatch.setattr(mb, "_START_HEAD", None)
+    monkeypatch.setattr(git_ops, "_git", fake_git)
+    monkeypatch.setattr(git_ops, "pull_latest", lambda repo: False)
+    assert mb._source_changed(Path("/repo")) is True
+
+
+def test_source_changed_ignores_state_only_commits(monkeypatch):
+    from types import SimpleNamespace
+    from ouroboros import git_ops, moltbook as mb
+
+    def fake_git(repo, *args, **kw):
+        if args[0] == "rev-parse":
+            return SimpleNamespace(stdout="bbb\n")
+        return SimpleNamespace(stdout="config/state.json\n")
+    monkeypatch.setattr(mb, "_START_HEAD", "aaa")
+    monkeypatch.setattr(git_ops, "_git", fake_git)
+    monkeypatch.setattr(git_ops, "pull_latest", lambda repo: False)
+    assert mb._source_changed(Path("/repo")) is False
