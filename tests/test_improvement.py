@@ -648,3 +648,23 @@ def test_stale_task_type_names_the_stuck_type_instead_of_blocking():
     # Older than the 7-day window: ignored.
     old = 8 * 86400
     assert _stale_task_type([rec("fix_bug", 1, 1, old), rec("fix_bug", 1, 1, old)], now) is None
+
+
+def test_stale_task_type_ignores_attempts_that_never_ran_tests():
+    """Failures before the test run (quota, token cap) are not 'no progress'."""
+    from types import SimpleNamespace
+    from ouroboros.improvement import _stale_task_type
+
+    now = 1_800_000_000
+    zero = {"passed": 0, "failed": 0, "errors": 0}
+    untested = SimpleNamespace(
+        timestamp=now - 60, task_type="fix_bug", test_delta={"before": zero, "after": zero}
+    )
+    assert _stale_task_type([untested, untested], now) is None
+    empty = SimpleNamespace(timestamp=now - 60, task_type="fix_bug", test_delta={})
+    assert _stale_task_type([empty, empty], now) is None
+    ran = {"passed": 10, "failed": 0, "errors": 0}
+    tested = SimpleNamespace(
+        timestamp=now - 60, task_type="fix_bug", test_delta={"before": ran, "after": ran}
+    )
+    assert _stale_task_type([tested, tested], now) == "fix_bug"

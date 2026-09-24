@@ -263,6 +263,11 @@ _MODEL_INPUT_BUDGETS = (
     ("gpt-4o", 100_000),
     ("gpt-4", 100_000),
     ("claude", 150_000),
+    # OpenRouter free models in llm_fallback_models: 256k-1M windows. One
+    # budget for all of them, since a fallback gets the primary's request.
+    ("cohere/north-mini-code", 180_000),
+    ("nvidia/nemotron-3-ultra", 180_000),
+    ("qwen/qwen3.8", 180_000),
     # Local Ollama models are typically 8k-32k; assume the small end.
     ("gemma", 6_000),
     ("qwen", 24_000),

@@ -672,3 +672,10 @@ def test_identify_tool_calls_carry_the_original_messages():
 
 def test_parse_json_reply_tolerates_fences():
     assert _llm.parse_json_reply('```json\n{"task_type": "add_test"}\n```') == {"task_type": "add_test"}
+
+
+def test_free_gateway_models_get_their_real_window():
+    assert _llm.model_input_budget("cohere/north-mini-code:free") == 180_000
+    assert _llm.model_input_budget("qwen/qwen3.8-27b:free") == 180_000
+    # A bare local qwen keeps the small Ollama budget.
+    assert _llm.model_input_budget("qwen2.5-coder") == 24_000

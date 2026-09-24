@@ -914,7 +914,17 @@ def _stale_task_type(history: List[Any], now: float) -> Optional[str]:
     quota lockout and a 2500-token generate cap, neither about the task --
     idled every free-model cycle. Callers now steer away from the type.
     """
-    recent = [r for r in history if r.timestamp > now - 7 * 86400]
+    # Only attempts that reached the test run count. One that failed before it
+    # (no plan, no code, a backend outage) records all-zero before/after
+    # counts, which compare equal and read as "no progress" -- which is how a
+    # quota lockout and a token cap blocked fix_bug outright.
+    def _ran_tests(r: Any) -> bool:
+        before = r.test_delta.get("before")
+        if not isinstance(before, dict):
+            return before is not None and r.test_delta.get("after") is not None
+        return sum(v for v in before.values() if isinstance(v, int)) > 0
+
+    recent = [r for r in history if r.timestamp > now - 7 * 86400 and _ran_tests(r)]
     if not recent:
         return None
     last_type = recent[-1].task_type
