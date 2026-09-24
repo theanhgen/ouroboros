@@ -79,3 +79,4 @@
 2026-09-23 | fix_bug | Make `test_runner` fail closed when pytest collects only ski | failed | no code generated
 2026-09-24 | fix_bug | Fix data-loss bug in MemoryStore.index_code: ensure fact str | failed | no code generated
 2026-09-24 | refactor | Consolidate duplicated 'History / prompt context / state pat | failed | no plan generated
+2026-09-24 | add_feature | Implement code-aware indexing in MemoryStore using AST to ex | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
