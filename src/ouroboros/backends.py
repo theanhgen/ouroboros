@@ -53,6 +53,9 @@ _EXTRA_BIN_DIRS = (
 )
 
 _DEFAULT_TIMEOUT = 600
+# Free gateway models are slow, and a codex edit run is many turns of them:
+# on the Pi two real tasks each ran out the 600s default mid-edit.
+_GATEWAY_AGENT_TIMEOUT = 1800
 
 
 class CLIBackendError(RuntimeError):
@@ -653,16 +656,21 @@ def _run_codex_with_fallbacks(
     models: List[Optional[str]] = [model]
     if base_url:
         models += [m for m in (getattr(config, "codex_fallback_models", None) or ()) if m != model]
+        timeout = max(timeout, _GATEWAY_AGENT_TIMEOUT)
     last_exc: Optional[Exception] = None
     for i, candidate in enumerate(models):
         if i:
             _reset_worktree(repo, untracked_before, dirty_before)
-            log.warning("codex on %s failed (%s); trying %s", models[i - 1], last_exc, candidate)
+            log.warning("codex on %s failed (%s); trying %s", models[i - 1], str(last_exc)[:200], candidate)
         try:
             return _run_codex(
                 binary, prompt, model=candidate, cwd=str(repo), edit=True, timeout=timeout,
                 base_url=base_url, reasoning_effort=effort if base_url else None,
             )
+        except subprocess.TimeoutExpired:
+            # A slow model, not a busy one: the next is no faster, and trying
+            # it would stack another full timeout onto the cycle.
+            raise
         except Exception as exc:
             last_exc = exc
     assert last_exc is not None

@@ -64,7 +64,10 @@ def make_client(
     so one setting covers a fallback list that mixes both kinds.
     """
     if base_url:
-        client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0)
+        # The SDK's 600s default let one hung free-model request stall a
+        # cycle for 10 minutes before the retry. 300s still fits a long
+        # generate reply at free-tier speed.
+        client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0, timeout=300)
     else:
         client = OpenAI(api_key=api_key, max_retries=0)
     client._ouroboros_fallback_models = list(fallback_models or [])

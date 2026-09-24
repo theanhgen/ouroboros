@@ -218,3 +218,20 @@ def test_codex_without_gateway_does_not_fall_back(monkeypatch, tmp_path):
     cfg = SafetyConfig(codex_fallback_models=("b:free",))
     with pytest.raises(backends.CLIBackendError):
         backends._run_codex_with_fallbacks("/bin/codex", "p", None, tmp_path, cfg, 60, set(), {})
+
+
+def test_codex_gateway_timeout_is_not_retried_on_the_next_model(monkeypatch, tmp_path):
+    tried = []
+
+    def fake_run_codex(binary, prompt, *, model=None, timeout=None, **kw):
+        tried.append((model, timeout))
+        raise subprocess.TimeoutExpired(["codex"], timeout)
+
+    monkeypatch.setattr(backends, "_run_codex", fake_run_codex)
+    cfg = SafetyConfig(
+        codex_base_url="https://openrouter.ai/api/v1",
+        codex_fallback_models=("a:free", "b:free"),
+    )
+    with pytest.raises(subprocess.TimeoutExpired):
+        backends._run_codex_with_fallbacks("/bin/codex", "p", "a:free", tmp_path, cfg, 600, set(), {})
+    assert tried == [("a:free", backends._GATEWAY_AGENT_TIMEOUT)]
