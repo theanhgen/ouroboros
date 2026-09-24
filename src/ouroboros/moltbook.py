@@ -221,6 +221,9 @@ class RunnerConfig:
     enable_self_improvement: bool = False
     enable_self_improvement_in_loop: bool = True
     improvement_interval_hours: int = 48
+    # Overrides improvement_interval_hours when > 0. Operator-only (not in
+    # COMMENT_SUGGESTIBLE_FIELDS); floored at 10 minutes by the runner.
+    improvement_interval_minutes: int = 0
     self_improvement_retry_minutes: int = 60
     # Mirrors SafetyConfig.max_improvements_per_day so the tracked config can
     # actually set it. Counts attempts in a rolling 24h window, not merges.
@@ -382,6 +385,7 @@ def load_runner_config() -> RunnerConfig:
         enable_self_improvement=bool(data.get("enable_self_improvement", False)),
         enable_self_improvement_in_loop=bool(data.get("enable_self_improvement_in_loop", True)),
         improvement_interval_hours=improvement_interval,
+        improvement_interval_minutes=int(data.get("improvement_interval_minutes", 0) or 0),
         self_improvement_retry_minutes=int(data.get("self_improvement_retry_minutes", 60)),
         max_improvements_per_day=int(data.get("max_improvements_per_day", 3)),
         improvement_model=str(data.get("improvement_model", DEFAULT_OPENAI_MODEL)),
@@ -1710,7 +1714,11 @@ def run_loop() -> int:
                 last_improvement = state.get("last_improvement_attempt")
                 should_improve = (
                     last_improvement is None or
-                    (now - int(last_improvement)) >= cfg.improvement_interval_hours * 3600
+                    (now - int(last_improvement)) >= (
+                        max(10, cfg.improvement_interval_minutes) * 60
+                        if cfg.improvement_interval_minutes > 0
+                        else cfg.improvement_interval_hours * 3600
+                    )
                 )
 
                 if should_improve:

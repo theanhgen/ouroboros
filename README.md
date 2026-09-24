@@ -29,10 +29,11 @@ python -m ouroboros moltbook run
 
 Two systemd units, and it matters which is which:
 
-- **`ouroboros-self-improve.timer`** fires every 30 min. Most ticks log
-  `[skipped_due]` and exit -- a real cycle only runs when
-  `improvement_interval_hours` has elapsed. Seeing 30-minute ticks in the
-  journal is not activity.
+- **`ouroboros-self-improve.timer`** fires every 15 min. A tick logs
+  `[skipped_due]` and exits unless `improvement_interval_minutes` (or, when
+  that is 0, `improvement_interval_hours`) has elapsed. Since 2026-09-24 the
+  interval is 15 min, so most ticks are real cycles, still capped by
+  `max_improvements_per_day` and blocked by an open improvement PR.
 - **`ouroboros-moltbook.service`** is the long-running loop, and it is also
   **the deployment mechanism**: it polls git every 60s and calls `os._exit(0)`
   on a source change so systemd (`Restart=always`) relaunches it on the new

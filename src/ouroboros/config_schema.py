@@ -36,6 +36,8 @@ _BOUNDS: Dict[str, Bounds] = {
     "git_push_interval_hours": Bounds(1, 8_760),
     "github_improvement_interval_hours": Bounds(1, 8_760),
     "improvement_interval_hours": Bounds(1, 8_760),
+    # 0 = use improvement_interval_hours.
+    "improvement_interval_minutes": Bounds(0, 525_600),
     "issue_scouting_interval_hours": Bounds(1, 8_760),
     "min_post_interval_hours": Bounds(1, 8_760),
     "self_improve_interval_hours": Bounds(1, 8_760),

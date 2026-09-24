@@ -243,6 +243,7 @@ def _run_codex(
     edit: bool = False,
     timeout: int = _DEFAULT_TIMEOUT,
     base_url: Optional[str] = None,
+    reasoning_effort: Optional[str] = None,
 ) -> Tuple[str, Optional[Dict[str, int]]]:
     cmd = [binary, "exec"]
     env = None
@@ -262,6 +263,8 @@ def _run_codex(
         env["CODEX_HOME"] = codex_home
         if model:
             cmd += ["-c", f"model={json.dumps(model)}"]
+        if reasoning_effort:
+            cmd += ["-c", f"model_reasoning_effort={json.dumps(reasoning_effort)}"]
     # Only override the model when an explicit codex/openai model id is given.
     elif model and str(model).startswith(("gpt", "o3", "o4", "codex")):
         cmd += ["-c", f'model="{model}"']
@@ -629,6 +632,43 @@ def _reset_worktree(
             pass
 
 
+def _run_codex_with_fallbacks(
+    binary: str,
+    prompt: str,
+    model: Optional[str],
+    repo: Path,
+    config: Any,
+    timeout: int,
+    untracked_before: Any,
+    dirty_before: Any,
+) -> Tuple[str, Optional[Dict[str, int]]]:
+    """Run codex on model, then on each gateway fallback until one succeeds.
+
+    Only through a gateway: there a failure is usually the free model being
+    rate-limited upstream, and the next model is a real alternative. The tree
+    is reset between attempts so a half-finished edit does not carry over.
+    """
+    base_url = getattr(config, "codex_base_url", None) or None
+    effort = getattr(config, "codex_reasoning_effort", None) or None
+    models: List[Optional[str]] = [model]
+    if base_url:
+        models += [m for m in (getattr(config, "codex_fallback_models", None) or ()) if m != model]
+    last_exc: Optional[Exception] = None
+    for i, candidate in enumerate(models):
+        if i:
+            _reset_worktree(repo, untracked_before, dirty_before)
+            log.warning("codex on %s failed (%s); trying %s", models[i - 1], last_exc, candidate)
+        try:
+            return _run_codex(
+                binary, prompt, model=candidate, cwd=str(repo), edit=True, timeout=timeout,
+                base_url=base_url, reasoning_effort=effort if base_url else None,
+            )
+        except Exception as exc:
+            last_exc = exc
+    assert last_exc is not None
+    raise last_exc
+
+
 def agent_generate_changes(
     task: Any,
     plan: str,
@@ -663,9 +703,9 @@ def agent_generate_changes(
         if backend == "claude":
             _text, usage = _run_claude(binary, prompt, model=model, cwd=str(repo), edit=True, timeout=timeout)
         elif backend == "codex":
-            _text, usage = _run_codex(
-                binary, prompt, model=model, cwd=str(repo), edit=True, timeout=timeout,
-                base_url=getattr(config, "codex_base_url", None) or None,
+            _text, usage = _run_codex_with_fallbacks(
+                binary, prompt, model, repo, config, timeout,
+                untracked_before, dirty_before,
             )
         elif backend == "agy":
             _text, usage = _run_agy(binary, prompt, model=model, cwd=str(repo), edit=True, timeout=timeout)
