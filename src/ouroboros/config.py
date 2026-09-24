@@ -62,6 +62,10 @@ class SafetyConfig:
     # while keeping generation on the default OpenAI backend.
     reviewer_base_url: Optional[str] = None
     reviewer_api_key: Optional[str] = None
+    # OpenAI-compatible gateway for the codex agent backend (e.g. OpenRouter).
+    # Set, codex runs generator_model there with the llm_api_key credential
+    # instead of on the ChatGPT account.
+    codex_base_url: Optional[str] = None
 
     # Self-improvement limits
     max_improvements_per_day: int = 3

@@ -94,3 +94,69 @@ def test_scheduled_runner_carries_role_models_into_safety_config(
     safety = mock_run_cycle.call_args.args[2]
     assert safety.identify_model == "gpt-5.6-luna"
     assert safety.plan_model == "gpt-5.6-luna"
+
+
+def test_run_codex_through_gateway_uses_its_provider_and_key(monkeypatch):
+    """codex_base_url moves codex off the ChatGPT account onto the gateway."""
+    seen = {}
+
+    def fake_run(cmd, **kwargs):
+        seen["cmd"], seen["env"] = cmd, kwargs.get("env")
+        return subprocess.CompletedProcess(cmd, 0, stdout="done", stderr="")
+
+    monkeypatch.setattr(backends.subprocess, "run", fake_run)
+    monkeypatch.setenv("LLM_API_KEY", "sk-or-test")
+    backends._run_codex(
+        "/bin/codex", "prompt", model="cohere/north-mini-code:free",
+        edit=True, base_url="https://openrouter.ai/api/v1",
+    )
+
+    cmd = seen["cmd"]
+    assert cmd[:4] == ["/bin/codex", "exec", "--sandbox", "workspace-write"]
+    assert (
+        'model_providers.ouroboros={name="ouroboros",'
+        'base_url="https://openrouter.ai/api/v1",'
+        'env_key="OUROBOROS_LLM_API_KEY",wire_api="responses"}'
+    ) in cmd
+    assert 'model_provider="ouroboros"' in cmd
+    # Any model id is passed through, not only gpt-* ones.
+    assert 'model="cohere/north-mini-code:free"' in cmd
+    assert cmd[-1] == "prompt"
+    # The key travels in the environment, never on the command line.
+    assert seen["env"]["OUROBOROS_LLM_API_KEY"] == "sk-or-test"
+    assert not any("sk-or-test" in part for part in cmd)
+
+
+def test_run_codex_without_gateway_keeps_the_default_env(monkeypatch):
+    seen = {}
+
+    def fake_run(cmd, **kwargs):
+        seen["env"] = kwargs.get("env")
+        return subprocess.CompletedProcess(cmd, 0, stdout="done", stderr="")
+
+    monkeypatch.setattr(backends.subprocess, "run", fake_run)
+    backends._run_codex("/bin/codex", "prompt", model="cohere/x:free")
+    assert seen["env"] is None
+
+
+def test_agent_generate_passes_codex_base_url(monkeypatch, tmp_path):
+    seen = {}
+
+    def fake_run_codex(binary, prompt, **kwargs):
+        seen.update(kwargs)
+        return "", None
+
+    monkeypatch.setattr(backends, "resolve_binary", lambda b: "/bin/codex")
+    monkeypatch.setattr(backends, "_run_codex", fake_run_codex)
+    monkeypatch.setattr(backends, "_untracked_files", lambda repo: set())
+    monkeypatch.setattr(backends, "_snapshot_tracked_dirty", lambda repo: {})
+    monkeypatch.setattr(backends, "_build_agent_prompt", lambda *a: "p")
+    monkeypatch.setattr(backends, "_reset_worktree", lambda *a: None)
+    monkeypatch.setattr(backends, "_git", lambda *a, **k: subprocess.CompletedProcess(a, 0, "", ""))
+
+    config = SafetyConfig(codex_base_url="https://openrouter.ai/api/v1")
+    backends.agent_generate_changes(
+        ImprovementTask(task_id="t", task_type="fix_bug", description="d", target_files=[], evidence="e"),
+        "plan", tmp_path, config, "codex", model="m:free",
+    )
+    assert seen["base_url"] == "https://openrouter.ai/api/v1"
