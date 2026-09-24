@@ -416,7 +416,17 @@ def chat_completion(
             if on_error is not None:
                 on_error(msg)
             return "", usage
-        return choice.message.content or "", usage
+        content = choice.message.content or ""
+        if not content:
+            # Not an error (callers tell "empty" from "failed"), but say why:
+            # typically a reasoning model that spent the reply thinking.
+            details = getattr(resp.usage, "completion_tokens_details", None) if resp.usage else None
+            log.warning(
+                "empty completion from %s: finish_reason=%s reasoning_tokens=%s max_tokens=%s",
+                model, getattr(choice, "finish_reason", None),
+                getattr(details, "reasoning_tokens", None), max_tokens,
+            )
+        return content, usage
     except Exception as exc:
         log.exception("completion failed")
         if on_error is not None:
@@ -547,8 +557,10 @@ def plan_code_change(
     )
     # Reasoning models spend part of the cap thinking; at 800 with
     # reasoning.effort=high the plan text itself was cut off mid-step.
-    # A truncated reply is now a failure, so leave real headroom.
-    content, usage = chat_completion(client, system, user, model, max_tokens=4000,
+    # A truncated reply is now a failure, so leave real headroom: measured on
+    # the Pi, north-mini-code at effort=high reasons ~3.5k tokens before the
+    # plan text, and half the calls hit a 4000 cap.
+    content, usage = chat_completion(client, system, user, model, max_tokens=12000,
                                      on_error=on_error)
     return (content if content else None, usage)
 
