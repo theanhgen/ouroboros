@@ -143,7 +143,9 @@ def cmd_improve_run(args: argparse.Namespace) -> int:
     result = run_scheduled_self_improvement(
         force=getattr(args, "force", False),
         dry_run=getattr(args, "dry_run", False),
-        model=getattr(args, "model", DEFAULT_OPENAI_MODEL),
+        # None defers to improvement_model. A hardcoded default here meant the
+        # timer (which passes no --model) never used the configured model.
+        model=getattr(args, "model", None),
     )
 
     print(f"Improvement result: [{result.status}] {result.message}")
@@ -471,7 +473,7 @@ def build_parser() -> argparse.ArgumentParser:
     imp_sub = p_improve.add_subparsers(dest="imp_command", required=True)
 
     p_imp_run = imp_sub.add_parser("run", help="Run one improvement cycle")
-    p_imp_run.add_argument("--model", default=DEFAULT_OPENAI_MODEL, help="LLM model to use")
+    p_imp_run.add_argument("--model", default=None, help="LLM model to use (default: improvement_model from agent.json)")
     p_imp_run.add_argument("--dry-run", action="store_true", help="Identify only, don't act")
     p_imp_run.add_argument("--force", action="store_true", help="Ignore schedule and run immediately")
     p_imp_run.set_defaults(func=cmd_improve_run)
