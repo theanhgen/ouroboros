@@ -563,7 +563,7 @@ def plan_code_change(
     # A truncated reply is now a failure, so leave real headroom: measured on
     # the Pi, north-mini-code at effort=high reasons ~3.5k tokens before the
     # plan text, and half the calls hit a 4000 cap.
-    content, usage = chat_completion(client, system, user, model, max_tokens=12000,
+    content, usage = chat_completion(client, system, user, model, max_tokens=24000,
                                      on_error=on_error)
     return (content if content else None, usage)
 

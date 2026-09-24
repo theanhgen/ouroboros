@@ -904,6 +904,30 @@ def run_improvement_cycle(
 
 _MAX_STALE_ATTEMPTS = 2
 
+_REACT_FINAL_PROMPT = (
+    "Stop investigating; no more tool calls. Reply now with only the JSON object "
+    "with keys: task_type, description, target_files, evidence, priority."
+)
+
+
+def _parse_react_answer(content: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Parse a ReAct final answer, or None (logged) when there is none."""
+    try:
+        return llm.parse_json_reply(content)
+    except (ValueError, TypeError) as exc:
+        log.warning("[improve] ReAct final answer unparseable (%s); starts %r", exc, (content or "")[:200])
+        return None
+
+
+def _tool_args(tool_call: Any) -> Dict[str, Any]:
+    """Tool-call arguments; a model may send "" or broken JSON for none."""
+    try:
+        args = json.loads(tool_call.function.arguments or "{}")
+    except ValueError:
+        log.warning("[improve] unparseable tool arguments for %s", tool_call.function.name)
+        return {}
+    return args if isinstance(args, dict) else {}
+
 
 def _stale_task_type(history: List[Any], now: float) -> Optional[str]:
     """Return the newest task_type whose last attempts made no test progress.
@@ -1107,7 +1131,7 @@ def _run_improvement_cycle(
             {"role": "assistant", "tool_calls": tool_calls}
         ]
         for tool_call in tool_calls:
-            tool_result = tool_runner.execute(tool_call.function.name, json.loads(tool_call.function.arguments))
+            tool_result = tool_runner.execute(tool_call.function.name, _tool_args(tool_call))
             messages.append({
                 "tool_call_id": tool_call.id,
                 "role": "tool",
@@ -1127,7 +1151,9 @@ def _run_improvement_cycle(
             msg = resp.choices[0].message
             # If no tool calls, treat as final answer
             if not msg.tool_calls:
-                task_data = llm.parse_json_reply(msg.content)
+                task_data = _parse_react_answer(msg.content)
+                if task_data is None:
+                    break
                 if resp.usage:
                     task_data["_usage"] = {
                         "prompt_tokens": resp.usage.prompt_tokens,
@@ -1138,7 +1164,7 @@ def _run_improvement_cycle(
             # More tool calls -- execute and feed results back
             messages.append({"role": "assistant", "tool_calls": msg.tool_calls})
             for tool_call in msg.tool_calls:
-                tool_result = tool_runner.execute(tool_call.function.name, json.loads(tool_call.function.arguments))
+                tool_result = tool_runner.execute(tool_call.function.name, _tool_args(tool_call))
                 messages.append({
                     "tool_call_id": tool_call.id,
                     "role": "tool",
@@ -1147,20 +1173,30 @@ def _run_improvement_cycle(
                 })
             if react_round == _MAX_REACT_ROUNDS:
                 log.info("[improve] ReAct loop hit max rounds (%d), forcing final answer", _MAX_REACT_ROUNDS)
-                # Force a final answer without tools
+                # Force a final answer without tools. Say so: offered no tools,
+                # a model mid-investigation replied with empty content, and
+                # parsing that crashed the whole cycle (2026-09-25 00:29).
+                messages.append({"role": "user", "content": _REACT_FINAL_PROMPT})
                 resp = llm.create_completion(
-                identify_client,
+                    identify_client,
                     model=model,
                     messages=messages,
                     response_format={"type": "json_object"}
                 )
-                task_data = llm.parse_json_reply(resp.choices[0].message.content)
+                task_data = _parse_react_answer(resp.choices[0].message.content)
+                if task_data is None:
+                    break
                 if resp.usage:
                     task_data["_usage"] = {
                         "prompt_tokens": resp.usage.prompt_tokens,
                         "completion_tokens": resp.usage.completion_tokens,
                         "total_tokens": resp.usage.total_tokens,
                     }
+
+    if task_data is None:
+        log.info("[improve] No improvements identified (unparseable final answer)")
+        _fire("cycle_end", "No improvements identified (unparseable final answer)")
+        return None
 
     task = ImprovementTask.from_llm_response(task_data)
     if stale_type and task.task_type == stale_type:
