@@ -470,7 +470,9 @@ def chat_completion(
     user_prompt: str,
     model: str = DEFAULT_OPENAI_MODEL,
     response_format: Optional[Dict[str, str]] = None,
-    max_tokens: int = 1000,
+    # Reasoning tokens count against this on the gateways; 1000 truncated the
+    # review and the identify fallback on 2026-09-25.
+    max_tokens: int = 8000,
     on_error: Optional[Callable[[str], None]] = None,
 ) -> tuple[str, Optional[dict]]:
     """Generic wrapper for chat completion. Returns (content, usage_dict).
@@ -830,7 +832,7 @@ def review_code_changes(
     # branch, logged as though the reviewer had judged the change and objected.
     call_errors: list = []
     content, usage = chat_completion(
-        client, system, user, model, max_tokens=1000, on_error=call_errors.append
+        client, system, user, model, max_tokens=8000, on_error=call_errors.append
     )
     if call_errors:
         log.warning("review_code_changes: the review call failed: %s", call_errors[0])
@@ -1054,7 +1056,7 @@ def generate_kb_summary(
         resp = create_completion(
             client,
             model=model,
-            **_completion_token_kwargs(model, 200),
+            **_completion_token_kwargs(model, 2000),
             messages=[
                 {"role": "system", "content": prompts.load_kb_summary_prompt()},
                 {"role": "user", "content": entries_text}
