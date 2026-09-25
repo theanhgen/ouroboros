@@ -530,6 +530,21 @@ def _format_failure_triage(test_result: RunnerOutcome) -> str:
     return "\n".join(lines)
 
 
+def _unvalidated_run_reason(before: RunnerOutcome, after: RunnerOutcome) -> Optional[str]:
+    """Why ``after`` cannot count as "no worse" than ``before``, or None.
+
+    Failure/error counts alone read a run that executed less (collection or
+    usage error, crash, deleted tests) as 0 failed / 0 errors -- no regression.
+    """
+    if after.total < before.total:
+        return f"fewer tests ran: {before.total} before, {after.total} after"
+    if after.returncode != 0 and before.returncode == 0:
+        return f"test run exited {after.returncode} where the baseline exited 0"
+    if before.coverage_percent is not None and after.coverage_percent is None:
+        return "coverage was measured before but not after"
+    return None
+
+
 def _retry_with_root_cause(
     client: Any,
     task: ImprovementTask,
@@ -607,6 +622,20 @@ def _retry_with_root_cause(
 
     retry_test = run_tests(repo_root)
     log.info("[retry] Tests after corrected code: %s", retry_test.summary())
+
+    # The same gates validate_improvement applies to the first attempt.
+    unvalidated = _unvalidated_run_reason(test_before, retry_test)
+    if unvalidated:
+        log.warning("[retry] Corrected code not validated (%s), reverting", unvalidated)
+        revert_changes(retry_changes, repo_root)
+        return None
+
+    if test_before.coverage_percent is not None and retry_test.coverage_percent is not None:
+        cov_delta = test_before.coverage_percent - retry_test.coverage_percent
+        if cov_delta > 1.0:
+            log.warning("[retry] Corrected code drops coverage by %.1f%%, reverting", cov_delta)
+            revert_changes(retry_changes, repo_root)
+            return None
 
     if retry_test.failed > test_before.failed or retry_test.errors > test_before.errors:
         log.warning("[retry] Corrected code still regresses, reverting")
@@ -751,6 +780,15 @@ def validate_improvement(
         if refused:
             result.status = "failed"
             result.details += f"; revert refused for: {', '.join(refused)}"
+        return result
+
+    # A hollow or truncated run reports 0 failed / 0 errors (#107).
+    unvalidated = _unvalidated_run_reason(result.test_before, result.test_after)
+    if unvalidated:
+        log.warning("Test run after change not validated (%s), reverting", unvalidated)
+        result.details = f"Cannot validate change: {unvalidated}"
+        revert_changes(changes, repo_root)
+        result.status = "reverted"
         return result
 
     result.status = "success"
