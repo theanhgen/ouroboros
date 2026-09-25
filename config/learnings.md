@@ -1,4 +1,3 @@
-2026-06-30 | add_feature | Improve codebase context building in analyze_issue within sr | failed | reviewer rejected
 2026-07-04 | add_test | Add unit tests in tests/test_backends.py to verify that _git | success | tests: 219 -> 221
 2026-07-05 | fix_bug | Fix parsing of git status --porcelain output in _collect_cha | success | tests: 221 -> 224
 2026-07-05 | add_feature | Modify extract_code_metadata in src/ouroboros/codebase.py to | success | tests: 224 -> 226
@@ -92,6 +91,7 @@
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
+2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
