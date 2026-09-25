@@ -367,9 +367,9 @@ class MemoryStore:
             existing_rows = self._conn.execute(
                 """
                 SELECT fact_id, content FROM facts
-                WHERE category = ? AND tags = ?
+                WHERE (category = ? OR category = ?) AND tags = ?
                 """,
-                ("code", file_path),
+                ("code", "code_structure", file_path),
             ).fetchall()
             existing_by_content = {
                 row["content"]: int(row["fact_id"]) for row in existing_rows
@@ -402,6 +402,7 @@ class MemoryStore:
                     fact_ids.append(self.add_fact(fact_content, category="code", tags=file_path))
             if stale_ids or has_new_facts:
                 self._rebuild_bank("code")
+                self._rebuild_bank("code_structure")
             return fact_ids
 
     def remove_code_file(self, file_path: str) -> int:
