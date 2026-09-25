@@ -121,9 +121,9 @@ def record_improvement(result: "ImprovementResult", repo_root: Optional[Path] = 
         update_json_file(path, _append, default=[], replace=True)
         _history_storage(repo_root).mark_migration_pending(_HISTORY_MIGRATION)
 
-    # Persist to SQLite
+    # Persist to SQLite, in the same repo's database as the history record
     try:
-        storage = OuroborosStorage()
+        storage = _history_storage(repo_root)
         cycle_id = storage.record_cycle(CycleRecord(
             ts=record.timestamp,
             task_type=record.task_type,
