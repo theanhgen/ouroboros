@@ -91,3 +91,4 @@
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | no plan generated
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Too many lines changed: 234 > 200
 2026-09-25 | fix_bug | Fix MemoryStore.index_code to properly implement code-aware  | failed | reviewer rejected
+2026-09-25 | add_test | Add regression test for code-aware indexing in MemoryStore.i | failed | generation failed: RateLimitError: Error code: 429 - {'error': {'message': 'Rat
