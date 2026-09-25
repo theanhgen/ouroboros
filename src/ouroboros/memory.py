@@ -359,7 +359,7 @@ class MemoryStore:
 
         if not facts:
             # Strip the whole fallback fact line to match add_fact's normalization
-            stripped = f"[code] {file_path}: {content[:500]}".strip()
+            stripped = f"[code] {file_path}: {content[:500].strip()}".strip()
             if stripped:
                 facts.append(stripped)
 
