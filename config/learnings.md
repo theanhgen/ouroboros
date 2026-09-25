@@ -1,4 +1,3 @@
-2026-07-14 | fix_bug | Fix path verification in validate_modification_scope within  | success | tests: 238 -> 240
 2026-07-14 | fix_bug | Fix parsing of git status --porcelain output in commit_auto_ | success | tests: 240 -> 243
 2026-07-15 | fix_bug | Fix backlog duplicate checking in add_item within src/ourobo | success | tests: 243 -> 245
 2026-07-15 | refactor | Refactor backlog and evaluation modules to use the centraliz | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 1 after
+2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Forbidden file modification: src/ouroboros/evaluation.py
