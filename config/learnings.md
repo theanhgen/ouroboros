@@ -1,4 +1,3 @@
-2026-08-01 | refactor | Refactor get_function_signatures in src/ouroboros/codebase.p | failed | no plan generated
 2026-08-01 | add_feature | Add a validate_import_policy function in src/ouroboros/polic | failed | no plan generated
 2026-08-01 | fix_bug | Add dimension validation to encode_atom in src/ouroboros/hol | failed | no plan generated
 2026-08-02 | fix_bug | Fix bind function in src/ouroboros/holographic.py to validat | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-25 | add_test | Convert the standalone `test_index_code_normalization` funct | duplicate | already completed: Convert the standalone `test_index_code_normalization` funct
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | generation failed: EditMismatch: src/ouroboros/storage_helpers.py: SEARCH block
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | failed | generation failed: EditMismatch: src/ouroboros/memory.py: empty SEARCH on an ex
+2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | reverted | Coverage regression: dropped from 79.0% to 74.0%
