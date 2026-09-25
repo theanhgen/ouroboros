@@ -37,6 +37,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 
 from .git_ops import (
+    _AUTO_STATE_FILES,
     _decode_git_path,
     _git_porcelain_changes,
     _git_porcelain_target_path,
@@ -576,6 +577,18 @@ def _snapshot_tracked_dirty(repo: Path) -> Dict[str, str]:
     return snapshot
 
 
+# Runtime state files the loop rewrites on its own (config/state.json and its
+# siblings). When one changed during an agent run, collecting it as an agent
+# edit tripped the forbidden-path policy and failed the cycle before any code
+# was produced (#139). None of them is ever legitimate agent work, so they are
+# left out of the change set and _reset_worktree puts them back as they were,
+# pre-existing dirty contents included. The docs/wiki/ directory entry is not
+# carried over: the agent may edit the wiki.
+_RUNTIME_STATE_FILES = frozenset(
+    entry for entry in _AUTO_STATE_FILES if not entry.endswith("/")
+)
+
+
 def _collect_changes(
     repo: Path,
     untracked_before: set,
@@ -586,6 +599,8 @@ def _collect_changes(
     proc = _git(repo, "status", "--porcelain")
     changes: List[Any] = []
     for status, path in _git_porcelain_changes(proc.stdout):
+        if path in _RUNTIME_STATE_FILES:
+            continue
         # Ignore untracked files that already existed before the agent ran
         # (e.g. local db/wal files); only agent-created ones count.
         if status == "??" and path in untracked_before:

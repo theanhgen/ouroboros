@@ -215,3 +215,44 @@ class TestResetWorktree:
         else:
             assert [change.file_path for change in changes] == ["code.py"]
             assert usage == {"prompt_tokens": 2, "completion_tokens": 1}
+
+
+class TestRuntimeStateIsolation:
+    """#139: a runtime state file that changed during the agent run was
+    collected as an agent edit, and `config/state.json` then failed the
+    forbidden-path policy before any code was produced."""
+
+    @pytest.fixture
+    def state_repo(self, repo):
+        (repo / "config").mkdir()
+        (repo / "config" / "state.json").write_text('{"cycle": 1}\n')
+        (repo / "docs" / "wiki").mkdir(parents=True)
+        (repo / "docs" / "wiki" / "Home.md").write_text("home\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "state")
+        return repo
+
+    def test_state_and_source_edits_in_one_run(self, monkeypatch, state_repo):
+        repo = state_repo
+        state = repo / "config" / "state.json"
+        state.write_text('{"cycle": 2}\n')             # dirty BEFORE the run
+
+        def fake_run_claude(binary, prompt, *, model=None, cwd=None, edit=False, timeout=600):
+            state.write_text('{"cycle": 3}\n')         # state rewritten mid-run
+            (repo / "config" / "metrics.json").write_text("{}\n")   # state created mid-run
+            (repo / "code.py").write_text("agent changed code\n")
+            (repo / "docs" / "wiki" / "Home.md").write_text("agent wiki edit\n")
+            return "done", {"prompt_tokens": 2, "completion_tokens": 1}
+
+        monkeypatch.setattr(backends, "resolve_binary", lambda name: "/usr/bin/claude")
+        monkeypatch.setattr(backends, "_run_claude", fake_run_claude)
+
+        changes, _usage = backends.agent_generate_changes(
+            _Task(), "plan", repo, _Cfg(), "claude",
+        )
+
+        assert sorted(c.file_path for c in changes) == ["code.py", "docs/wiki/Home.md"]
+        # The pre-existing state change survives; the mid-run ones are gone.
+        assert state.read_text() == '{"cycle": 2}\n'
+        assert not (repo / "config" / "metrics.json").exists()
+        assert (repo / "code.py").read_text() == "original\n"
