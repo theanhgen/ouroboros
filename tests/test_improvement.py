@@ -129,6 +129,19 @@ def test_validate_refuses_when_baseline_tests_did_not_run(tmp_path):
     assert rt.call_count == 1
 
 
+def test_validate_refuses_when_baseline_tests_all_skipped(tmp_path):
+    # Regression (#147): an all-skipped baseline exits 0 with zero executed
+    # tests. It must hit the same "cannot validate" guard, not apply changes.
+    task = ImprovementTask("t", "fix_bug", "x", ["src/ouroboros/x.py"], "")
+    changes = [CodeChange("src/ouroboros/x.py", "a\n", "b\n", "d")]
+    all_skipped = RunnerOutcome(passed=0, failed=0, errors=0, returncode=0)
+    with patch("ouroboros.improvement.run_tests", return_value=all_skipped) as rt:
+        result = validate_improvement(task, changes, tmp_path, config=SafetyConfig())
+    assert result.status == "failed"
+    assert "Cannot validate" in result.details
+    assert rt.call_count == 1
+
+
 def test_count_changed_lines():
     assert _count_changed_lines("a\nb\nc\n", "a\nb\nc\n") == 0
     assert _count_changed_lines("a\nb\n", "a\nX\n") == 1
