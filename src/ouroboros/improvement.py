@@ -847,6 +847,27 @@ class ToolRunner:
     def __init__(self, repo_root: Path):
         self.repo_root = repo_root
 
+    def _inside_repo(self, file_path: str) -> Path:
+        """Resolve a model-supplied read path, refusing anything outside repo_root.
+
+        The path comes straight from the LLM. Joined unchecked, an absolute
+        path replaces repo_root outright, ../ walks out of it, and a symlink
+        inside the tree can point anywhere -- so the read tools would hand back
+        any file the process can open. Resolving follows the symlinks; the
+        containment check then judges where the path actually lands.
+        """
+        if Path(file_path).is_absolute():
+            raise PermissionError(
+                f"Path is outside the repository boundary: {file_path} is absolute"
+            )
+        root = self.repo_root.resolve()
+        full_path = (self.repo_root / file_path).resolve()
+        if full_path != root and root not in full_path.parents:
+            raise PermissionError(
+                f"Path is outside the repository boundary: {file_path} -> {full_path}"
+            )
+        return full_path
+
     def execute(self, name: str, args: dict) -> str:
         if name == "grep_codebase":
             pattern = args.get("pattern", "")
@@ -868,7 +889,7 @@ class ToolRunner:
             path = args.get("file_path", "")
             try:
                 from .codebase import read_file_raw, extract_code_metadata
-                full_path = self.repo_root / path
+                full_path = self._inside_repo(path)
                 content = read_file_raw(full_path)
                 meta = extract_code_metadata(content, path)
                 return str(meta)
@@ -878,7 +899,7 @@ class ToolRunner:
             path = args.get("file_path", "")
             try:
                 from .codebase import read_file_raw
-                return read_file_raw(self.repo_root / path)
+                return read_file_raw(self._inside_repo(path))
             except Exception as e:
                 return f"Error reading file: {e}"
         elif name == "run_tests":
