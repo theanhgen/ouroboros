@@ -94,3 +94,5 @@
 2026-09-25 | add_test | Add regression test for code-aware indexing in MemoryStore.i | failed | generation failed: RateLimitError: Error code: 429 - {'error': {'message': 'Rat
 2026-09-25 | fix_bug | Improve test validation safety by modifying RunnerOutcome.su | failed | reviewer rejected
 2026-09-25 | add_feature | Implement structured code indexing in MemoryStore.index_code | failed | generation failed: EditMismatch: src/ouroboros/memory.py: SEARCH block not foun
+2026-09-25 | add_feature | Implement dual-category code indexing in MemoryStore.index_c | failed | reviewer rejected
+2026-09-25 | fix_bug | Improve test validation safety by modifying `RunnerOutcome.s | success | tests: 1293 -> 1296
