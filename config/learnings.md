@@ -1,4 +1,3 @@
-2026-03-30 | fix_bug |  | failed | reviewer rejected
 2026-04-09 | fix_bug |  | failed | reviewer rejected
 2026-04-14 | fix_bug |  | failed | reviewer rejected
 2026-04-18 | fix_bug |  | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-09-25 | fix_bug | Improve test validation safety by modifying `RunnerOutcome.s | success | tests: 1293 -> 1296
 2026-09-25 | add_feature | Implement code-aware indexing in MemoryStore by modifying th | failed | reviewer rejected
 2026-09-25 | fix_bug | Rectify the `MemoryStore` schema and indexing logic in `src/ | failed | PR creation failed
+2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | success | tests: 1296 -> 1296
