@@ -10,7 +10,7 @@ from openai import OpenAI
 from .model_defaults import DEFAULT_OPENAI_MODEL
 from .backends import CLIBackendError
 from . import lifecycle
-from .retry import is_retryable, retry_with_backoff
+from .retry import is_daily_quota_exhausted, is_retryable, retry_with_backoff
 from . import prompts
 
 log = logging.getLogger(__name__)
@@ -93,25 +93,111 @@ def load_llm_api_key() -> str:
     raise RuntimeError("llm_base_url is set but no LLM_API_KEY / llm_api_key was found.")
 
 
+def load_llm_overflow_api_key() -> str:
+    """Key for llm_overflow_base_url: LLM_OVERFLOW_API_KEY or credentials.json."""
+    key = os.environ.get("LLM_OVERFLOW_API_KEY")
+    if key:
+        return key
+    cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
+    if os.path.exists(cred_path):
+        with open(cred_path, "r", encoding="utf-8") as f:
+            key = json.load(f).get("llm_overflow_api_key")
+        if key:
+            return key
+    raise RuntimeError("llm_overflow_base_url is set but no LLM_OVERFLOW_API_KEY / llm_overflow_api_key was found.")
+
+
 def make_runner_client(cfg: Any) -> Any:
     """Build the API client the runner config asks for.
 
-    With llm_base_url unset this is the plain OpenAI client, as before.
+    With llm_base_url unset this is the plain OpenAI client, as before. With
+    llm_overflow_base_url also set, the client carries a second gateway that
+    create_completion switches to once the first reports its daily quota
+    spent (OpenRouter free models: 1000 requests/day per account, however
+    many models share it).
     """
     base_url = getattr(cfg, "llm_base_url", "") or ""
     if not base_url:
         return make_client(load_openai_key())
-    return make_client(
+    client = make_client(
         load_llm_api_key(),
         base_url=base_url,
         fallback_models=getattr(cfg, "llm_fallback_models", None),
         reasoning_effort=getattr(cfg, "llm_reasoning_effort", "") or "",
     )
+    overflow_url = getattr(cfg, "llm_overflow_base_url", "") or ""
+    overflow_model = getattr(cfg, "llm_overflow_model", "") or ""
+    if overflow_url and overflow_model:
+        try:
+            client._ouroboros_overflow = (
+                make_client(load_llm_overflow_api_key(), base_url=overflow_url),
+                overflow_model,
+            )
+        except Exception:
+            log.warning("overflow gateway not configured; staying on %s only", base_url, exc_info=True)
+    return client
+
+
+# Epoch seconds until which the primary gateway's daily quota is known spent.
+_primary_exhausted_until = 0.0
+
+
+def _quota_reset_ts(exc: BaseException) -> float:
+    """When a daily-quota 429 says the quota resets; an hour out if unknown."""
+    import re
+    import time
+
+    match = re.search(r"X-RateLimit-Reset'?\"?:\s*'?\"?(\d{10,13})", str(exc))
+    if match:
+        value = int(match.group(1))
+        return value / 1000 if value > 10**11 else float(value)
+    return time.time() + 3600
+
+
+def _overflow_completion(overflow: Tuple[Any, str], kwargs: Dict[str, Any]) -> Any:
+    """Send one completion to the overflow gateway in place of the primary."""
+    overflow_client, overflow_model = overflow
+    kwargs = dict(kwargs)
+    kwargs["model"] = overflow_model
+    # extra_body carries OpenRouter-only fields (models, reasoning).
+    kwargs.pop("extra_body", None)
+    if kwargs.get("messages"):
+        kwargs["messages"] = fit_messages_to_budget(kwargs["messages"], overflow_model)
+    return _create_completion_once(overflow_client, **kwargs)
+
+
+def create_completion(client: Any, **kwargs: Any) -> Any:
+    """Single chokepoint for chat completions, so every call gets retries.
+
+    With an overflow gateway attached (make_runner_client), a daily-quota 429
+    from the primary moves this call, and every later one until the quota
+    resets, to the overflow gateway.
+    """
+    import time
+
+    global _primary_exhausted_until
+    overflow = getattr(client, "_ouroboros_overflow", None)
+    if not isinstance(overflow, tuple):
+        overflow = None
+    if overflow and time.time() < _primary_exhausted_until:
+        return _overflow_completion(overflow, kwargs)
+    try:
+        return _create_completion_once(client, **kwargs)
+    except Exception as exc:
+        if not (overflow and is_daily_quota_exhausted(exc)):
+            raise
+        _primary_exhausted_until = _quota_reset_ts(exc)
+        log.warning(
+            "primary gateway daily quota spent until %s; using overflow model %s",
+            time.strftime("%Y-%m-%d %H:%M", time.localtime(_primary_exhausted_until)),
+            overflow[1],
+        )
+        return _overflow_completion(overflow, kwargs)
 
 
 @retry_with_backoff(cancelled=lifecycle.is_shutting_down)
-def create_completion(client: Any, **kwargs: Any) -> Any:
-    """Single chokepoint for chat completions, so every call gets retries.
+def _create_completion_once(client: Any, **kwargs: Any) -> Any:
+    """create_completion's retried body: one logical request.
 
     Every completion in the codebase must go through here -- a test asserts
     no module calls client.chat.completions.create directly.
@@ -568,6 +654,100 @@ def plan_code_change(
     return (content if content else None, usage)
 
 
+_EDIT_SYSTEM_PROMPT = """You change Python files by emitting SEARCH/REPLACE blocks. For each change:
+
+path/to/file.py
+<<<<<<< SEARCH
+exact lines copied from the current file
+=======
+the lines that replace them
+>>>>>>> REPLACE
+
+Rules:
+- Put the file path alone on the line before each block.
+- SEARCH must match the current file exactly, character for character,
+  including indentation and blank lines, and must appear only once in it.
+  Include a few surrounding lines if needed to make it unique.
+- Keep blocks small: only the lines that change plus minimal context.
+- To create a new file, use an empty SEARCH section.
+- Output only the blocks. No explanations, no JSON."""
+
+
+def parse_edit_blocks(text: str) -> List[Tuple[str, str, str]]:
+    """Return (path, search, replace) for each SEARCH/REPLACE block in text.
+
+    The path is the last non-blank, non-fence line before the block, with
+    the decoration models tend to add (``###``, backticks, "File:") removed.
+    """
+    blocks: List[Tuple[str, str, str]] = []
+    lines = text.splitlines()
+    path = ""
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.strip() == "<<<<<<< SEARCH":
+            search: List[str] = []
+            replace: List[str] = []
+            i += 1
+            while i < len(lines) and lines[i].strip() != "=======":
+                search.append(lines[i])
+                i += 1
+            i += 1
+            while i < len(lines) and lines[i].strip() != ">>>>>>> REPLACE":
+                replace.append(lines[i])
+                i += 1
+            if i >= len(lines):
+                break  # unterminated block: ignore it rather than guess
+            blocks.append((
+                path,
+                "\n".join(search) + ("\n" if search else ""),
+                "\n".join(replace) + ("\n" if replace else ""),
+            ))
+        elif line.strip() and not line.strip().startswith("```"):
+            candidate = line.strip().strip("`").strip()
+            for prefix in ("###", "##", "#", "File:", "file:", "Path:", "path:"):
+                if candidate.startswith(prefix):
+                    candidate = candidate[len(prefix):].strip().strip("`").strip()
+            path = candidate
+        i += 1
+    return blocks
+
+
+def apply_edit_blocks(
+    files: Dict[str, str], blocks: List[Tuple[str, str, str]]
+) -> Tuple[Dict[str, str], List[str]]:
+    """Apply blocks to files; return (new contents by path, errors).
+
+    Any error means nothing should be applied: a partial edit set leaves the
+    code in a state neither the plan nor the model intended.
+    """
+    current: Dict[str, str] = {}
+    errors: List[str] = []
+    for path, search, replace in blocks:
+        if not path:
+            errors.append("a block has no file path before it")
+            continue
+        content = current.get(path, files.get(path))
+        if not search.strip():
+            if content:
+                errors.append(f"{path}: empty SEARCH on an existing file")
+                continue
+            current[path] = replace
+            continue
+        if content is None:
+            errors.append(f"{path}: not one of the files provided")
+            continue
+        count = content.count(search)
+        if count != 1:
+            errors.append(
+                f"{path}: SEARCH block {'not found' if count == 0 else f'matches {count} times'}: "
+                f"{search.strip().splitlines()[0][:80]!r}"
+            )
+            continue
+        current[path] = content.replace(search, replace, 1)
+    return current, errors
+
+
 def generate_code(
     client: Any,
     plan: str,
@@ -576,38 +756,42 @@ def generate_code(
     model: str = DEFAULT_OPENAI_MODEL,
     on_error: Optional[Callable[[str], None]] = None,
 ) -> tuple[Optional[list], Optional[dict]]:
+    """Ask for SEARCH/REPLACE edits and apply them to ``files``.
+
+    Returns the same shape as before -- a list of {file_path, new_content,
+    description} with whole new contents -- so callers are unchanged. It used
+    to ask the model for whole files, which no reply cap fits once a target is
+    15-88 KB; edits are small, one request, and need no agent loop (codex made
+    hundreds of requests per cycle and spent OpenRouter's daily free quota by
+    5 a.m. on 2026-09-25).
+    """
     file_contents = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in files.items())
-    system = (
-        "You are a Python code generator. Produce the complete new file contents.\n"
-        "Output JSON with key 'changes', a list of {file_path, new_content, description}."
-    )
     user = f"## Plan\n{plan}\n\n## Constraints\n{constraints}\n\n## Current Code\n{file_contents}"
-    
+
     content, usage = chat_completion(
-        client, system, user, model,
-        response_format={"type": "json_object"},
-        # Whole-file rewrites: 2500 was ~7.5 KB, smaller than most target files.
+        client, _EDIT_SYSTEM_PROMPT, user, model,
         max_tokens=16000,
         on_error=on_error,
     )
     if not content:
         return None, usage
 
-    try:
-        if "{" in content:
-            content = content[content.find("{"):content.rfind("}")+1]
-        result = json.loads(content)
-    except Exception as exc:
-        log.warning("generate_code failed to parse JSON: %s; reply starts %r", exc, content[:300])
+    blocks = parse_edit_blocks(content)
+    if not blocks:
+        log.warning("generate_code: no SEARCH/REPLACE blocks in reply; starts %r", content[:300])
         if on_error is not None:
-            on_error(f"UnparseableResponse: {exc}")
+            on_error("EmptyChanges: reply had no SEARCH/REPLACE blocks")
+        return [], usage
+    new_contents, errors = apply_edit_blocks(files, blocks)
+    if errors:
+        log.warning("generate_code: %d edit(s) did not apply: %s", len(errors), "; ".join(errors)[:500])
+        if on_error is not None:
+            on_error(f"EditMismatch: {errors[0]}")
         return None, usage
-    changes = result.get("changes", []) if isinstance(result, dict) else []
-    if not changes:
-        log.warning("generate_code: reply parsed but held no changes; starts %r", content[:300])
-        if on_error is not None:
-            on_error("EmptyChanges: reply had no 'changes' list")
-    return changes, usage
+    return [
+        {"file_path": path, "new_content": text, "description": f"edit {path}"}
+        for path, text in new_contents.items()
+    ], usage
 
 
 def review_code_changes(

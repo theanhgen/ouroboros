@@ -639,22 +639,85 @@ def test_chat_completion_treats_truncation_as_failure():
     assert errors and errors[0].startswith("TruncatedResponse")
 
 
-def test_generate_code_reports_empty_changes():
+def test_generate_code_reports_a_reply_without_edit_blocks():
     errors = []
     changes, _ = _llm.generate_code(
-        _reply_client('{"changes": []}'), "plan", {}, "", model="m:free", on_error=errors.append
+        _reply_client("I would refactor this."), "plan", {"a.py": "x = 1\n"}, "",
+        model="m:free", on_error=errors.append,
     )
     assert changes == []
     assert errors and errors[0].startswith("EmptyChanges")
 
 
-def test_generate_code_reports_unparseable_reply():
+def test_generate_code_applies_search_replace_edits():
+    reply = (
+        "src/a.py\n```python\n<<<<<<< SEARCH\ndef f():\n    return 1\n=======\n"
+        "def f():\n    return 2\n>>>>>>> REPLACE\n```\n"
+        "tests/test_a.py\n<<<<<<< SEARCH\n=======\ndef test_f():\n    assert True\n>>>>>>> REPLACE\n"
+    )
+    files = {"src/a.py": "import os\n\ndef f():\n    return 1\n", "tests/test_a.py": ""}
+    changes, _ = _llm.generate_code(_reply_client(reply), "plan", files, "", model="m:free")
+    by_path = {c["file_path"]: c["new_content"] for c in changes}
+    assert by_path["src/a.py"] == "import os\n\ndef f():\n    return 2\n"
+    assert by_path["tests/test_a.py"] == "def test_f():\n    assert True\n"
+
+
+def test_generate_code_rejects_an_edit_that_does_not_match():
     errors = []
+    reply = "src/a.py\n<<<<<<< SEARCH\nnot in the file\n=======\nx\n>>>>>>> REPLACE\n"
     changes, _ = _llm.generate_code(
-        _reply_client("{not json}"), "plan", {}, "", model="m:free", on_error=errors.append
+        _reply_client(reply), "plan", {"src/a.py": "y = 1\n"}, "", model="m:free",
+        on_error=errors.append,
     )
     assert changes is None
-    assert errors and errors[0].startswith("UnparseableResponse")
+    assert errors and errors[0].startswith("EditMismatch: src/a.py: SEARCH block not found")
+
+
+def test_apply_edit_blocks_refuses_an_ambiguous_search():
+    new, errors = _llm.apply_edit_blocks({"a.py": "x\nx\n"}, [("a.py", "x\n", "y\n")])
+    assert errors and "matches 2 times" in errors[0]
+
+
+def test_daily_quota_429_moves_to_the_overflow_gateway(monkeypatch):
+    class Quota(Exception):
+        status_code = 429
+
+        def __str__(self):
+            return "Rate limit exceeded: free-models-per-day-high-balance. 'X-RateLimit-Reset': '4102444800000'"
+
+    def primary_create(**kw):
+        raise Quota()
+
+    overflow_calls = []
+    primary = _NS(chat=_NS(completions=_NS(create=primary_create)))
+    overflow = _NS(chat=_NS(completions=_NS(create=lambda **kw: overflow_calls.append(kw) or "ok")))
+    primary._ouroboros_overflow = (overflow, "ouroboros-free")
+    monkeypatch.setattr(_llm, "_primary_exhausted_until", 0.0)
+
+    assert _llm.create_completion(primary, model="a:free", messages=[{"role": "user", "content": "hi"}],
+                                  extra_body={"models": ["a:free"]}) == "ok"
+    assert overflow_calls[0]["model"] == "ouroboros-free"
+    assert "extra_body" not in overflow_calls[0]
+    assert _llm._primary_exhausted_until == 4102444800.0
+    # Until the reset, later calls go straight to the overflow.
+    _llm.create_completion(primary, model="a:free", messages=[{"role": "user", "content": "again"}])
+    assert len(overflow_calls) == 2
+
+
+def test_daily_quota_429_is_not_retried():
+    from ouroboros.retry import is_retryable
+
+    class Quota(Exception):
+        status_code = 429
+
+        def __str__(self):
+            return "Rate limit exceeded: free-models-per-day-high-balance."
+
+    class Busy(Exception):
+        status_code = 429
+
+    assert is_retryable(Quota()) is False
+    assert is_retryable(Busy()) is True
 
 
 def test_identify_tool_calls_carry_the_original_messages():
