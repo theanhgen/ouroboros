@@ -743,3 +743,7 @@ def test_free_gateway_models_get_their_real_window():
     # A bare local qwen keeps the small Ollama budget.
     assert _llm.model_input_budget("qwen2.5-coder") == 24_000
 
+
+
+def test_overflow_combo_gets_its_budget():
+    assert _llm.model_input_budget("ouroboros-free") == 120_000
