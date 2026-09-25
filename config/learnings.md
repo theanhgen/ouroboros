@@ -1,4 +1,3 @@
-2026-07-13 | add_feature | Modify extract_code_metadata in src/ouroboros/codebase.py to | success | tests: 238 -> 238
 2026-07-14 | fix_bug | Fix path verification in validate_modification_scope within  | success | tests: 238 -> 240
 2026-07-14 | fix_bug | Fix parsing of git status --porcelain output in commit_auto_ | success | tests: 240 -> 243
 2026-07-15 | fix_bug | Fix backlog duplicate checking in add_item within src/ourobo | success | tests: 243 -> 245
@@ -98,3 +97,4 @@
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Unparseable: src/ouroboros/storage_helpers.py (line 119: invalid syntax)
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
+2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 1 after
