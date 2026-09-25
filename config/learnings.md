@@ -1,4 +1,3 @@
-2026-05-27 | fix_bug |  | failed | reviewer rejected
 2026-06-27 | add_feature | Implement AST-based code-aware indexing in IndexManager.inde | success | tests: 0 -> 0
 2026-06-28 | fix_bug | Fix incorrect line number extraction in pytest parser by sea | failed | reviewer rejected
 2026-06-28 | fix_bug | Fix parsing of git status --porcelain output in _collect_cha | success | tests: 215 -> 217
@@ -98,3 +97,4 @@
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
+2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
