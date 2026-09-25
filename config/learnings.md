@@ -1,4 +1,3 @@
-2026-08-08 | fix_bug | Fix encode_fact in src/ouroboros/holographic.py to strip whi | failed | no plan generated
 2026-08-09 | fix_bug | Fix search_facts in src/ouroboros/memory.py to catch sqlite3 | failed | no plan generated
 2026-08-21 | fix_bug | Replace fragile subprocess 'df -h /' string parsing in get_s | failed | Forbidden file modification: config/learnings.md
 2026-08-21 | add_feature | Integrate contradiction resolution into IndexManager.run_hyg | success | tests: 948 -> 954
@@ -98,3 +97,4 @@
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | success | tests: 1338 -> 1338
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Prevent silent replacement of unreadable backlog files in ad | duplicate | already completed: Prevent silent replacement of unreadable backlog files in ad
+2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | reviewer rejected
