@@ -340,6 +340,12 @@ class MemoryStore:
             self._rebuild_bank(category)
             return fact_id
 
+    def _generate_fingerprint(self, content: str) -> str:
+        import hashlib
+        normalized_content = content.strip()
+        fingerprint = hashlib.sha256(normalized_content.encode('utf-8')).hexdigest()
+        return fingerprint
+
     def index_code(self, file_path: str, content: str) -> List[int]:
         """Parse code into code facts and persist them.
 
@@ -416,7 +422,14 @@ class MemoryStore:
             fact_ids: List[int] = []
             has_new_facts = False
             for fact_content in facts:
-                if fact_content in existing_by_content:
+                fact_fingerprint = self._generate_fingerprint(fact_content)
+                existing_fact = self._conn.execute(
+                    "SELECT fact_id FROM facts WHERE content = ?",
+                    (fact_fingerprint,)
+                ).fetchone()
+                if existing_fact:
+                    fact_ids.append(int(existing_fact["fact_id"]))
+                elif fact_content in existing_by_content:
                     fact_ids.append(existing_by_content[fact_content])
                 else:
                     has_new_facts = True
@@ -706,6 +719,12 @@ class MemoryStore:
             (fact_id, entity_id),
         )
         self._conn.commit()
+
+    def _generate_fingerprint(self, content: str) -> str:
+        import hashlib
+        normalized_content = content.strip()
+        fingerprint = hashlib.sha256(normalized_content.encode('utf-8')).hexdigest()
+        return fingerprint
 
     def _compute_hrr_vector(self, fact_id: int, content: str) -> None:
         if not self._hrr_available:
