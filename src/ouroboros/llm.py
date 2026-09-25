@@ -357,6 +357,10 @@ _MODEL_INPUT_BUDGETS = (
     ("cohere/north-mini-code", 180_000),
     ("nvidia/nemotron-3-ultra", 180_000),
     ("qwen/qwen3.8", 180_000),
+    # OmniRoute combo of free API tiers (overflow). Gemini flash first (1M),
+    # codestral/cohere 256k; the last fallback is a 32k model, which only
+    # sees small prompts in practice.
+    ("ouroboros-free", 120_000),
     # Local Ollama models are typically 8k-32k; assume the small end.
     ("gemma", 6_000),
     ("qwen", 24_000),
