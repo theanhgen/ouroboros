@@ -1249,18 +1249,12 @@ class IndexManager:
 # Regression test for index_code normalization (can be run manually)
 # ---------------------------------------------------------------------------
 
-def test_index_code_normalization() -> None:
+def test_index_code_normalization(tmp_path) -> None:
     """Ensure facts are normalized consistently, preventing data loss."""
-    import tempfile
-    import shutil
-    from pathlib import Path
+    db_path = tmp_path / "memory.db"
+    store = MemoryStore(db_path=db_path)
 
-    # Create a temporary directory for the database
-    tmpdir = tempfile.mkdtemp(prefix="ouroboros_test_")
-    db_path = Path(tmpdir) / "memory.db"
     try:
-        store = MemoryStore(db_path=db_path)
-
         # Test 1: file content ending with newline
         file_path = "/test/foo.py"
         content_with_newline = "def hello():\n    pass\n"
@@ -1283,7 +1277,6 @@ def test_index_code_normalization() -> None:
         print("✓ All regression tests passed")
     finally:
         store.close()
-        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 if __name__ == "__main__":
