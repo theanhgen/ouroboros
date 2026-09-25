@@ -78,6 +78,24 @@ class TestWiki:
         assert "([PR](http://pr/1))" in content
         assert "Tests: 10p/0f -> 11p/0f" in content
 
+    @patch("ouroboros.evaluation.load_history")
+    def test_generate_changelog_page_none_outcome(self, mock_history):
+        # A stored record with "outcome": null loads as None; the badge
+        # fallback must not call .upper() on it.
+        mock_history.return_value = [
+            MagicMock(
+                timestamp=time.time(),
+                outcome=None,
+                task_type="refactor",
+                description="legacy entry",
+                pr_url=None,
+                test_delta={},
+            )
+        ]
+
+        content = generate_changelog_page(self.tmp_dir)
+        assert "[UNKNOWN] **refactor**: legacy entry" in content
+
     def test_generate_config_page(self):
         # This tests SafetyConfig and RunnerConfig generation
         content = generate_config_page(self.tmp_dir)
