@@ -1,4 +1,3 @@
-2026-07-07 | add_test | Add unit tests in tests/test_backlog.py for the organize_bac | failed | reviewer rejected
 2026-07-13 | refactor | Remove runtime monkeypatching of git_ops from backends.py by | failed | Too many lines changed: 348 > 200
 2026-07-13 | add_feature | Modify extract_code_metadata in src/ouroboros/codebase.py to | success | tests: 238 -> 238
 2026-07-14 | fix_bug | Fix path verification in validate_modification_scope within  | success | tests: 238 -> 240
@@ -98,3 +97,4 @@
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 2 after
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Unparseable: src/ouroboros/storage_helpers.py (line 119: invalid syntax)
+2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
