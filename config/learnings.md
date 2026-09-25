@@ -1,4 +1,3 @@
-2026-07-05 | fix_bug | Fix parsing of git status --porcelain output in _collect_cha | success | tests: 221 -> 224
 2026-07-05 | add_feature | Modify extract_code_metadata in src/ouroboros/codebase.py to | success | tests: 224 -> 226
 2026-07-06 | add_test | Add unit tests in tests/test_memory.py to verify FactRetriev | success | tests: 226 -> 229
 2026-07-06 | add_test | Create unit tests in tests/test_holographic.py to verify hol | success | tests: 237 -> 237
@@ -98,3 +97,4 @@
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
+2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
