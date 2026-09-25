@@ -143,6 +143,26 @@ class TestGitHubImprovement:
         mock_del.assert_called_once()
         mock_checkout.assert_called_with(self.repo_root, "main")
 
+    @patch("ouroboros.llm.chat_completion")
+    @patch("ouroboros.git_ops.checkout_main")
+    @patch("ouroboros.git_ops.current_branch")
+    @patch("ouroboros.git_ops.create_branch")
+    def test_recovery_does_not_swallow_keyboard_interrupt(self, mock_branch, mock_curr, mock_main, mock_llm):
+        """The recovery checkout after a failed fix must not eat an operator's
+        Ctrl-C (#127): a bare except caught BaseException there."""
+        mock_llm.return_value = (json.dumps({
+            "explanation": "e",
+            "changes": [{"file_path": "src/ouroboros/a.py", "new_content": "VALUE = 2\n"}]
+        }), None)
+        mock_curr.return_value = "main"
+        mock_branch.side_effect = RuntimeError("branch failed")
+        mock_main.side_effect = KeyboardInterrupt
+
+        issue = GitHubIssue(123, "title", "body", "author", "url")
+        with pytest.raises(KeyboardInterrupt):
+            apply_github_fix(MagicMock(), issue, {}, self.repo_root)
+        mock_main.assert_called_once_with(self.repo_root)
+
 
 class TestGitHubFixImportPolicy:
     """This flow writes generated files directly rather than going through
