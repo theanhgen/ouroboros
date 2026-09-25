@@ -25,6 +25,7 @@ class RunnerOutcome:
     passed: int = 0
     failed: int = 0
     errors: int = 0
+    skipped: int = 0
     failure_details: List[FailureDetail] = field(default_factory=list)
     stdout: str = ""
     returncode: int = 0
@@ -32,23 +33,29 @@ class RunnerOutcome:
 
     @property
     def success(self) -> bool:
-        return self.returncode == 0 and self.failed == 0 and self.errors == 0
+        if self.returncode != 0 or self.failed > 0 or self.errors > 0:
+            return False
+        # Prevent hollow success: at least one test must pass if any tests were collected
+        if self.total > 0 and self.passed == 0:
+            return False
+        return True
 
     @property
     def total(self) -> int:
-        return self.passed + self.failed + self.errors
+        return self.passed + self.failed + self.errors + self.skipped
 
     def summary(self) -> str:
         cov = f", coverage={self.coverage_percent}%" if self.coverage_percent is not None else ""
         return (
             f"{self.passed} passed, {self.failed} failed, "
+            f"{self.skipped} skipped, "
             f"{self.errors} errors (returncode={self.returncode}){cov}"
         )
 
 
 def _parse_pytest_output(output: str) -> dict:
     """Parse pytest output into counts and failure details."""
-    result = {"passed": 0, "failed": 0, "errors": 0, "failures": [], "coverage": None}
+    result = {"passed": 0, "failed": 0, "errors": 0, "skipped": 0, "failures": [], "coverage": None}
 
     summary_line = ""
     for line in reversed(output.splitlines()):
@@ -74,6 +81,10 @@ def _parse_pytest_output(output: str) -> dict:
         error_match = re.search(r"(\d+)\s+error", summary_line)
         if error_match:
             result["errors"] = int(error_match.group(1))
+
+        skipped_match = re.search(r"(\d+)\s+skipped", summary_line)
+        if skipped_match:
+            result["skipped"] = int(skipped_match.group(1))
 
     # Match coverage line like "TOTAL                                          1272    169    87%"
     cov_match = re.search(r"TOTAL\s+\d+\s+\d+\s+(\d+)%", output)
@@ -152,6 +163,7 @@ def _run_tests_sandboxed(repo_root: Path, config: SafetyConfig, timeout: int) ->
             passed=parsed["passed"],
             failed=parsed["failed"],
             errors=parsed["errors"],
+            skipped=parsed["skipped"],
             failure_details=parsed["failures"],
             stdout=combined_output,
             returncode=proc.returncode,
@@ -181,6 +193,7 @@ def _run_pytest(repo_root: Path, timeout: int, with_cov: bool) -> RunnerOutcome:
         passed=parsed["passed"],
         failed=parsed["failed"],
         errors=parsed["errors"],
+        skipped=parsed["skipped"],
         failure_details=parsed["failures"],
         stdout=combined_output,
         returncode=proc.returncode,
