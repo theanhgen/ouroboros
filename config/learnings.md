@@ -1,4 +1,3 @@
-2026-05-20 | fix_bug |  | failed | reviewer rejected
 2026-05-24 | fix_bug |  | failed | reviewer rejected
 2026-05-27 | fix_bug |  | failed | reviewer rejected
 2026-06-27 | add_feature | Implement AST-based code-aware indexing in IndexManager.inde | success | tests: 0 -> 0
@@ -97,4 +96,5 @@
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Rectify the `MemoryStore` schema and indexing logic in `src/ | reverted | Test regression detected: 0 failures before, 8 after
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
+2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
