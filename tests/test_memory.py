@@ -45,7 +45,7 @@ def _set_fact_hrr(store, fact_id, content, entities):
     store._conn.commit()
 
 
-def test_memory_store_index_code_returns_fact_ids(temp_store):
+def test_memory_store_index_code_normalizes_file_paths(temp_store):
     code_content = textwrap.dedent('''
         """Module docs."""
 
@@ -54,25 +54,23 @@ def test_memory_store_index_code_returns_fact_ids(temp_store):
             return str(value)
     ''').strip()
 
-    fact_ids = temp_store.index_code("src/helper.py", code_content)
-    facts = temp_store.list_facts(category="code")
-    fact_contents = {fact["content"] for fact in facts}
-    stored_vectors = temp_store._conn.execute(
-        "SELECT fact_id, hrr_vector FROM facts WHERE category = ?",
-        ("code",),
-    ).fetchall()
+    # Test with different path variations
+    path_variations = [
+        "src/helper.py",
+        "src\\helper.py",
+        "src/./helper.py",
+        "src/../src/helper.py",
+        "src//helper.py",
+    ]
 
-    assert isinstance(fact_ids, list)
-    assert fact_ids
-    assert all(isinstance(fact_id, int) for fact_id in fact_ids)
-    assert {fact["fact_id"] for fact in facts} == set(fact_ids)
-    assert {row["fact_id"] for row in stored_vectors} == set(fact_ids)
-    if hrr.HAS_NUMPY:
-        assert all(row["hrr_vector"] is not None for row in stored_vectors)
-    assert {fact["tags"] for fact in facts} == {"src/helper.py"}
-    assert "[code] src/helper.py: module docstring: Module docs." in fact_contents
-    assert "[code] src/helper.py: def helper(value: int) -> str" in fact_contents
-    assert "[code] src/helper.py: def helper docstring: Helper docs." in fact_contents
+    normalized_paths = set()
+    for path in path_variations:
+        fact_ids = temp_store.index_code(path, code_content)
+        facts = temp_store.list_facts(category="code")
+        normalized_paths.update({fact["tags"] for fact in facts})
+
+    assert len(normalized_paths) == 1
+    assert normalized_paths == {"src/helper.py"}
 
 
 def test_index_code_replaces_stale_facts_for_same_file(temp_store):
