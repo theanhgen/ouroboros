@@ -21,12 +21,17 @@ def _backlog_path(repo_root: Path) -> Path:
 
 
 def load_backlog(repo_root: Path) -> List[Dict[str, Any]]:
-    data = load_json_file(
-        _backlog_path(repo_root),
-        default={"items": []},
-        error_msg="Corrupt backlog file, returning empty",
-        logger=log,
-    )
+    try:
+        data = load_json_file(
+            _backlog_path(repo_root),
+            default={"items": []},
+            error_msg="Corrupt backlog file, returning empty",
+            logger=log,
+        )
+    except Exception as e:
+        log.error(f"Failed to load backlog: {e}")
+        raise
+
     if isinstance(data, dict):
         items = data.get("items")
     else:
@@ -71,6 +76,12 @@ def add_item(
     priority: int = 5,
     source: str = "auto",
 ) -> Dict[str, Any]:
+    try:
+        items = load_backlog(repo_root)
+    except Exception as e:
+        log.error(f"Failed to load backlog: {e}")
+        raise
+
     def _add(items: List[Dict[str, Any]]) -> Dict[str, Any]:
         # Dedup pending items by description similarity
         for item in items:
