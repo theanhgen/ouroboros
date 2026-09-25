@@ -1,4 +1,3 @@
-2026-08-21 | fix_bug | Replace fragile subprocess 'df -h /' string parsing in get_s | failed | Forbidden file modification: config/learnings.md
 2026-08-21 | add_feature | Integrate contradiction resolution into IndexManager.run_hyg | success | tests: 948 -> 954
 2026-08-22 | add_feature | Implement index_code on MemoryStore in src/ouroboros/memory. | success | tests: 966 -> 966
 2026-08-23 | fix_bug | Fix parameter extraction in extract_code_metadata and get_fu | success | tests: 966 -> 968
@@ -98,3 +97,4 @@
 2026-09-25 | fix_bug | Prevent silent replacement of unreadable backlog files in ad | duplicate | already completed: Prevent silent replacement of unreadable backlog files in ad
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | reviewer rejected
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
+2026-09-26 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Forbidden file modification: src/ouroboros/evaluation.py
