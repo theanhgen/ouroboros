@@ -178,12 +178,16 @@ is why "code-aware indexing in MemoryStore" was implemented on 2026-06-27 and
 (tests 966 → 966). If you see near-identical entries repeating in the history,
 this is why.
 
-### F4 — duplicate-avoidance is written, tested, and unwired *(open)*
+### F4 — duplicate-avoidance is written, tested, and unwired *(fixed, `e7ffa159`)*
 
-`_build_failed_attempts_context` and `_build_success_rate_context`
-(`improvement.py:586` and `:604`) have unit tests and **no call sites**. The only
-dedup gate keys on `task_type` alone, which is useless against the same function
-being targeted repeatedly.
+`_build_failed_attempts_context` and `_build_success_rate_context` had unit tests
+and no call sites, and the only dedup gate keyed on `task_type` alone, which is
+useless against the same function being targeted repeatedly. `e7ffa159` wired
+both into the identify step and added `_already_completed`, which skips a task
+whose id or content words (≥ 0.8 overlap) match a SUCCEEDED record. Do not
+re-wire them. Check the call sites with the command, not a line number:
+
+    grep -rn "_build_failed_attempts_context\|_build_success_rate_context\|_already_completed(" src
 
 ## 6. What has been fixed, and what is still open
 
