@@ -5,9 +5,10 @@ import logging
 import time
 import uuid
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from . import backends, git_ops, llm
 from .codebase import get_codebase_summary, get_repo_root, read_file_raw
@@ -20,7 +21,7 @@ from .evaluation import (
     summarize_history,
 )
 from .model_defaults import DEFAULT_OPENAI_MODEL
-from .test_runner import RunnerOutcome, run_tests
+from .test_runner import FailureDetail, RunnerOutcome, run_tests
 
 log = logging.getLogger(__name__)
 
@@ -389,6 +390,78 @@ def _format_failure_details(test_result: RunnerOutcome) -> str:
     return "\n".join(lines)
 
 
+# How many failure clusters the retry prompt names, largest first.
+_MAX_TRIAGE_CLUSTERS = 3
+
+# pytest --tb=short frame header, e.g. "src/ouroboros/x.py:12: in helper".
+_TB_FRAME_RE = re.compile(r"^(\S+?):\d+: in (\S+)", re.MULTILINE)
+# The raised exception, e.g. "E   ValueError: bad input".
+_TB_EXC_RE = re.compile(r"^E\s+(.+)$", re.MULTILINE)
+
+
+def _failure_signature(fail: FailureDetail) -> Tuple[str, str]:
+    """(location, exception) key that is stable across runs and tests.
+
+    Location is the innermost traceback frame as path::function -- line
+    numbers are dropped so an edit above the fault does not split a cluster.
+    The exception keeps its type and message with numbers, hex addresses and
+    quoted literals masked, so "assert 3 == 2" and "assert 4 == 2" from the
+    same broken helper land together.
+    """
+    tb = fail.traceback or ""
+    frames = list(_TB_FRAME_RE.finditer(tb))
+    location = f"{frames[-1].group(1)}::{frames[-1].group(2)}" if frames else fail.file
+    # Take the exception raised at that innermost frame: in a chained
+    # traceback the first "E" line belongs to an earlier section.
+    exc_lines = _TB_EXC_RE.findall(tb, frames[-1].end()) if frames else []
+    exc_lines = exc_lines or _TB_EXC_RE.findall(tb)
+    exception = (exc_lines[0] if exc_lines else fail.message or "").strip()
+    exception = re.sub(r"0x[0-9a-fA-F]+", "0x?", exception)
+    exception = re.sub(r"'[^']*'|\"[^\"]*\"", "'?'", exception)
+    exception = re.sub(r"\d+", "N", exception)
+    return location, exception or "<no message>"
+
+
+def _format_failure_triage(test_result: RunnerOutcome) -> str:
+    """Group failures that share a root cause so the retry fixes that first.
+
+    Returns "" when there are no failure details, leaving the retry prompt as
+    it was before triage existed.
+    """
+    clusters: Dict[Tuple[str, str], List[FailureDetail]] = {}
+    failures = test_result.failure_details or []
+    for fail in failures:
+        clusters.setdefault(_failure_signature(fail), []).append(fail)
+    if not clusters:
+        return ""
+
+    # Largest first; dict order (first seen) breaks ties deterministically.
+    ranked = sorted(clusters.items(), key=lambda kv: -len(kv[1]))
+    total = len(failures)
+    lines = [f"{total} failure(s) in {len(ranked)} distinct root cause cluster(s):"]
+    for (location, exception), fails in ranked[:_MAX_TRIAGE_CLUSTERS]:
+        tests = ", ".join(f"{f.file}::{f.test_name}" for f in fails[:3])
+        more = f" (+{len(fails) - 3} more)" if len(fails) > 3 else ""
+        lines.append(f"- [{len(fails)}x] {exception} at {location} -- e.g. {tests}{more}")
+    if len(ranked) > _MAX_TRIAGE_CLUSTERS:
+        lines.append(f"- ... {len(ranked) - _MAX_TRIAGE_CLUSTERS} smaller cluster(s) omitted")
+
+    (location, exception), fails = ranked[0]
+    if len(fails) > 1:
+        lines.append(
+            f"\nSuggested next experiment: {len(fails)} of {total} failures share "
+            f"`{exception}` at {location}. Fix that one cause first; the rest of "
+            "that cluster should pass with it."
+        )
+    else:
+        lines.append(
+            "\nSuggested next experiment: no failure repeats, so there is no "
+            f"dominant cause. Start with `{exception}` at {location} and check "
+            "whether the change broke a contract several callers rely on."
+        )
+    return "\n".join(lines)
+
+
 def _retry_with_root_cause(
     client: Any,
     task: ImprovementTask,
@@ -415,8 +488,11 @@ def _retry_with_root_cause(
         f"## Task\n{task.description}\n\n"
         f"## Test results BEFORE change\n{test_before.summary()}\n\n"
         f"## Test results AFTER change (REGRESSION)\n{failure_info}\n\n"
-        f"## What was attempted\n"
     )
+    triage = _format_failure_triage(test_after)
+    if triage:
+        retry_prompt += f"## Failure triage\n{triage}\n\n"
+    retry_prompt += "## What was attempted\n"
     for fp, content in attempted_code.items():
         retry_prompt += f"\n### {fp} (attempted version)\n```\n{content[:2000]}\n```\n"
 
