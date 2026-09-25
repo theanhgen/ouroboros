@@ -337,9 +337,9 @@ def test_runner_hollow_success():
     assert r_mixed_pass_skip.success
     assert r_mixed_pass_skip.total == 5
 
-    # Scenario: No tests collected at all (total=0), should still be success (or rather, not failure)
+    # Scenario: nothing ran at all: fails closed too, nothing was validated (#147)
     r_no_tests = RunnerOutcome(passed=0, failed=0, errors=0, skipped=0, returncode=0)
-    assert r_no_tests.success
+    assert not r_no_tests.success
     assert r_no_tests.total == 0
 
 def test_parse_pytest_output_no_tests():
@@ -363,7 +363,7 @@ def test_all_skipped_run_is_not_success():
         passed=parsed["passed"], failed=parsed["failed"],
         errors=parsed["errors"], skipped=parsed["skipped"], returncode=0,
     )
-    assert r.total == 0
+    assert r.total == 3  # main counts skipped in total (#194)
     assert not r.success
     assert "3 skipped" in r.summary()
 
