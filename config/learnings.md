@@ -1,4 +1,3 @@
-2026-05-05 | fix_bug |  | failed | reviewer rejected
 2026-05-12 | fix_bug |  | failed | reviewer rejected
 2026-05-14 | fix_bug |  | failed | reviewer rejected
 2026-05-20 | fix_bug |  | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 2 after
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
+2026-09-25 | fix_bug | Rectify the `MemoryStore` schema and indexing logic in `src/ | reverted | Test regression detected: 0 failures before, 8 after
