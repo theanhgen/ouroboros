@@ -1,4 +1,3 @@
-2026-07-30 | add_feature | Add an index_code method to MemoryStore in src/ouroboros/mem | success | tests: 245 -> 246
 2026-07-30 | fix_bug | Fix bundle function in src/ouroboros/holographic.py to valid | success | tests: 246 -> 247
 2026-07-31 | fix_bug | Fix _parse_pytest_output in src/ouroboros/test_runner.py to  | success | tests: 247 -> 249
 2026-08-01 | refactor | Refactor get_function_signatures in src/ouroboros/codebase.p | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-25 | fix_bug | Prevent silent replacement of unreadable backlog files in ad | success | tests: 1338 -> 1338
 2026-09-25 | fix_bug | Prevent silent replacement of unreadable backlog files in ad | duplicate | already completed: Prevent silent replacement of unreadable backlog files in ad
 2026-09-25 | add_test | Convert the standalone `test_index_code_normalization` funct | success | tests: 1338 -> 1338
+2026-09-25 | add_test | Convert the standalone `test_index_code_normalization` funct | duplicate | already completed: Convert the standalone `test_index_code_normalization` funct
