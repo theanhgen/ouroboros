@@ -285,6 +285,12 @@ class RunnerConfig:
     # OpenRouter reasoning.effort ("low" | "medium" | "high") sent with every
     # gateway call. Empty sends nothing and leaves each model on its default.
     llm_reasoning_effort: str = ""
+    # Second OpenAI-compatible gateway used once llm_base_url reports its
+    # daily quota spent (OpenRouter free: 1000/day). Key: LLM_OVERFLOW_API_KEY
+    # or credentials.json llm_overflow_api_key. The model is usually a gateway
+    # combo, e.g. OmniRoute's free-tier combo reached over the tailnet.
+    llm_overflow_base_url: str = ""
+    llm_overflow_model: str = ""
     # Same idea for the codex CLI backend: see SafetyConfig.codex_base_url.
     codex_base_url: str = ""
 
@@ -417,6 +423,8 @@ def load_runner_config() -> RunnerConfig:
         llm_base_url=str(data.get("llm_base_url") or ""),
         llm_fallback_models=[str(m) for m in (data.get("llm_fallback_models") or [])],
         llm_reasoning_effort=str(data.get("llm_reasoning_effort") or ""),
+        llm_overflow_base_url=str(data.get("llm_overflow_base_url") or ""),
+        llm_overflow_model=str(data.get("llm_overflow_model") or ""),
         codex_base_url=str(data.get("codex_base_url") or ""),
     )
 

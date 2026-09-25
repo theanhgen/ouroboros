@@ -76,8 +76,18 @@ def _openai_retryable_types() -> Tuple[Type[BaseException], ...]:
     )
 
 
+def is_daily_quota_exhausted(exc: BaseException) -> bool:
+    """True for a 429 that means the gateway's daily quota is spent."""
+    status = getattr(exc, "status_code", None) or getattr(exc, "code", None)
+    return status == 429 and "per-day" in str(exc)
+
+
 def is_retryable(exc: BaseException) -> bool:
     """Return True if exc looks transient and another attempt may succeed."""
+    # A spent daily quota (OpenRouter's free-model limit) is a 429 that no
+    # backoff within this call will outlast.
+    if is_daily_quota_exhausted(exc):
+        return False
     # A TLS failure is a configuration or trust problem, not a blip. Checked
     # first because URLError wraps it and would otherwise let it through.
     if isinstance(exc, ssl.SSLError) and not isinstance(exc, ssl.SSLWantReadError):
