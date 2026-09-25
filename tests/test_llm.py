@@ -747,3 +747,35 @@ def test_free_gateway_models_get_their_real_window():
 
 def test_overflow_combo_gets_its_budget():
     assert _llm.model_input_budget("ouroboros-free") == 120_000
+
+
+def test_edit_match_ignores_trailing_whitespace_and_a_shared_indent_shift():
+    content = "class A:\n    def f(self):  \n        return 1\n"
+    # Trailing whitespace dropped by the model.
+    new, errors = _llm.apply_edit_blocks(
+        {"a.py": content}, [("a.py", "    def f(self):\n        return 1\n", "    def f(self):\n        return 2\n")]
+    )
+    assert not errors and new["a.py"] == "class A:\n    def f(self):\n        return 2\n"
+    # Whole block copied without the class indentation.
+    new, errors = _llm.apply_edit_blocks(
+        {"a.py": content}, [("a.py", "def f(self):\n    return 1\n", "def f(self):\n    return 3\n")]
+    )
+    assert not errors and new["a.py"] == "class A:\n    def f(self):\n        return 3\n"
+
+
+def test_generate_code_retries_once_when_an_edit_misses():
+    replies = iter([
+        "a.py\n<<<<<<< SEARCH\nfrom pathlib import Path\n=======\nimport os\n>>>>>>> REPLACE\n",
+        "a.py\n<<<<<<< SEARCH\nimport sys\n=======\nimport os\n>>>>>>> REPLACE\n",
+    ])
+    seen = []
+
+    def create(**kw):
+        seen.append(kw)
+        return _NS(choices=[_NS(message=_NS(content=next(replies)), finish_reason="stop")],
+                   usage=_NS(prompt_tokens=1, completion_tokens=1))
+
+    client = _NS(chat=_NS(completions=_NS(create=create)))
+    changes, _ = _llm.generate_code(client, "plan", {"a.py": "import sys\n"}, "", model="m:free")
+    assert changes == [{"file_path": "a.py", "new_content": "import os\n", "description": "edit a.py"}]
+    assert len(seen) == 2 and "SEARCH block not found" in seen[1]["messages"][1]["content"]

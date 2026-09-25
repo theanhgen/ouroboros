@@ -719,6 +719,72 @@ def parse_edit_blocks(text: str) -> List[Tuple[str, str, str]]:
     return blocks
 
 
+def _find_block(content: str, search: str) -> Tuple[Optional[Tuple[int, int, str]], int]:
+    """Locate search in content: (start, end, indent_shift) and match count.
+
+    Exact first. Failing that, line-wise with trailing whitespace ignored,
+    then additionally allowing one indentation offset shared by every
+    non-blank line -- the two ways weaker models most often miscopy a
+    SEARCH block. Returns (None, count) when there is no unique match.
+    """
+    count = content.count(search)
+    if count == 1:
+        start = content.index(search)
+        return (start, start + len(search), ""), 1
+    if count > 1:
+        return None, count
+
+    lines = content.splitlines(keepends=True)
+    want = [l.rstrip() for l in search.splitlines()]
+    while want and not want[-1]:
+        want.pop()
+    if not want:
+        return None, 0
+    n = len(want)
+    offsets = [0]
+    for line in lines:
+        offsets.append(offsets[-1] + len(line))
+
+    def scan(normalize):
+        hits = []
+        for i in range(len(lines) - n + 1):
+            window = [l.rstrip() for l in lines[i:i + n]]
+            shift = normalize(window, want)
+            if shift is not None:
+                hits.append((i, shift))
+        return hits
+
+    def same(window, want_):
+        return "" if window == want_ else None
+
+    def shifted(window, want_):
+        shift = None
+        for got, exp in zip(window, want_):
+            if not got.strip() and not exp.strip():
+                continue
+            if got.lstrip() != exp.lstrip():
+                return None
+            delta = got[: len(got) - len(got.lstrip())]
+            base = exp[: len(exp) - len(exp.lstrip())]
+            if not delta.endswith(base):
+                return None
+            this = delta[: len(delta) - len(base)] if base else delta
+            if shift is None:
+                shift = this
+            elif this != shift:
+                return None
+        return shift if shift is not None else ""
+
+    for normalize in (same, shifted):
+        hits = scan(normalize)
+        if len(hits) == 1:
+            i, shift = hits[0]
+            return (offsets[i], offsets[i + n], shift), 1
+        if len(hits) > 1:
+            return None, len(hits)
+    return None, 0
+
+
 def apply_edit_blocks(
     files: Dict[str, str], blocks: List[Tuple[str, str, str]]
 ) -> Tuple[Dict[str, str], List[str]]:
@@ -743,14 +809,20 @@ def apply_edit_blocks(
         if content is None:
             errors.append(f"{path}: not one of the files provided")
             continue
-        count = content.count(search)
-        if count != 1:
+        found, count = _find_block(content, search)
+        if found is None:
             errors.append(
                 f"{path}: SEARCH block {'not found' if count == 0 else f'matches {count} times'}: "
                 f"{search.strip().splitlines()[0][:80]!r}"
             )
             continue
-        current[path] = content.replace(search, replace, 1)
+        start, end, shift = found
+        if shift:
+            replace = "".join(
+                (shift + line) if line.strip() else line
+                for line in replace.splitlines(keepends=True)
+            )
+        current[path] = content[:start] + replace + content[end:]
     return current, errors
 
 
@@ -789,6 +861,24 @@ def generate_code(
             on_error("EmptyChanges: reply had no SEARCH/REPLACE blocks")
         return [], usage
     new_contents, errors = apply_edit_blocks(files, blocks)
+    if errors:
+        # One corrective round, as aider does: name the blocks that missed
+        # and ask for the whole set again with SEARCH copied exactly.
+        log.info("generate_code: %d edit(s) did not apply; asking once more", len(errors))
+        retry_user = (
+            f"{user}\n\n## Your previous reply\n{content}\n\n## Problem\n"
+            + "\n".join(f"- {e}" for e in errors)
+            + "\n\nRe-emit ALL the blocks. Copy each SEARCH section character for "
+            "character from the Current Code above."
+        )
+        retry_content, retry_usage = chat_completion(
+            client, _EDIT_SYSTEM_PROMPT, retry_user, model, max_tokens=16000, on_error=on_error,
+        )
+        if retry_usage and usage:
+            usage = {k: usage.get(k, 0) + retry_usage.get(k, 0) for k in usage}
+        retry_blocks = parse_edit_blocks(retry_content or "")
+        if retry_blocks:
+            new_contents, errors = apply_edit_blocks(files, retry_blocks)
     if errors:
         log.warning("generate_code: %d edit(s) did not apply: %s", len(errors), "; ".join(errors)[:500])
         if on_error is not None:
