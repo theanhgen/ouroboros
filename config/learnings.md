@@ -1,4 +1,3 @@
-2026-07-15 | fix_bug | Fix backlog duplicate checking in add_item within src/ourobo | success | tests: 243 -> 245
 2026-07-15 | refactor | Refactor backlog and evaluation modules to use the centraliz | failed | reviewer rejected
 2026-07-16 | add_test | Add unit tests in tests/test_cli.py to verify subcommands cm | failed | reviewer rejected
 2026-07-17 | refactor | Refactor load_metrics and save_metrics in src/ouroboros/metr | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 1 after
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Forbidden file modification: src/ouroboros/evaluation.py
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Coverage regression: dropped from 79.0% to 77.0%
+2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Forbidden file modification: src/ouroboros/evaluation.py
