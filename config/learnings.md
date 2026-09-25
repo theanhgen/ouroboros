@@ -1,4 +1,3 @@
-2026-07-17 | refactor | Refactor load_metrics and save_metrics in src/ouroboros/metr | failed | no plan generated
 2026-07-23 | add_test | Add unit tests in tests/test_storage.py to verify load_json_ | failed | no plan generated
 2026-07-23 | add_test | Add comprehensive unit tests in tests/test_system.py to test | failed | no plan generated
 2026-07-30 | add_test | Add unit tests in tests/test_git_ops.py to verify has_open_i | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Forbidden file modification: src/ouroboros/evaluation.py
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 1 after
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | generation failed: EditMismatch: src/ouroboros/evaluation.py: SEARCH block not 
+2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Too many files changed: 5 > 3
