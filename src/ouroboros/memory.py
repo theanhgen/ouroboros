@@ -198,6 +198,14 @@ def _fts5_match_query(text: str, *, match_all: bool = True,
     return (" " if match_all else " OR ").join(quoted)
 
 
+# Bodies CodeASTVisitor and index_code emit; a prior content-prefix fallback
+# for a broken file does not match, so it is refreshed rather than frozen.
+_AST_FACT_BODY_RE = re.compile(
+    r"module docstring: |class [\w.]+(?: docstring: |$)"
+    r"|(?:async )?def [\w.]+(?: docstring: |$|\(.*\)(?: -> .*)?$)"
+)
+
+
 def _normalize_code_path(file_path: str) -> str:
     """Normalize path spelling for code-memory identity without filesystem IO."""
     path = str(file_path).replace("\\", "/")
@@ -338,10 +346,14 @@ class MemoryStore:
         Python files are parsed with AST to extract module docstrings, classes,
         methods, standalone functions, and docstrings. Non-Python files, parse
         failures, and Python files with no extractable facts fall back to a
-        content prefix. Returns the created or existing fact IDs.
+        content prefix. A parse failure on a path that already has AST-derived
+        code facts leaves those facts unchanged instead of replacing them with
+        the fallback; a prior fallback snippet is refreshed. Returns the
+        created or existing fact IDs.
         """
         file_path = _normalize_code_path(file_path)
         facts: List[str] = []
+        parse_failed = False
 
         if file_path.lower().endswith(".py"):
             try:
@@ -356,6 +368,8 @@ class MemoryStore:
                     facts.append(fact.strip())
             except Exception as e:
                 log.warning("Failed to parse Python file %s with AST: %s", file_path, e)
+                parse_failed = True
+                facts = []
 
         if not facts:
             # Strip the whole fallback fact line to match add_fact's normalization
@@ -371,6 +385,13 @@ class MemoryStore:
                 """,
                 ("code", "code_structure", file_path),
             ).fetchall()
+            prefix = f"[code] {file_path}: "
+            if parse_failed and any(
+                row["content"].startswith(prefix)
+                and _AST_FACT_BODY_RE.match(row["content"][len(prefix):])
+                for row in existing_rows
+            ):
+                return sorted(int(row["fact_id"]) for row in existing_rows)
             existing_by_content = {
                 row["content"]: int(row["fact_id"]) for row in existing_rows
             }

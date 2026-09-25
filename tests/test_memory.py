@@ -338,6 +338,86 @@ def test_index_file_fallback_syntax_error(temp_store):
     assert facts[0]["content"] == f"[code] src/error.py: {code_content}"
 
 
+def test_index_code_malformed_reindex_preserves_previous_facts(temp_store):
+    valid_content = textwrap.dedent('''
+        """Valid module."""
+
+        class KeptWidget:
+            """Kept docs."""
+            pass
+
+        def kept_function():
+            return None
+    ''').strip()
+    malformed_content = "class KeptWidget:\n  def broken(self"
+
+    first_ids = temp_store.index_code("src/kept.py", valid_content)
+    before = [
+        dict(row)
+        for row in temp_store._conn.execute(
+            """
+            SELECT fact_id, content, category, tags, trust_score,
+                   retrieval_count, helpful_count, created_at, updated_at
+            FROM facts WHERE category = ? ORDER BY fact_id
+            """,
+            ("code",),
+        )
+    ]
+
+    second_ids = temp_store.index_code("src/kept.py", malformed_content)
+    after = [
+        dict(row)
+        for row in temp_store._conn.execute(
+            """
+            SELECT fact_id, content, category, tags, trust_score,
+                   retrieval_count, helpful_count, created_at, updated_at
+            FROM facts WHERE category = ? ORDER BY fact_id
+            """,
+            ("code",),
+        )
+    ]
+
+    assert sorted(second_ids) == sorted(first_ids)
+    assert after == before
+    assert not any("broken" in row["content"] for row in after)
+    assert any(
+        "kept_function" in result["content"]
+        for result in temp_store.search_facts("kept_function", category="code")
+    )
+
+
+def test_index_code_visitor_error_falls_back_instead_of_partial_facts(temp_store, monkeypatch):
+    from ouroboros import memory as memory_mod
+
+    def boom(self, node):
+        raise RuntimeError("visitor failed")
+
+    monkeypatch.setattr(memory_mod.CodeASTVisitor, "visit", boom)
+    content = '"""Doc."""\n\nclass Dropped:\n    pass'
+
+    temp_store.index_code("src/partial.py", content)
+
+    rows = temp_store._conn.execute(
+        "SELECT content FROM facts WHERE category = ? AND tags = ?",
+        ("code", "src/partial.py"),
+    ).fetchall()
+    assert [row["content"] for row in rows] == [f"[code] src/partial.py: {content}"]
+
+
+def test_index_code_repeated_parse_failure_refreshes_fallback(temp_store):
+    first = "def one(:\n    pass"
+    second = "def two(:\n    pass"
+
+    temp_store.index_code("src/broken.py", first)
+    temp_store.index_code("src/broken.py", second)
+
+    rows = temp_store._conn.execute(
+        "SELECT content FROM facts WHERE category = ? AND tags = ?",
+        ("code", "src/broken.py"),
+    ).fetchall()
+    assert [row["content"] for row in rows] == [f"[code] src/broken.py: {second}"]
+
+
 def test_index_file_fallback_non_python(temp_store):
     manager = IndexManager(storage=temp_store)
 
