@@ -304,10 +304,49 @@ ERROR tests/test_foo.py::TestClass::test_method[param with spaces] - RuntimeErro
     assert fail.message == "RuntimeError: fixture failed"
     assert "fixture failed" in fail.traceback
 
+def test_parse_pytest_output_skipped():
+    output = "5 skipped in 0.52s"
+    result = _parse_pytest_output(output)
+    assert result["passed"] == 0
+    assert result["failed"] == 0
+    assert result["errors"] == 0
+    assert result["skipped"] == 5
+
+def test_parse_pytest_output_mixed_with_skipped():
+    output = "3 passed, 1 failed, 2 skipped, 1 error in 1.23s"
+    result = _parse_pytest_output(output)
+    assert result["passed"] == 3
+    assert result["failed"] == 1
+    assert result["errors"] == 1
+    assert result["skipped"] == 2
+
+def test_runner_hollow_success():
+    # Scenario: Tests were collected, but all were skipped, none passed.
+    r = RunnerOutcome(passed=0, failed=0, errors=0, skipped=5, returncode=0)
+    assert not r.success # Should be False because 0 passed out of 5 total (skipped)
+    assert r.total == 5
+    assert "5 skipped" in r.summary()
+
+    # Scenario: All collected tests passed, should be success
+    r_pass = RunnerOutcome(passed=5, failed=0, errors=0, skipped=0, returncode=0)
+    assert r_pass.success
+    assert r_pass.total == 5
+
+    # Scenario: Some passed, some skipped, still success because some passed
+    r_mixed_pass_skip = RunnerOutcome(passed=2, failed=0, errors=0, skipped=3, returncode=0)
+    assert r_mixed_pass_skip.success
+    assert r_mixed_pass_skip.total == 5
+
+    # Scenario: No tests collected at all (total=0), should still be success (or rather, not failure)
+    r_no_tests = RunnerOutcome(passed=0, failed=0, errors=0, skipped=0, returncode=0)
+    assert r_no_tests.success
+    assert r_no_tests.total == 0
+
 def test_parse_pytest_output_no_tests():
     output = "no tests ran in 0.01s"
     result = _parse_pytest_output(output)
     assert result["passed"] == 0
     assert result["failed"] == 0
     assert result["errors"] == 0
+    assert result["skipped"] == 0
     assert result["failures"] == []
