@@ -88,3 +88,4 @@
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code while properly i | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-25 | fix_bug | Fix test_runner to fail closed when pytest collects only ski | failed | no plan generated
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | success | tests: 1286 -> 1286
+2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | no plan generated
