@@ -1,4 +1,3 @@
-2026-09-25 | fix_bug | Fix test_runner to fail closed when pytest collects only ski | failed | no plan generated
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | success | tests: 1286 -> 1286
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | no plan generated
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Too many lines changed: 234 > 200
@@ -98,3 +97,4 @@
 2026-09-26 | refactor | Extract shared storage helpers module to consolidate duplica | failed | no plan generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no code generated
 2026-09-26 | fix_bug | Remove duplicate _generate_fingerprint method definition in  | failed | no code generated
+2026-09-26 | fix_bug | Enhance MemoryStore.index_code to fully leverage CodeASTVisi | failed | no code generated
