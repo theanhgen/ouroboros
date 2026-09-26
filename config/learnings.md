@@ -1,4 +1,3 @@
-2026-09-25 | add_feature | Implement code-aware indexing in MemoryStore by modifying th | failed | reviewer rejected
 2026-09-25 | fix_bug | Rectify the `MemoryStore` schema and indexing logic in `src/ | failed | PR creation failed
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | success | tests: 1296 -> 1296
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 2 after
@@ -98,3 +97,4 @@
 2026-09-26 | fix_bug | Remove duplicate _generate_fingerprint method definition in  | failed | no plan generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | reviewer rejected
 2026-09-26 | refactor | Consolidate duplicated 'path → load → mutate → write JSON' p | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-09-26 | fix_bug | Fix MemoryStore.index_code to fully leverage CodeASTVisitor  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
