@@ -1,4 +1,3 @@
-2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
@@ -98,3 +97,4 @@
 2026-09-26 | refactor | Remove duplicate _append_learning function definition in imp | failed | no code generated
 2026-09-26 | add_feature | Implement code-aware indexing in MemoryStore.index_code that | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-26 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | failed | no plan generated
+2026-09-26 | refactor | Consolidate duplicated atomic storage helpers in policies.py | failed | no code generated
