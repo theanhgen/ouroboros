@@ -1,4 +1,3 @@
-2026-09-14 | refactor | Consolidate JSON persistence in evaluation.load_history/reco | success | tests: 1210 -> 1212
 2026-09-15 | add_feature | Add deletion-aware code-memory indexing: implement `MemorySt | success | tests: 1212 -> 1213
 2026-09-15 | fix_bug | Make `agent_generate_changes` isolate runtime state files su | failed | Forbidden file modification: config/state.json
 2026-09-15 | fix_bug | Update `MemoryStore.update_fact` so moving a fact between ca | success | tests: 1213 -> 1214
@@ -98,3 +97,4 @@
 2026-09-26 | refactor | Consolidate duplicated 'history/prompt context/state path/JS | failed | no plan generated
 2026-09-26 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-26 | refactor | Consolidate duplicate 'history/prompt context/state path/JSO | failed | no plan generated
+2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement proper code-awar | failed | no plan generated
