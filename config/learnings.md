@@ -1,7 +1,6 @@
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
-2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
@@ -98,3 +97,4 @@
 2026-09-26 | refactor | Extract duplicated atomic storage helpers into src/ouroboros | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-26 | fix_bug | Remove duplicate _generate_fingerprint method definition in  | success | tests: 1338 -> 1338
 2026-09-26 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-26 | refactor | Extract duplicated atomic storage helpers into src/ouroboros | failed | no plan generated
