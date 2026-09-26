@@ -1,4 +1,3 @@
-2026-09-15 | fix_bug | Update `MemoryStore.update_fact` so moving a fact between ca | success | tests: 1213 -> 1214
 2026-09-15 | fix_bug | Make `wiki._write_page` atomically replace generated Markdow | success | tests: 1214 -> 1216
 2026-09-15 | fix_bug | Make `revert_changes` enforce repository and symlink safety  | failed | Forbidden file modification: src/ouroboros/improvement.py
 2026-09-16 | fix_bug | Make `MemoryStore.index_code` parse the new source and build | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement proper code-awar | failed | no plan generated
 2026-09-26 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | failed | generation failed: EditMismatch: src/ouroboros/memory.py: SEARCH block matches 
 2026-09-26 | fix_bug | Remove duplicate _generate_fingerprint method definitions in | failed | no plan generated
+2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement proper code-awar | failed | no code generated
