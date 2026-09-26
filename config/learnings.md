@@ -1,4 +1,3 @@
-2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Forbidden file modification: src/ouroboros/evaluation.py
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Coverage regression: dropped from 79.0% to 77.0%
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Forbidden file modification: src/ouroboros/evaluation.py
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 1 after
@@ -98,3 +97,4 @@
 2026-09-27 | fix_bug | Enhance MemoryStore.index_code to properly leverage CodeASTV | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-27 | refactor | Extract duplicated atomic storage helpers into src/ouroboros | failed | no code generated
 2026-09-27 | fix_bug | Enhance MemoryStore.index_code to fully leverage CodeASTVisi | failed | reviewer rejected
+2026-09-27 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | failed | no plan generated
