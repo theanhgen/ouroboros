@@ -1,4 +1,3 @@
-2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | generation failed: EditMismatch: src/ouroboros/evaluation.py: SEARCH block not 
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 2 after
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
@@ -98,3 +97,4 @@
 2026-09-26 | refactor | Extract shared storage helpers to consolidate duplicated 'pa | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to fully leverage CodeASTVisitor  | failed | no plan generated
 2026-09-26 | refactor | Extract shared atomic storage helpers to consolidate duplica | failed | generation failed: EditMismatch: src/ouroboros/storage_helpers.py: SEARCH block
+2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no code generated
