@@ -1,4 +1,3 @@
-2026-09-14 | add_feature | Add deterministic failure triage in `improvement.py`: group  | failed | Forbidden file modification: config/state.json
 2026-09-14 | add_feature | Extend evaluation summaries to report attempts, successes, f | failed | no code generated
 2026-09-14 | fix_bug | Make record_improvement persist cycle and token metrics to t | failed | no code generated
 2026-09-14 | refactor | Consolidate JSON persistence in evaluation.load_history/reco | success | tests: 1210 -> 1212
@@ -98,3 +97,4 @@
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement proper code-awar | failed | no code generated
 2026-09-26 | add_feature | Implement confidence calibration evaluation in the improveme | failed | no plan generated
 2026-09-26 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-26 | refactor | Consolidate duplicated 'history/prompt context/state path/JS | failed | no plan generated
