@@ -713,12 +713,6 @@ class MemoryStore:
         )
         self._conn.commit()
 
-    def _generate_fingerprint(self, content: str) -> str:
-        import hashlib
-        normalized_content = content.strip()
-        fingerprint = hashlib.sha256(normalized_content.encode('utf-8')).hexdigest()
-        return fingerprint
-
     def _compute_hrr_vector(self, fact_id: int, content: str) -> None:
         if not self._hrr_available:
             return
