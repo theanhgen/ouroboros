@@ -4,7 +4,6 @@
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
-2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | fix_bug | Fix the data-loss bug in MemoryStore.index_code where facts  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
@@ -98,3 +97,4 @@
 2026-09-26 | add_feature | Implement code-aware indexing in MemoryStore.index_code that | failed | no code generated
 2026-09-26 | fix_bug | Remove duplicate _generate_fingerprint method in MemoryStore | success | tests: 1338 -> 1338
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code in src/ouroboros/memory.py to | failed | no plan generated
+2026-09-26 | refactor | Extract duplicated atomic storage helpers into src/ouroboros | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
