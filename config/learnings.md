@@ -1,4 +1,3 @@
-2026-09-12 | fix_bug | Fix status badge formatting in generate_changelog_page withi | failed | Forbidden file modification: config/state.json
 2026-09-12 | fix_bug | Fix pytest collection error parsing in _parse_pytest_output  | success | tests: 1188 -> 1191
 2026-09-12 | fix_bug | Fix HRR similarity calculation in FactRetriever.probe and Fa | success | tests: 1191 -> 1194
 2026-09-13 | fix_bug | Make MemoryStore.index_code replace stale code facts for the | success | tests: 1208 -> 1210
@@ -98,3 +97,4 @@
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement code-aware index | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-26 | refactor | Consolidate duplicate path normalization logic in policies.p | failed | no plan generated
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement code-aware index | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement code-aware index | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
