@@ -1,4 +1,3 @@
-2026-09-12 | fix_bug | Fix HRR similarity calculation in FactRetriever.probe and Fa | success | tests: 1191 -> 1194
 2026-09-13 | fix_bug | Make MemoryStore.index_code replace stale code facts for the | success | tests: 1208 -> 1210
 2026-09-14 | add_feature | Add deterministic failure triage in `improvement.py`: group  | failed | Forbidden file modification: config/state.json
 2026-09-14 | add_feature | Extend evaluation summaries to report attempts, successes, f | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement code-aware index | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement code-aware index | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement proper code-awar | failed | no code generated
+2026-09-26 | add_feature | Implement confidence calibration evaluation in the improveme | failed | no plan generated
