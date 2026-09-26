@@ -422,14 +422,7 @@ class MemoryStore:
             fact_ids: List[int] = []
             has_new_facts = False
             for fact_content in facts:
-                fact_fingerprint = self._generate_fingerprint(fact_content)
-                existing_fact = self._conn.execute(
-                    "SELECT fact_id FROM facts WHERE content = ?",
-                    (fact_fingerprint,)
-                ).fetchone()
-                if existing_fact:
-                    fact_ids.append(int(existing_fact["fact_id"]))
-                elif fact_content in existing_by_content:
+                if fact_content in existing_by_content:
                     fact_ids.append(existing_by_content[fact_content])
                 else:
                     has_new_facts = True
