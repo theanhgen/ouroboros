@@ -1,4 +1,3 @@
-2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Unparseable: src/ouroboros/storage_helpers.py (line 119: invalid syntax)
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 1 after
@@ -98,3 +97,4 @@
 2026-09-26 | add_feature | Enhance MemoryStore.index_code to properly leverage CodeASTV | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-27 | refactor | Extract duplicated atomic storage helpers into src/ouroboros | failed | no plan generated
 2026-09-27 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-27 | refactor | Remove unused duplicate _generate_fingerprint method from Me | success | tests: 1338 -> 1338
