@@ -1,4 +1,3 @@
-2026-09-23 | add_test | Add an end-to-end regression test for a policy-blocked impro | success | tests: 1254 -> 1255
 2026-09-23 | add_test | Add a regression test proving that an agent-deleted tracked  | success | tests: 1255 -> 1256
 2026-09-23 | fix_bug | Make `test_runner` fail closed when pytest collects only ski | failed | no code generated
 2026-09-24 | fix_bug | Fix data-loss bug in MemoryStore.index_code: ensure fact str | failed | no code generated
@@ -97,4 +96,5 @@
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement code-aware index | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-26 | refactor | Consolidate duplicate 'history/prompt context/state path/JSO | failed | reviewer rejected
 2026-09-26 | refactor | Consolidate duplicated 'history/prompt context/state path/JS | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-09-26 | fix_bug | Fix data loss bug in storage_helpers.py where save_json_file | failed | no plan generated
 2026-09-26 | fix_bug | Fix data loss bug in storage_helpers.py where save_json_file | failed | no plan generated
