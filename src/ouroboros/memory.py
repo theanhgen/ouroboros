@@ -340,11 +340,6 @@ class MemoryStore:
             self._rebuild_bank(category)
             return fact_id
 
-    def _generate_fingerprint(self, content: str) -> str:
-        import hashlib
-        normalized_content = content.strip()
-        fingerprint = hashlib.sha256(normalized_content.encode('utf-8')).hexdigest()
-        return fingerprint
 
     def index_code(self, file_path: str, content: str) -> List[int]:
         """Parse code into code facts and persist them.
