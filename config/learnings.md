@@ -1,4 +1,3 @@
-2026-09-23 | fix_bug | Make `test_runner` fail closed when pytest collects only ski | failed | no code generated
 2026-09-24 | fix_bug | Fix data-loss bug in MemoryStore.index_code: ensure fact str | failed | no code generated
 2026-09-24 | refactor | Consolidate duplicated 'History / prompt context / state pat | failed | no plan generated
 2026-09-24 | add_feature | Implement code-aware indexing in MemoryStore using AST to ex | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-26 | fix_bug | Fix data loss bug in storage_helpers.py where save_json_file | failed | no plan generated
 2026-09-26 | fix_bug | Fix data loss bug in storage_helpers.py where save_json_file | failed | no plan generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-09-26 | fix_bug | Implement MemoryStore.index_code to use CodeASTVisitor for s | failed | no code generated
