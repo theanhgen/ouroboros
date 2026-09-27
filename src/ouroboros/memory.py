@@ -387,16 +387,43 @@ class MemoryStore:
                 ("code", "code_structure", file_path),
             ).fetchall()
             prefix = f"[code] {file_path}: "
-            if parse_failed and any(
-                row["content"].startswith(prefix)
-                and _AST_FACT_BODY_RE.match(row["content"][len(prefix):])
-                for row in existing_rows
-            ):
-                # Rebuild banks before returning existing facts to ensure they're current
-                if self._hrr_available:
-                    self._rebuild_bank("code")
-                    self._rebuild_bank("code_structure")
-                return sorted(int(row["fact_id"]) for row in existing_rows)
+            if parse_failed:
+                # Separate AST-derived facts from content-prefix fallback facts
+                ast_facts = []
+                stale_fallback_facts = []
+                
+                for row in existing_rows:
+                    fact_content = row["content"][len(prefix):]  # Remove "[code] {file_path}: " prefix
+                    if _AST_FACT_BODY_RE.match(fact_content):
+                        ast_facts.append(row)
+                    else:
+                        stale_fallback_facts.append(row)
+                
+                # If we found AST-derived facts, delete stale fallback facts and return AST facts only
+                if ast_facts:
+                    # Delete stale content-prefix fallback facts
+                    if stale_fallback_facts:
+                        stale_ids = [int(row["fact_id"]) for row in stale_fallback_facts]
+                        placeholders = ",".join("?" for _ in stale_ids)
+                        self._conn.execute(
+                            f"DELETE FROM fact_entities WHERE fact_id IN ({placeholders})",
+                            stale_ids,
+                        )
+                        self._conn.execute(
+                            f"DELETE FROM facts WHERE fact_id IN ({placeholders})",
+                            stale_ids,
+                        )
+                        self._conn.commit()
+                        
+                        # Rebuild banks after deleting stale facts
+                        if self._hrr_available:
+                            self._rebuild_bank("code")
+                            self._rebuild_bank("code_structure")
+                    
+                    # Return only AST-derived fact IDs
+                    return sorted(int(row["fact_id"]) for row in ast_facts)
+            
+            # Normal logic path when parse succeeded or no AST-derived facts exist
             existing_by_content = {
                 row["content"]: int(row["fact_id"]) for row in existing_rows
             }
