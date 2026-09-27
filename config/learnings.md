@@ -1,4 +1,3 @@
-2026-09-26 | fix_bug | Implement MemoryStore.index_code to use CodeASTVisitor for s | failed | no code generated
 2026-09-26 | fix_bug | Fix data loss bug in storage_helpers.py where save_json_file | failed | no code generated
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to use CodeASTVisitor for sem | failed | Too many lines changed: 203 > 200
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to use CodeASTVisitor for sem | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-27 | refactor | Extract duplicated atomic JSON storage patterns from evaluat | failed | no plan generated
 2026-09-27 | refactor | Extract the duplicated JSON storage and path resolution patt | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-27 | refactor | Extract JSON storage patterns from evaluation.py and backlog | failed | no plan generated
+2026-09-27 | refactor | Replace duplicated JSON storage and path resolution patterns | failed | no plan generated
