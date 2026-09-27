@@ -1,4 +1,3 @@
-2026-09-26 | refactor | Consolidate duplicate 'history/prompt context/state path/JSO | failed | no plan generated
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code to implement proper code-awar | failed | no plan generated
 2026-09-26 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | failed | generation failed: EditMismatch: src/ouroboros/memory.py: SEARCH block matches 
 2026-09-26 | fix_bug | Remove duplicate _generate_fingerprint method definitions in | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-27 | add_test | Add a test for MemoryStore.index_code's parse-failure fallba | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-27 | refactor | Extract common atomic JSON storage pattern from evaluation.p | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-27 | refactor | Extract duplicated atomic JSON storage patterns from evaluat | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
