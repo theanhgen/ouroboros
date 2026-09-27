@@ -1294,3 +1294,186 @@ def test_run_hygiene_calls_contradict_with_no_numpy(temp_store, monkeypatch):
     assert manager.run_hygiene() == 0
     assert called
     assert _fact_by_id(temp_store, fact_id) is not None
+
+
+def test_index_code_parse_failure_with_existing_ast_facts_preserves_and_rebuilds_hrr(temp_store):
+    """When AST parsing fails but AST-derived facts exist, only AST-derived facts are preserved and HRR vectors are rebuilt."""
+    import textwrap
+    from ouroboros import holographic as hrr
+
+    # Index a valid Python file to create AST-derived facts
+    valid_content = textwrap.dedent('''
+        class MyClass:
+            """My class doc."""
+            def method(self):
+                return 42
+    ''').strip()
+    file_path = "src/valid.py"
+    initial_ids = temp_store.index_code(file_path, valid_content)
+    assert len(initial_ids) > 0
+
+    # Verify that facts were created
+    initial_facts = temp_store.list_facts(category="code")
+    assert len(initial_facts) == len(initial_ids)
+
+    # Determine which categories are present (code and possibly code_structure)
+    all_categories = {fact["category"] for fact in temp_store.list_facts()}
+    assert "code" in all_categories
+    code_structure_present = "code_structure" in all_categories
+
+    # Record the state of memory banks before the parse failure (if numpy available)
+    if hrr.HAS_NUMPY:
+        initial_bank_counts = {}
+        for cat in ["code", "code_structure"]:
+            if cat in all_categories:
+                bank = temp_store._conn.execute(
+                    "SELECT fact_count, vector FROM memory_banks WHERE bank_name = ?",
+                    (f"cat:{cat}",),
+                ).fetchone()
+                assert bank is not None
+                initial_bank_counts[cat] = bank
+            else:
+                # No facts in this category, ensure no bank entry
+                bank = temp_store._conn.execute(
+                    "SELECT 1 FROM memory_banks WHERE bank_name = ?",
+                    (f"cat:{cat}",),
+                ).fetchone()
+                assert bank is None, f"Unexpected memory bank for category {cat}"
+
+    # Now index the same file with malformed content that triggers AST parse failure
+    malformed_content = "def broken(:"
+    temp_store.index_code(file_path, malformed_content)
+
+    # After the failure, the fallback logic should have filtered out any new fact,
+    # leaving the original AST-derived facts intact.
+    after_facts = temp_store.list_facts(category="code")
+    assert len(after_facts) == len(initial_facts), "Fact count changed unexpectedly"
+
+    # Ensure no fact contains the malformed content (stale content-prefix fact filtered)
+    for fact in after_facts:
+        assert malformed_content not in fact["content"]
+
+    # Verify that memory banks have been rebuilt for 'code' and 'code_structure' categories.
+    if hrr.HAS_NUMPY:
+        for cat in ["code", "code_structure"]:
+            if cat in all_categories:
+                bank = temp_store._conn.execute(
+                    "SELECT fact_count, vector FROM memory_banks WHERE bank_name = ?",
+                    (f"cat:{cat}",),
+                ).fetchone()
+                assert bank is not None, f"Memory bank missing for category {cat}"
+
+                # fact_count should match current number of facts in that category
+                current_count = temp_store._conn.execute(
+                    "SELECT COUNT(*) FROM facts WHERE category = ?",
+                    (cat,),
+                ).fetchone()[0]
+                assert bank["fact_count"] == current_count, f"fact_count mismatch for {cat}"
+
+                # The bank vector should match the bundle of current HRR vectors
+                current_vectors = [
+                    hrr.bytes_to_phases(row["hrr_vector"])
+                    for row in temp_store._conn.execute(
+                        "SELECT hrr_vector FROM facts WHERE category = ? AND hrr_vector IS NOT NULL",
+                        (cat,),
+                    )
+                ]
+                if current_vectors:
+                    assert hrr.similarity(
+                        hrr.bytes_to_phases(bank["vector"]),
+                        hrr.bundle(*current_vectors),
+                    ) == pytest.approx(1.0), f"Bank vector mismatch for {cat}"
+            else:
+                # No facts in this category, ensure no bank entry
+                bank = temp_store._conn.execute(
+                    "SELECT 1 FROM memory_banks WHERE bank_name = ?",
+                    (f"cat:{cat}",),
+                ).fetchone()
+                assert bank is None, f"Unexpected memory bank for category {cat}"
+
+
+def test_index_code_parse_failure_filters_stale_content_prefix_fact_and_rebuilds_memory_banks(temp_store, monkeypatch):
+    """When a parse-failure creates a stale content-prefix fact, later successful indexing filters it out and rebuilds HRR vectors."""
+    import textwrap
+    from ouroboros import holographic as hrr
+    from ouroboros import memory as memory_mod
+
+    # First, cause a parse failure by monkeypatching the AST visitor to raise an error.
+    original_visit = memory_mod.CodeASTVisitor.visit
+    def boom(self, node):
+        raise RuntimeError("visitor failed")
+    monkeypatch.setattr(memory_mod.CodeASTVisitor, "visit", boom)
+
+    # Index the file with some content; the visitor error will trigger fallback.
+    content = '"""Doc."""\n\nclass Dropped:\n    pass'
+    file_path = "src/fallback.py"
+    fallback_ids = temp_store.index_code(file_path, content)
+    # Expect a single fallback fact
+    assert len(fallback_ids) == 1
+    fallback_fact = temp_store.list_facts(category="code")[0]
+    assert fallback_fact["content"] == f"[code] {file_path}: {content}"
+    # Ensure no other facts for this file (only the fallback)
+    assert len(temp_store.list_facts(category="code")) == 1
+
+    # Now, revert the monkeypatch so that AST parsing works normally.
+    monkeypatch.undo()
+
+    # Index the same file with valid content that will be successfully parsed.
+    valid_content = textwrap.dedent('''
+        class ValidClass:
+            """Valid doc."""
+            def valid_method(self):
+                return "ok"
+    ''').strip()
+    new_ids = temp_store.index_code(file_path, valid_content)
+
+    # After successful indexing, there should be multiple facts (AST-derived) and no fallback.
+    after_facts = temp_store.list_facts(category="code")
+    assert len(after_facts) > 1
+    # Ensure the stale content-prefix fact is not present
+    for fact in after_facts:
+        assert content not in fact["content"]
+    # Verify that the new facts are AST-derived (they will contain class/method etc.)
+    assert any("ValidClass" in fact["content"] for fact in after_facts)
+    assert any("valid_method" in fact["content"] for fact in after_facts)
+
+    # Determine categories present (code and possibly code_structure)
+    all_categories = {fact["category"] for fact in temp_store.list_facts()}
+    assert "code" in all_categories
+    code_structure_present = "code_structure" in all_categories
+
+    # Verify that memory banks have been rebuilt for 'code' and 'code_structure' categories.
+    if hrr.HAS_NUMPY:
+        for cat in ["code", "code_structure"]:
+            if cat in all_categories:
+                bank = temp_store._conn.execute(
+                    "SELECT fact_count, vector FROM memory_banks WHERE bank_name = ?",
+                    (f"cat:{cat}",),
+                ).fetchone()
+                assert bank is not None, f"Memory bank missing for category {cat}"
+
+                current_count = temp_store._conn.execute(
+                    "SELECT COUNT(*) FROM facts WHERE category = ?",
+                    (cat,),
+                ).fetchone()[0]
+                assert bank["fact_count"] == current_count, f"fact_count mismatch for {cat}"
+
+                # Additionally, bank vector should match bundle of current HRR vectors
+                current_vectors = [
+                    hrr.bytes_to_phases(row["hrr_vector"])
+                    for row in temp_store._conn.execute(
+                        "SELECT hrr_vector FROM facts WHERE category = ? AND hrr_vector IS NOT NULL",
+                        (cat,),
+                    )
+                ]
+                if current_vectors:
+                    assert hrr.similarity(
+                        hrr.bytes_to_phases(bank["vector"]),
+                        hrr.bundle(*current_vectors),
+                    ) == pytest.approx(1.0), f"Bank vector mismatch for {cat}"
+            else:
+                bank = temp_store._conn.execute(
+                    "SELECT 1 FROM memory_banks WHERE bank_name = ?",
+                    (f"cat:{cat}",),
+                ).fetchone()
+                assert bank is None, f"Unexpected memory bank for category {cat}"
