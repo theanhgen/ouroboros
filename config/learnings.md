@@ -1,4 +1,3 @@
-2026-09-26 | fix_bug | Remove the duplicate `_generate_fingerprint` method defined  | failed | no code generated
 2026-09-26 | refactor | Extract shared storage helpers module to consolidate duplica | failed | no plan generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no code generated
 2026-09-26 | fix_bug | Remove duplicate _generate_fingerprint method definition in  | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-27 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-27 | add_feature | Implement code‑aware indexing in MemoryStore using AST to ex | failed | no plan generated
 2026-09-27 | refactor | Refactor MemoryStore.index_code to integrate the existing Co | failed | no code generated
+2026-09-27 | refactor | Modify MemoryStore.index_code to use CodeASTVisitor for stru | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
