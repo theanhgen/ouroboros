@@ -392,6 +392,10 @@ class MemoryStore:
                 and _AST_FACT_BODY_RE.match(row["content"][len(prefix):])
                 for row in existing_rows
             ):
+                # Rebuild banks before returning existing facts to ensure they're current
+                if self._hrr_available:
+                    self._rebuild_bank("code")
+                    self._rebuild_bank("code_structure")
                 return sorted(int(row["fact_id"]) for row in existing_rows)
             existing_by_content = {
                 row["content"]: int(row["fact_id"]) for row in existing_rows
@@ -413,6 +417,11 @@ class MemoryStore:
                     stale_ids,
                 )
                 self._conn.commit()
+                
+                # REBUILD BANKS HERE - This was missing before
+                if self._hrr_available:
+                    self._rebuild_bank("code")
+                    self._rebuild_bank("code_structure")
 
             fact_ids: List[int] = []
             has_new_facts = False
