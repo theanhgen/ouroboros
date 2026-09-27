@@ -1,4 +1,3 @@
-2026-09-26 | refactor | Extract shared storage helpers module to consolidate duplica | failed | reviewer rejected
 2026-09-26 | fix_bug | Remove the duplicate `_generate_fingerprint` method defined  | failed | no code generated
 2026-09-26 | refactor | Extract shared storage helpers module to consolidate duplica | failed | no plan generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-27 | refactor | Create centralized storage_helpers.py module with shared uti | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-27 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-27 | add_feature | Implement code‑aware indexing in MemoryStore using AST to ex | failed | no plan generated
+2026-09-27 | refactor | Refactor MemoryStore.index_code to integrate the existing Co | failed | no code generated
