@@ -1,4 +1,3 @@
-2026-09-26 | fix_bug | Fix JSON update bug in record_improvement where atomic_updat | failed | no plan generated
 2026-09-26 | fix_bug | Remove duplicate _generate_fingerprint method and enhance Me | failed | no code generated
 2026-09-26 | fix_bug | Fix data loss bug in storage_helpers.backup_file context man | failed | no plan generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-27 | fix_bug | Fix incomplete memory bank rebuilding in MemoryStore.index_c | failed | no code generated
 2026-09-27 | refactor | Integrate CodeASTVisitor into MemoryStore.index_code for str | failed | no code generated
 2026-09-27 | refactor | Extract duplicated JSON storage and path resolution patterns | failed | no plan generated
+2026-09-27 | fix_bug | Fix MemoryStore.index_code to use CodeASTVisitor for normal  | failed | no code generated
