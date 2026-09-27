@@ -1,4 +1,3 @@
-2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | failed | generation failed: EditMismatch: src/ouroboros/memory.py: empty SEARCH on an ex
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | reverted | Coverage regression: dropped from 79.0% to 74.0%
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | success | tests: 1338 -> 1338
 2026-09-25 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
@@ -98,3 +97,4 @@
 2026-09-27 | add_feature | Implement a bug-fix evidence chain system that requires fail | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to r | failed | no code generated
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | success | tests: 1338 -> 1338
+2026-09-27 | add_feature | Enhance MemoryStore.index_code to implement full AST-based c | failed | no code generated
