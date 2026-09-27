@@ -1,4 +1,3 @@
-2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | reverted | Test regression detected: 0 failures before, 1 after
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | generation failed: EditMismatch: src/ouroboros/evaluation.py: SEARCH block not 
 2026-09-25 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | Too many files changed: 5 > 3
 2026-09-25 | fix_bug | Prevent silent replacement of unreadable backlog files in ad | success | tests: 1338 -> 1338
@@ -98,3 +97,4 @@
 2026-09-27 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | failed | no plan generated
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to r | failed | no code generated
 2026-09-27 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to r | failed | no code generated
