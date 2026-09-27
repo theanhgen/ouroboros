@@ -1,4 +1,3 @@
-2026-09-26 | add_feature | Implement confidence calibration evaluation in the improveme | failed | no plan generated
 2026-09-26 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-26 | refactor | Consolidate duplicated 'history/prompt context/state path/JS | failed | no plan generated
 2026-09-26 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-09-27 | fix_bug | Fix MemoryStore.index_code to correctly filter stale content | reverted | Test regression detected: 0 failures before, 2 after
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | no code generated
 2026-09-27 | refactor | Extract duplicated JSON storage patterns from evaluation.py, | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-09-27 | refactor | Extract duplicated JSON storage and path resolution patterns | failed | no code generated
