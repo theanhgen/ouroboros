@@ -1,4 +1,3 @@
-2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | reviewer rejected
 2026-09-26 | refactor | Consolidate duplicated 'path → load → mutate → write JSON' p | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to fully leverage CodeASTVisitor  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-26 | refactor | Extract shared storage helpers to consolidate duplicated 'pa | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-27 | refactor | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | no plan generated
 2026-09-27 | refactor | Integrate CodeASTVisitor into MemoryStore.index_code to extr | failed | no code generated
 2026-09-27 | fix_bug | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | reviewer rejected
+2026-09-27 | refactor | Extract duplicated JSON storage and path resolution patterns | failed | no plan generated
