@@ -1,4 +1,3 @@
-2026-09-26 | refactor | Extract duplicated 'History / prompt context / state path /  | failed | generation failed: EditMismatch: src/ouroboros/wiki.py: SEARCH block not found:
 2026-09-26 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
 2026-09-26 | add_test | Add a test to verify that MemoryStore.index_code normalizes  | success | tests: 1338 -> 1338
 2026-09-26 | fix_bug | Fix data-loss bug in MemoryStore.index_code where facts are  | duplicate | already completed: Fix data-loss bug in MemoryStore.index_code where facts are 
@@ -98,3 +97,4 @@
 2026-09-27 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | success | tests: 1338 -> 1340
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | failed | no code generated
+2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
