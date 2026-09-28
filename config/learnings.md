@@ -1,4 +1,3 @@
-2026-09-27 | add_test | Add a test for MemoryStore.index_code's parse-failure fallba | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-27 | refactor | Extract common atomic JSON storage pattern from evaluation.p | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-27 | refactor | Extract duplicated atomic JSON storage patterns from evaluat | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-28 | fix_bug |  | success | tests: 1353 -> 1353
 2026-09-28 | refactor | Extract duplicated JSON file handling patterns into a centra | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no code generated
+2026-09-28 | refactor | Create a centralized storage_helpers.py module with common u | failed | no code generated
