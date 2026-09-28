@@ -1,4 +1,3 @@
-2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no plan generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to fully leverage CodeASTVisitor  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-26 | add_feature | Implement code-aware indexing in MemoryStore.index_code that | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-28 | refactor | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | fix_bug | Fix incomplete memory bank rebuilding in MemoryStore.index_c | failed | no plan generated
 2026-09-28 | fix_bug | Update MemoryStore.index_code to categorize AST-derived fact | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-28 | fix_bug | Fix MemoryStore.index_code to integrate CodeASTVisitor for n | failed | no plan generated
