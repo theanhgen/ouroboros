@@ -1132,3 +1132,73 @@ def test_read_tools_still_read_files_inside_the_repository(tmp_path, tool):
         tool, {"file_path": "src/ouroboros/sample.py"}
     )
     assert "findable_symbol" in out
+
+
+# -- task scope gate -----------------------------------------------------------
+
+def _scoped_task(files):
+    return ImprovementTask("s1", "refactor", "Extract storage helpers", files, "duplication")
+
+
+def test_scope_gate_rejects_more_files_than_the_cap():
+    from ouroboros.improvement import _task_scope_violation
+    files = [f"src/ouroboros/m{i}.py" for i in range(SafetyConfig().max_changed_files_per_pr + 1)]
+    assert "cap" in _task_scope_violation(_scoped_task(files), SafetyConfig())
+
+
+def test_scope_gate_rejects_a_forbidden_target():
+    from ouroboros.improvement import _task_scope_violation
+    reason = _task_scope_violation(_scoped_task(["src/ouroboros/evaluation.py"]), SafetyConfig())
+    assert "forbidden" in reason and "evaluation.py" in reason
+
+
+def test_scope_gate_passes_a_task_within_limits():
+    from ouroboros.improvement import _task_scope_violation
+    files = ["src/ouroboros/memory.py", "tests/test_memory.py", "src/ouroboros/memory.py"]
+    assert _task_scope_violation(_scoped_task(files), SafetyConfig()) is None, \
+        "a repeated path is one file"
+
+
+def test_identify_prompt_states_the_limits():
+    from ouroboros.improvement import _scope_context
+    cfg = SafetyConfig()
+    text = _scope_context(cfg)
+    assert f"at most {cfg.max_changed_files_per_pr} files" in text
+    assert "evaluation.py" in text
+
+
+@patch("ouroboros.improvement.record_improvement")
+@patch("ouroboros.improvement.plan_improvement")
+@patch("ouroboros.improvement.run_tests")
+@patch("ouroboros.improvement.get_codebase_summary", return_value="summary")
+@patch("ouroboros.improvement.load_history", return_value=[])
+@patch("ouroboros.improvement.git_ops.has_open_improvement_prs", return_value=False)
+@patch("ouroboros.improvement.improvements_today", return_value=0)
+@patch("ouroboros.improvement.get_repo_root")
+def test_out_of_scope_task_fails_before_any_plan_call(
+    mock_repo_root, _today, _open_prs, _history, _summary, mock_run_tests, mock_plan, mock_record,
+    tmp_path,
+):
+    """2026-09-24..28: an 8-file storage_helpers refactor was proposed ~60 times,
+    and each attempt paid for a plan and a generate call before the file cap
+    rejected it."""
+    mock_repo_root.return_value = tmp_path
+    mock_run_tests.return_value = RunnerOutcome(passed=5, failed=0, errors=0, returncode=0)
+    mock_msg = MagicMock()
+    mock_msg.tool_calls = None
+    mock_msg.content = json.dumps({
+        "task_type": "refactor",
+        "description": "Create storage_helpers.py and use it everywhere",
+        "target_files": [f"src/ouroboros/m{i}.py" for i in range(8)],
+        "evidence": "duplicated JSON storage",
+    })
+    client = MagicMock()
+    client.chat.completions.create.return_value.choices = [MagicMock(message=mock_msg)]
+    client.chat.completions.create.return_value.usage = None
+
+    result = run_improvement_cycle(client=client, state={}, config=SafetyConfig(), model=DEFAULT_OPENAI_MODEL)
+
+    assert result is not None and result.status == "failed"
+    assert result.details.startswith("Out of scope")
+    mock_plan.assert_not_called()
+    mock_record.assert_called_once()
