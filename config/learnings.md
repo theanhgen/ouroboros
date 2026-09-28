@@ -1,5 +1,4 @@
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
-2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | no plan generated
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-28 | refactor | Extract JSON storage and path resolution utilities from dupl | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no code generated
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
+2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly use CodeASTVisitor fo | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
