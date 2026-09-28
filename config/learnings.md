@@ -1,4 +1,3 @@
-2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to r | failed | reviewer rejected
 2026-09-27 | add_feature | Implement a bug-fix evidence chain system that requires fail | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to r | failed | no code generated
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | success | tests: 1338 -> 1338
@@ -98,3 +97,4 @@
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly use CodeASTVisitor fo | failed | no code generated
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly use CodeASTVisitor fo | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-28 | add_feature | Create a new helper module `src/ouroboros/json_helpers.py` w | failed | no code generated
