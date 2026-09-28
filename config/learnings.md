@@ -1,4 +1,3 @@
-2026-09-27 | add_test | Add a test for the holographic MemoryStore fallback fact fil | failed | no plan generated
 2026-09-27 | refactor | Extract duplicated JSON storage and path resolution patterns | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-27 | refactor | Create centralized storage_helpers.py module with load_json_ | failed | no code generated
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-28 | refactor | Create centralized storage_helpers.py module to eliminate du | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | refactor | Create a centralized storage_helpers.py module to eliminate  | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
+2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
