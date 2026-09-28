@@ -1,4 +1,3 @@
-2026-09-26 | refactor | Extract shared atomic storage helpers to consolidate duplica | failed | generation failed: EditMismatch: src/ouroboros/storage_helpers.py: SEARCH block
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no code generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no code generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-28 | fix_bug | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | no plan generated
 2026-09-28 | refactor | Create storage_helpers.py module with centralized utilities  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | fix_bug | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-09-28 | refactor | Create a centralized storage_helpers module with shared JSON | failed | no plan generated
