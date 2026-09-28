@@ -1,4 +1,3 @@
-2026-09-27 | refactor | Extract duplicated atomic JSON storage patterns from evaluat | failed | no plan generated
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | success | tests: 1340 -> 1340
 2026-09-27 | refactor | Extract duplicated atomic JSON storage patterns from evaluat | failed | no plan generated
 2026-09-27 | refactor | Extract the duplicated JSON storage and path resolution patt | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-28 | refactor | Consolidate JSON file handling patterns from metrics.py into | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | refactor | Extract backlog JSON file handling utilities into a dedicate | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | refactor | Consolidate JSON file handling patterns from backlog.py and  | failed | no plan generated
+2026-09-28 | refactor | Create src/ouroboros/_storage_helpers.py with resolve_path,  | failed | out of scope: targets 4 files, cap is 3
