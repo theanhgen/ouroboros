@@ -1,4 +1,3 @@
-2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to r | failed | no code generated
 2026-09-27 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to r | failed | no code generated
 2026-09-27 | fix_bug | Enhance MemoryStore.index_code to properly leverage CodeASTV | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-28 | refactor | Refactor MemoryStore.index_code to properly categorize AST-d | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | refactor | Extract the large _build_failed_attempts_context function (a | failed | reviewer rejected
 2026-09-28 | refactor | Create src/ouroboros/storage_helpers.py module to consolidat | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-09-28 | refactor | Create src/ouroboros/storage_helpers.py module to eliminate  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
