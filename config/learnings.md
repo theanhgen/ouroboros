@@ -1,4 +1,3 @@
-2026-09-26 | refactor | Extract duplicated atomic storage helpers into src/ouroboros | failed | no plan generated
 2026-09-26 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-26 | refactor | Remove duplicate _append_learning function definition in imp | failed | no code generated
 2026-09-26 | add_feature | Implement code-aware indexing in MemoryStore.index_code that | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-28 | refactor | Extract duplicated JSON storage and path resolution patterns | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | refactor | Refactor MemoryStore.index_code to consistently use CodeASTV | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | refactor | Extract duplicated JSON storage and path resolution utilitie | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-09-28 | refactor | Extract duplicated JSON storage utilities into src/ouroboros | failed | no plan generated
