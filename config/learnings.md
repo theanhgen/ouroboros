@@ -1,4 +1,3 @@
-2026-09-27 | refactor | Extract atomic JSON storage helpers into src/ouroboros/stora | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | no plan generated
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | no plan generated
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
 2026-09-28 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | reverted | Test regression detected: 0 failures before, 9 after
