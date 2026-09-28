@@ -795,6 +795,37 @@ def validate_improvement(
     return result
 
 
+def _scope_context(config: SafetyConfig) -> str:
+    """The limits a task has to fit, for the identify prompt.
+
+    Without them the model proposed tasks that could never pass: a
+    storage_helpers refactor naming 7-9 files against a 3-file cap was
+    proposed ~60 times between 2026-09-24 and 09-28, and every attempt spent a
+    plan and a generate call before failing.
+    """
+    return (
+        "### Scope limits (a task outside them is rejected unattempted)\n"
+        f"- target_files: at most {config.max_changed_files_per_pr} files, counting new ones\n"
+        f"- at most {config.max_lines_changed_per_pr} changed lines in total\n"
+        f"- never target: {', '.join(config.forbidden_modification_paths)}\n"
+        "- a larger change must be split: propose only its first self-contained step"
+    )
+
+
+def _task_scope_violation(task: "ImprovementTask", config: SafetyConfig) -> Optional[str]:
+    """Why a proposed task cannot pass _validate_changes, or None if it might."""
+    from .policies import is_forbidden_modification_path
+
+    files = list(dict.fromkeys(task.target_files or []))
+    forbidden = [f for f in files
+                 if is_forbidden_modification_path(f, config.forbidden_modification_paths)]
+    if forbidden:
+        return f"targets forbidden file(s): {', '.join(forbidden)}"
+    if len(files) > config.max_changed_files_per_pr:
+        return f"targets {len(files)} files, cap is {config.max_changed_files_per_pr}"
+    return None
+
+
 def _build_failed_attempts_context(history: List[EvaluationRecord], max_entries: int = 5) -> str:
     """Format recent failed/reverted attempts as negative examples for the LLM."""
     failed = [
@@ -1319,6 +1350,7 @@ def _run_improvement_cycle(
     rates_ctx = _build_success_rate_context(history)
     if rates_ctx:
         final_ctx = f"{final_ctx}\n\n{rates_ctx}"
+    final_ctx = f"{final_ctx}\n\n{_scope_context(config)}"
     if stale_type:
         final_ctx = (
             f"{final_ctx}\n\nDo NOT propose a '{stale_type}' task this cycle: the last "
@@ -1424,6 +1456,25 @@ def _run_improvement_cycle(
         _fire("cycle_end", f"Skipped: stale '{stale_type}' proposed again")
         return None
     ctx["task"] = task
+
+    scope_violation = _task_scope_violation(task, config)
+    if scope_violation:
+        # Rejected before planning: a task that cannot pass _validate_changes
+        # would otherwise spend a plan call and a generate call first, then be
+        # proposed again next cycle. Recorded as failed so the next identify
+        # prompt lists it under "Previously Failed Attempts".
+        log.warning("[improve] Rejected out-of-scope task: %s", scope_violation)
+        improvement_result = ImprovementResult(task=task, status="failed",
+                                               details=f"Out of scope: {scope_violation}")
+        ctx["result"] = improvement_result
+        _fire("failed", f"Out of scope: {scope_violation}")
+        record_improvement(improvement_result, repo_root, model=model)
+        _append_learning(
+            repo_root,
+            f"{_today()} | {task.task_type} | {task.description[:60]} | failed | "
+            f"out of scope: {scope_violation[:60]}",
+        )
+        return improvement_result
 
     duplicate_of = _already_completed(task, history)
     if duplicate_of is not None:
