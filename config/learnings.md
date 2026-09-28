@@ -1,4 +1,3 @@
-2026-09-27 | refactor | Extract duplicated atomic storage helpers into src/ouroboros | failed | no code generated
 2026-09-27 | fix_bug | Enhance MemoryStore.index_code to fully leverage CodeASTVisi | failed | reviewer rejected
 2026-09-27 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | failed | no plan generated
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to r | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-28 | add_test | Add unit test to verify MemoryStore.index_code uses CodeASTV | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | refactor | Create src/ouroboros/storage_helpers.py to eliminate ~600 li | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | add_test | Add unit test to verify MemoryStore.index_code uses CodeASTV | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-28 | refactor | Refactor MemoryStore.index_code to properly categorize AST-d | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
