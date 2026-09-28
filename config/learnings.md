@@ -1,4 +1,3 @@
-2026-09-27 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | success | tests: 1338 -> 1340
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | failed | no code generated
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-28 | refactor | Create src/ouroboros/storage_helpers.py to centralize duplic | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | refactor | Create a new storage_helpers.py module with centralized JSON | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | refactor | Create a centralized storage helper module to eliminate dupl | failed | out of scope: targets 4 files, cap is 3
+2026-09-28 | refactor | Extract categorization logic from MemoryStore.index_code to  | failed | no plan generated
