@@ -966,6 +966,9 @@ class ToolRunner:
 # is considered taken. Calibrated against real history: a genuine restatement of
 # the same task scores ~0.83, while two different tasks on neighbouring modules
 # ("unit tests for memory" vs "unit tests for backlog") score ~0.60.
+# _finalize_backlog also accepts backlog.item_coverage at the same bar, so a
+# verbose restatement of the item still counts; the neighbouring pair above
+# covers 0.75.
 _BACKLOG_MATCH_THRESHOLD = 0.8
 
 
@@ -1066,8 +1069,11 @@ def _finalize_backlog(ctx: Dict[str, Any]) -> None:
     try:
         from . import backlog as _backlog
 
-        overlap = _backlog.content_overlap(
-            item.get("description", ""), getattr(task, "description", "")
+        item_desc = item.get("description", "")
+        task_desc = getattr(task, "description", "")
+        overlap = max(
+            _backlog.content_overlap(item_desc, task_desc),
+            _backlog.item_coverage(item_desc, task_desc),
         )
         if overlap < _BACKLOG_MATCH_THRESHOLD:
             log.debug("Cycle did not take the offered backlog item (overlap %.2f)", overlap)

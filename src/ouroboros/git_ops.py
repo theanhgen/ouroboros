@@ -303,23 +303,34 @@ def create_issue(repo: Path, title: str, body: str) -> str:
     return result.stdout.strip()
 
 
-def find_open_issue_by_marker(repo: Path, marker: str) -> Optional[str]:
-    """Return the URL of an open issue containing a hidden marker, if any."""
+# Deduplication has to see every open issue. At 100, once the agent had filed
+# more than a page of follow-ups the oldest fell off the end and were filed
+# again (2026-09-26: 177 open, 174 of them follow-ups).
+_ISSUE_LIST_LIMIT = 1000
+
+
+def list_open_issues(repo: Path) -> Optional[List[Dict[str, str]]]:
+    """Open issues as [{"body", "url"}], or None if gh could not list them."""
     try:
         result = subprocess.run(
-            ["gh", "issue", "list", "--state", "open", "--limit", "100", "--json", "body,url"],
+            ["gh", "issue", "list", "--state", "open", "--limit", str(_ISSUE_LIST_LIMIT),
+             "--json", "body,url"],
             cwd=repo,
             capture_output=True,
             text=True,
             check=True,
             timeout=30,
         )
-        issues = json.loads(result.stdout)
-    except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError):
+        return json.loads(result.stdout)
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired,
+            json.JSONDecodeError):
         log.warning("Could not list open issues (gh CLI unavailable?)")
         return None
 
-    for issue in issues:
+
+def find_open_issue_by_marker(repo: Path, marker: str) -> Optional[str]:
+    """Return the URL of an open issue containing a hidden marker, if any."""
+    for issue in list_open_issues(repo) or []:
         if marker in issue.get("body", ""):
             return issue.get("url")
     return None

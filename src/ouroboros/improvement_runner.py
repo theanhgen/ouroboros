@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
@@ -191,6 +192,49 @@ def _build_followup_issue_body(task: ImprovementTask, result: ImprovementResult,
     return "\n".join(lines)
 
 
+_CANDIDATE_FILES_RE = re.compile(r"^### Candidate files\n((?:- `[^`\n]+`\n?)+)", re.MULTILINE)
+
+
+def _repo_relative(path: str) -> str:
+    """'/home/x/ouroboros/src/a.py' and 'src/a.py' name the same file."""
+    for anchor in ("src/", "tests/"):
+        idx = path.find(anchor)
+        if idx > 0 and path[idx - 1] == "/":
+            return path[idx:]
+    return path
+
+
+def _find_open_followup(repo_root: Any, marker: str, target_files: Any) -> Optional[str]:
+    """An open follow-up issue this failure belongs to, if one exists.
+
+    The marker hashes the task description verbatim, and the model rewords the
+    same task on every attempt, so the marker alone matched almost nothing: four
+    tasks retried every 15 minutes filed 174 issues in four days (2026-09-24..28).
+    A follow-up that names any of the same files is the same stuck area; the
+    failure is already tracked there.
+    """
+    issues = git_ops.list_open_issues(repo_root)
+    if not issues:
+        return None
+    for issue in issues:
+        if marker in issue.get("body", ""):
+            return issue.get("url")
+    wanted = {_repo_relative(f) for f in (target_files or [])}
+    if not wanted:
+        return None
+    for issue in issues:
+        body = issue.get("body", "")
+        if "<!-- ouroboros:auto-issue:" not in body:
+            continue
+        section = _CANDIDATE_FILES_RE.search(body)
+        if not section:
+            continue
+        named = {_repo_relative(f) for f in re.findall(r"`([^`\n]+)`", section.group(1))}
+        if wanted & named:
+            return issue.get("url")
+    return None
+
+
 def _maybe_create_followup_issue(repo_root: Any, cfg: Any, result: ImprovementResult) -> Optional[str]:
     if not getattr(cfg, "enable_auto_issue_creation", True):
         return None
@@ -200,7 +244,7 @@ def _maybe_create_followup_issue(repo_root: Any, cfg: Any, result: ImprovementRe
         return None
 
     marker = _task_issue_marker(result.task)
-    existing_url = git_ops.find_open_issue_by_marker(repo_root, marker)
+    existing_url = _find_open_followup(repo_root, marker, result.task.target_files)
     if existing_url:
         return existing_url
 

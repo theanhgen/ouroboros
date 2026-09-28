@@ -743,3 +743,12 @@ def test_checks_jq_query_semantics(states, expected):
         timeout=30,
     )
     assert out.stdout.strip() == expected
+
+
+@patch("subprocess.run")
+def test_open_issue_lookup_sees_past_the_first_hundred(mock_run):
+    """At --limit 100 the oldest follow-ups fell off the page and were re-filed."""
+    mock_run.return_value = MagicMock(stdout="[]")
+    find_open_issue_by_marker(Path("/tmp/repo"), "<!-- ouroboros:auto-issue:abc -->")
+    args = mock_run.call_args.args[0]
+    assert int(args[args.index("--limit") + 1]) > 100

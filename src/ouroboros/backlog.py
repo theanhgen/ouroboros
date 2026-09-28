@@ -124,14 +124,33 @@ def content_overlap(a: str, b: str) -> float:
     "test" and "parser". Set intersection over content words needs an actual
     overlap of subject matter to score high.
     """
-    def words(text: str) -> set:
-        raw = "".join(ch if ch.isalnum() or ch in "_-" else " " for ch in (text or "").lower())
-        return {w for w in raw.split() if len(w) > 2 and w not in _FILLER}
-
-    wa, wb = words(a), words(b)
+    wa, wb = _content_words(a), _content_words(b)
     if not wa or not wb:
         return 0.0
     return len(wa & wb) / len(wa | wb)
+
+
+def item_coverage(item: str, task: str) -> float:
+    """Share of the backlog item's content words that the task restates, in [0.0, 1.0].
+
+    content_overlap alone could not link a task to the item it was offered for:
+    the model restates a one-line item as a paragraph, and every extra word
+    lowers Jaccard. "Implement code-aware indexing in MemoryStore using AST to
+    extract functions, classes, and docstrings" was offered for three days
+    (2026-09-25..28) with attempts stuck at 0, because even a restatement that
+    contained every word of it scored ~0.75 once the model had added its own.
+    Coverage asks the narrower question: does the task name everything the
+    item names?
+    """
+    wi, wt = _content_words(item), _content_words(task)
+    if not wi or not wt:
+        return 0.0
+    return len(wi & wt) / len(wi)
+
+
+def _content_words(text: str) -> set:
+    raw = "".join(ch if ch.isalnum() or ch in "_-" else " " for ch in (text or "").lower())
+    return {w for w in raw.split() if len(w) > 2 and w not in _FILLER}
 
 
 def mark_done(repo_root: Path, item_id: str) -> None:
