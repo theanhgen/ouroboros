@@ -1,4 +1,3 @@
-2026-09-27 | fix_bug | Fix MemoryStore.index_code parse‑failure fallback logic to f | failed | no code generated
 2026-09-27 | refactor | Extract atomic JSON storage helpers from evaluation.py, back | failed | no plan generated
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | failed | no plan generated
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no code generated
 2026-09-28 | refactor | Create a centralized json_storage.py module to eliminate dup | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
