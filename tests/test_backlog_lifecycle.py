@@ -153,3 +153,30 @@ class TestTheRepeatItActuallyFixes:
             "task": _Task(desc), "result": _Result("success")})
 
         assert backlog.get_pending(repo) == [], "must not be offered again"
+
+
+class TestVerboseRestatement:
+    ITEM = ("Implement code-aware indexing in MemoryStore using AST to extract "
+            "functions, classes, and docstrings.")
+    # Verbatim shape of a 2026-09-27 restatement: every word of the item plus the
+    # model's own, which kept Jaccard under the bar for three days.
+    TASK = ("Implement code-aware indexing in MemoryStore.index_code to always extract "
+            "functions, classes and docstrings via AST, storing them as code_structure facts")
+
+    def test_jaccard_alone_misses_it(self):
+        assert backlog.content_overlap(self.ITEM, self.TASK) < 0.8
+
+    def test_coverage_catches_it(self):
+        assert backlog.item_coverage(self.ITEM, self.TASK) >= 0.8
+
+    def test_a_failed_restatement_counts_an_attempt(self, repo):
+        item = backlog.add_item(repo, "feature", self.ITEM, priority=8)
+        improvement._finalize_backlog({"repo_root": repo, "backlog_item": item,
+                                       "task": _Task(self.TASK), "result": _Result("failed")})
+        assert backlog.load_backlog(repo)[0]["attempts"] == 1
+
+    def test_neighbouring_work_still_does_not_match(self):
+        assert backlog.item_coverage(
+            "Add unit tests for memory module",
+            "Add unit tests for backlog module",
+        ) < 0.8
