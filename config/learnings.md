@@ -1,4 +1,3 @@
-2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to r | failed | reviewer rejected
 2026-09-27 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to r | failed | reviewer rejected
 2026-09-27 | add_feature | Implement a bug-fix evidence chain system that requires fail | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-28 | add_feature | Create src/ouroboros/storage_helpers.py to eliminate duplica | failed | no plan generated
 2026-09-28 | refactor | Extract the _build_failed_attempts_context function into a d | failed | Forbidden file modification: src/ouroboros/improvement.py
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly use CodeASTVisitor fo | failed | no code generated
+2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly use CodeASTVisitor fo | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
