@@ -1,6 +1,5 @@
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no code generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no code generated
-2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no code generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | no plan generated
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to implement proper code-aware in | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-26 | fix_bug | Fix MemoryStore.index_code to fully leverage CodeASTVisitor  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-28 | refactor | Create storage_helpers.py module with centralized utilities  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | fix_bug | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | refactor | Create a centralized storage_helpers module with shared JSON | failed | no plan generated
+2026-09-28 | refactor | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
