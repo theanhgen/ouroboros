@@ -1,4 +1,3 @@
-2026-09-26 | add_feature | Implement code-aware indexing in MemoryStore.index_code that | failed | no code generated
 2026-09-26 | fix_bug | Remove duplicate _generate_fingerprint method in MemoryStore | success | tests: 1338 -> 1338
 2026-09-26 | fix_bug | Enhance MemoryStore.index_code in src/ouroboros/memory.py to | failed | no plan generated
 2026-09-26 | refactor | Extract duplicated atomic storage helpers into src/ouroboros | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to integrate CodeASTVisitor for n | failed | no plan generated
 2026-09-28 | refactor | Create storage_helpers.py module with centralized utilities  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | refactor | Extract duplicated JSON storage utilities from backlog.py an | failed | no code generated
+2026-09-28 | fix_bug | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | no plan generated
