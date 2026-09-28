@@ -1,4 +1,3 @@
-2026-09-26 | add_feature | Implement code-aware indexing in MemoryStore.index_code that | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-26 | add_test | Add comprehensive tests for MemoryStore.index_code to valida | failed | no plan generated
 2026-09-26 | refactor | Consolidate duplicated atomic storage helpers in policies.py | failed | no code generated
 2026-09-26 | refactor | Extract duplicated atomic storage helpers into src/ouroboros | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-28 | refactor | Extract duplicated JSON storage utilities into src/ouroboros | failed | no plan generated
 2026-09-28 | refactor | Extract duplicated JSON storage utilities from evaluation.py | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-28 | add_test | Add a unit test to verify that MemoryStore.index_code uses C | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-09-28 | add_test | Add unit test to verify MemoryStore.index_code uses CodeASTV | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
