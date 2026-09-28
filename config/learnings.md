@@ -1,4 +1,3 @@
-2026-09-27 | fix_bug | Fix MemoryStore.index_code parse-failure fallback logic to p | failed | no code generated
 2026-09-27 | refactor | Extract duplicated atomic JSON storage helpers into src/ouro | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-27 | fix_bug | Fix MemoryStore.index_code parse‑failure fallback logic to f | failed | no code generated
 2026-09-27 | refactor | Extract atomic JSON storage helpers from evaluation.py, back | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-28 | refactor | Extract categorization logic from MemoryStore.index_code int | failed | reviewer rejected
 2026-09-28 | refactor | Extract JSON storage and path resolution utilities from dupl | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no code generated
+2026-09-28 | refactor | Create a centralized json_storage.py module to eliminate dup | failed | out of scope: targets 4 files, cap is 3
