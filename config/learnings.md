@@ -1,4 +1,3 @@
-2026-09-28 | refactor | Extract categorization logic from MemoryStore.index_code int | failed | reviewer rejected
 2026-09-28 | refactor | Extract JSON storage and path resolution utilities from dupl | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no code generated
 2026-09-28 | refactor | Create a centralized json_storage.py module to eliminate dup | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Extract the duplicated items extraction logic in backlog.py  | failed | no code generated
 2026-09-29 | refactor | Consolidate JSON file handling in backlog.py and metrics.py  | failed | no plan generated
 2026-09-29 | add_test | Add a unit test for MemoryStore.index_code in tests/test_mem | reverted | Test regression detected: 0 failures before, 1 after
+2026-09-29 | refactor | Extract common JSON file handling utilities from storage.py  | failed | out of scope: targets 6 files, cap is 3
