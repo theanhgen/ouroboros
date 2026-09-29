@@ -1,4 +1,3 @@
-2026-09-28 | refactor | Create src/ouroboros/storage_helpers.py to centralize duplic | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | refactor | Create a new storage_helpers.py module with centralized JSON | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | refactor | Create a centralized storage helper module to eliminate dupl | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | refactor | Extract categorization logic from MemoryStore.index_code to  | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Refactor backlog.py and metrics.py to use the centralized JS | failed | no plan generated
 2026-09-29 | refactor | Extract common JSON file handling logic from backlog.py and  | failed | no plan generated
 2026-09-29 | refactor | Simplify backlog.py to use storage.py utilities directly wit | failed | no plan generated
+2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
