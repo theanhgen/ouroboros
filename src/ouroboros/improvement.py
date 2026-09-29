@@ -14,6 +14,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from . import backends, git_ops, llm
 from .codebase import get_codebase_summary, get_repo_root, read_file_raw
+from .context_helpers import _build_failed_attempts_context
 from .config import SafetyConfig
 from .evaluation import (
     EvaluationRecord,
@@ -824,24 +825,6 @@ def _task_scope_violation(task: "ImprovementTask", config: SafetyConfig) -> Opti
     if len(files) > config.max_changed_files_per_pr:
         return f"targets {len(files)} files, cap is {config.max_changed_files_per_pr}"
     return None
-
-
-def _build_failed_attempts_context(history: List[EvaluationRecord], max_entries: int = 5) -> str:
-    """Format recent failed/reverted attempts as negative examples for the LLM."""
-    failed = [
-        r for r in history
-        if r.outcome in ("closed", "failed", "reverted")
-    ]
-    if not failed:
-        return ""
-    recent = failed[-max_entries:]
-    lines = ["### Previously Failed Attempts (DO NOT repeat these)"]
-    for r in recent:
-        line = f"- [{r.task_type}] {r.description}"
-        if r.feedback:
-            line += f" -- feedback: {r.feedback[:120]}"
-        lines.append(line)
-    return "\n".join(lines)
 
 
 def _build_success_rate_context(history: List[EvaluationRecord]) -> str:
