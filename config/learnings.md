@@ -1,4 +1,3 @@
-2026-09-27 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-27 | add_feature | Implement code‑aware indexing in MemoryStore using AST to ex | failed | no plan generated
 2026-09-27 | refactor | Refactor MemoryStore.index_code to integrate the existing Co | failed | no code generated
 2026-09-27 | refactor | Modify MemoryStore.index_code to use CodeASTVisitor for stru | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | out of scope: targets 4 files, cap is 3
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-09-29 | add_test | Add a test for the test runner to ensure the test_result cla | failed | no plan generated
