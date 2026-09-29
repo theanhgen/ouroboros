@@ -1,4 +1,3 @@
-2026-09-27 | fix_bug | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | reviewer rejected
 2026-09-27 | refactor | Extract duplicated JSON storage and path resolution patterns | failed | no plan generated
 2026-09-27 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
 2026-09-28 | fix_bug | Fix incomplete memory bank rebuilding in MemoryStore.index_c | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path(re | failed | no plan generated
+2026-09-29 | refactor | Extract regression validation helper functions from validate | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
