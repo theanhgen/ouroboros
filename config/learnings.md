@@ -1,4 +1,3 @@
-2026-09-28 | refactor | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | fix_bug | Fix incomplete memory bank rebuilding in MemoryStore.index_c | failed | no plan generated
 2026-09-28 | fix_bug | Update MemoryStore.index_code to categorize AST-derived fact | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to integrate CodeASTVisitor for n | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Extract duplicated JSON file handling utilities into src/our | failed | no code generated
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with helper function | failed | reviewer rejected
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no code generated
+2026-09-29 | add_test | Add comprehensive test coverage for MemoryStore.index_code c | failed | generation failed: EditMismatch: src/ouroboros/memory.py: SEARCH block not foun
