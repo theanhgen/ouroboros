@@ -1,4 +1,3 @@
-2026-09-28 | refactor | Create src/ouroboros/storage_helpers.py module to eliminate  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | add_feature | Create src/ouroboros/storage_helpers.py to eliminate duplica | failed | no plan generated
 2026-09-28 | refactor | Extract the _build_failed_attempts_context function into a d | failed | Forbidden file modification: src/ouroboros/improvement.py
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly use CodeASTVisitor fo | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Refactor MemoryStore.index_code to extract the complex fact  | failed | no plan generated
 2026-09-29 | refactor | Extract duplicated path resolution and JSON file handling ut | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-29 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-29 | refactor | Extract fact categorization logic from MemoryStore.index_cod | failed | no plan generated
