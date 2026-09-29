@@ -21,6 +21,7 @@ from .improvement import (
     ImprovementTask,
     _is_path_allowed,
     apply_changes,
+    names_no_task,
     revert_changes,
     validate_improvement,
 )
@@ -150,7 +151,7 @@ def _step_identify(
     if id_err:
         log.warning("[community] LLM error during identification: %s", id_err)
         return "error"
-    if not task_data or task_data.get("task_type") == "none":
+    if not task_data or names_no_task(task_data):
         log.info("[community] No problems identified for community input")
         state["last_community_improvement_start"] = int(time.time())
         return "no_problems"

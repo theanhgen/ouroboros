@@ -17,6 +17,7 @@ from ouroboros.improvement import (
     _validate_changes,
     _count_changed_lines,
     apply_changes,
+    identify_improvements,
     revert_changes,
     run_improvement_cycle,
     validate_improvement,
@@ -1232,3 +1233,43 @@ def test_an_answer_naming_no_task_ends_the_cycle_before_planning(
     assert result is None
     mock_plan.assert_not_called()
     mock_record.assert_not_called()
+
+
+@patch("ouroboros.improvement.record_improvement")
+@patch("ouroboros.improvement.plan_improvement", return_value=(None, None))
+@patch("ouroboros.improvement.run_tests")
+@patch("ouroboros.improvement.get_codebase_summary", return_value="summary")
+@patch("ouroboros.improvement.load_history", return_value=[])
+@patch("ouroboros.improvement.git_ops.has_open_improvement_prs", return_value=False)
+@patch("ouroboros.improvement.improvements_today", return_value=0)
+@patch("ouroboros.improvement.get_repo_root")
+def test_a_none_task_type_with_a_description_ends_the_cycle_before_planning(
+    mock_repo_root, _today, _open_prs, _history, _summary, mock_run_tests, mock_plan, mock_record,
+    tmp_path,
+):
+    """#213 review: task_type "none" carries a description ("nothing to do"),
+    so a blank-description check alone let it through to planning."""
+    mock_repo_root.return_value = tmp_path
+    mock_run_tests.return_value = RunnerOutcome(passed=5, failed=0, errors=0, returncode=0)
+    mock_msg = MagicMock()
+    mock_msg.tool_calls = None
+    mock_msg.content = '{"task_type": "none", "description": "Nothing worth changing"}'
+    client = MagicMock()
+    client.chat.completions.create.return_value.choices = [MagicMock(message=mock_msg)]
+    client.chat.completions.create.return_value.usage = MagicMock(prompt_tokens=10, completion_tokens=2)
+
+    result = run_improvement_cycle(client=client, state={}, config=SafetyConfig(), model=DEFAULT_OPENAI_MODEL)
+
+    assert result is None
+    mock_plan.assert_not_called()
+    mock_record.assert_not_called()
+
+
+@patch("ouroboros.improvement.llm.identify_improvements")
+def test_identify_improvements_returns_no_task_for_an_empty_answer(mock_identify):
+    """#213 review: issue scouting goes through identify_improvements, which
+    turned a "{}" answer (plus _usage) into a blank fix_bug task to file."""
+    mock_identify.return_value = ({"_usage": {"prompt_tokens": 10, "completion_tokens": 2}}, None)
+    outcome = RunnerOutcome(passed=5, failed=0, errors=0, returncode=0)
+
+    assert identify_improvements(MagicMock(), "summary", outcome, []) is None
