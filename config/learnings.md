@@ -1,4 +1,3 @@
-2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
 2026-09-28 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | reverted | Test regression detected: 0 failures before, 9 after
 2026-09-28 | refactor | Extract categorization logic from MemoryStore.index_code int | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Extract common JSON file handling pattern from backlog.py in | failed | no code generated
 2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-29 | refactor | Extract JSON file handling utilities from backlog.py, metric | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-09-29 | refactor | Extract the duplicated items extraction logic in backlog.py  | failed | no code generated
