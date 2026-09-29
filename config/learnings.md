@@ -1,4 +1,3 @@
-2026-09-28 | refactor | Create a centralized storage helper module to eliminate dupl | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | refactor | Extract categorization logic from MemoryStore.index_code to  | failed | no plan generated
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Simplify backlog.py to use storage.py utilities directly wit | failed | no plan generated
 2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-29 | refactor | Simplify JSON file handling in backlog.py and metrics.py by  | failed | no plan generated
+2026-09-29 | refactor | Extract common JSON file handling pattern from backlog.py in | failed | no code generated
