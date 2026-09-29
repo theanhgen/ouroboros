@@ -1,4 +1,3 @@
-2026-09-27 | refactor | Integrate CodeASTVisitor into MemoryStore.index_code for str | failed | no code generated
 2026-09-27 | refactor | Extract duplicated JSON storage and path resolution patterns | failed | no plan generated
 2026-09-27 | fix_bug | Fix MemoryStore.index_code to use CodeASTVisitor for normal  | failed | no code generated
 2026-09-27 | refactor | Create a centralized `storage_helpers.py` module that provid | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path(re | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path(re | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | fix_bug | Fix inconsistent rejected entries format in filter_untrusted | failed | no plan generated
+2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
