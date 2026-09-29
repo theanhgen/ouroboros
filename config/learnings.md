@@ -1,4 +1,3 @@
-2026-09-28 | refactor | Create src/ouroboros/storage_helpers.py module to eliminate  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-28 | refactor | Update MemoryStore.index_code to categorize AST-derived code | failed | no code generated
 2026-09-28 | add_feature | Implement code-aware indexing in MemoryStore to extract func | failed | no code generated
 2026-09-28 | add_feature | Implement code-aware indexing in MemoryStore.index_code to a | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no code generated
 2026-09-29 | refactor | Extract JSON file handling utilities into storage_helpers.py | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-09-29 | fix_bug | Fix MemoryStore.index_code to categorize AST-derived facts i | failed | no code generated
