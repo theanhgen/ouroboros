@@ -53,6 +53,12 @@ class ImprovementTask:
         )
 
 
+def names_no_task(data: dict) -> bool:
+    """True when an identify answer proposes nothing to do: task_type "none",
+    or no description -- "{}", which the attached _usage makes truthy (#213)."""
+    return data.get("task_type") == "none" or not str(data.get("description") or "").strip()
+
+
 @dataclass
 class CodeChange:
     file_path: str
@@ -218,7 +224,7 @@ def identify_improvements(
     if err:
         log.warning("[improve] LLM error during identification: %s", err)
         return None
-    if not result or result.get("task_type") == "none":
+    if not result or names_no_task(result):
         return None
 
     return ImprovementTask.from_llm_response(result)
@@ -1450,6 +1456,14 @@ def _run_improvement_cycle(
         _fire("cycle_end", "No improvements identified (unparseable final answer)")
         return None
 
+    if names_no_task(task_data):
+        # A reply that parses but names no task -- "{}", which the attached
+        # _usage makes truthy -- became a fix_bug task with no description and
+        # no files. It spent a plan and a generate call, failed "EmptyChanges"
+        # and filed an empty follow-up issue (#213).
+        log.info("[improve] No improvements identified (answer named no task)")
+        _fire("cycle_end", "No improvements identified (answer named no task)")
+        return None
     task = ImprovementTask.from_llm_response(task_data)
     if stale_type and task.task_type == stale_type:
         log.info("Skipping improvement: model proposed stale task type '%s' again", stale_type)

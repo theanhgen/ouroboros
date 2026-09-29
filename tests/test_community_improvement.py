@@ -112,6 +112,35 @@ def test_step_identify_creates_state(
     assert state["last_community_improvement_start"] is not None
 
 
+@patch("ouroboros.community_improvement.get_repo_root")
+@patch("ouroboros.community_improvement.git_ops")
+@patch("ouroboros.community_improvement.get_codebase_summary")
+@patch("ouroboros.community_improvement.run_tests")
+@patch("ouroboros.community_improvement.load_history")
+@patch("ouroboros.community_improvement.llm")
+def test_step_identify_treats_an_empty_answer_as_no_problems(
+    mock_llm, mock_history, mock_tests, mock_summary, mock_git, mock_root,
+):
+    """#213 review: a "{}" answer is truthy once _usage is attached, and went
+    on to be posted as a blank community question."""
+    mock_root.return_value = Path("/fake/repo")
+    mock_git.has_open_improvement_prs.return_value = False
+    mock_summary.return_value = "codebase summary"
+    mock_tests.return_value = RunnerOutcome(passed=5, failed=0, errors=0, returncode=0)
+    mock_history.return_value = []
+    mock_llm.identify_improvements.return_value = (
+        {"_usage": {"prompt_tokens": 10, "completion_tokens": 2}}, None,
+    )
+
+    state = _make_state()
+    result = step_community_improvement(
+        MagicMock(), state, _make_creds(), _make_cfg(), SafetyConfig(),
+    )
+
+    assert result == "no_problems"
+    assert state["community_improvement"] is None
+
+
 # -- test_step_post_creates_moltbook_post --
 
 @patch("ouroboros.community_improvement.moltbook")
