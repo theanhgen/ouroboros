@@ -1,4 +1,3 @@
-2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly use CodeASTVisitor fo | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | refactor | Create src/ouroboros/storage_helpers.py to centralize duplic | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | refactor | Create a new storage_helpers.py module with centralized JSON | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-09-29 | fix_bug | In src/ouroboros/memory.py, modify MemoryStore.index_code to | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-29 | fix_bug | In src/ouroboros/memory.py, modify MemoryStore.index_code to | failed | no code generated
 2026-09-29 | refactor | Refactor backlog.py and metrics.py to use the centralized JS | failed | no plan generated
+2026-09-29 | refactor | Extract common JSON file handling logic from backlog.py and  | failed | no plan generated
