@@ -1,4 +1,3 @@
-2026-09-27 | add_feature | Implement code‑aware indexing in MemoryStore using AST to ex | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-27 | refactor | Extract duplicated JSON storage and path resolution patterns | failed | reviewer rejected
 2026-09-27 | refactor | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-27 | fix_bug | Fix incomplete memory bank rebuilding in MemoryStore.index_c | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Extract and enhance test result data structures in src/ourob | failed | no plan generated
 2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | no plan generated
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path(re | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-09-29 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
