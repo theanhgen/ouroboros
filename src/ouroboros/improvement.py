@@ -1451,6 +1451,14 @@ def _run_improvement_cycle(
         return None
 
     task = ImprovementTask.from_llm_response(task_data)
+    if not str(task.description or "").strip():
+        # A reply that parses but names no task -- "{}", which the attached
+        # _usage makes truthy -- became a fix_bug task with no description and
+        # no files. It spent a plan and a generate call, failed "EmptyChanges"
+        # and filed an empty follow-up issue (#213).
+        log.info("[improve] No improvements identified (answer named no task)")
+        _fire("cycle_end", "No improvements identified (answer named no task)")
+        return None
     if stale_type and task.task_type == stale_type:
         log.info("Skipping improvement: model proposed stale task type '%s' again", stale_type)
         _fire("cycle_end", f"Skipped: stale '{stale_type}' proposed again")

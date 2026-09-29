@@ -1202,3 +1202,33 @@ def test_out_of_scope_task_fails_before_any_plan_call(
     assert result.details.startswith("Out of scope")
     mock_plan.assert_not_called()
     mock_record.assert_called_once()
+
+
+@patch("ouroboros.improvement.record_improvement")
+@patch("ouroboros.improvement.plan_improvement", return_value=(None, None))
+@patch("ouroboros.improvement.run_tests")
+@patch("ouroboros.improvement.get_codebase_summary", return_value="summary")
+@patch("ouroboros.improvement.load_history", return_value=[])
+@patch("ouroboros.improvement.git_ops.has_open_improvement_prs", return_value=False)
+@patch("ouroboros.improvement.improvements_today", return_value=0)
+@patch("ouroboros.improvement.get_repo_root")
+def test_an_answer_naming_no_task_ends_the_cycle_before_planning(
+    mock_repo_root, _today, _open_prs, _history, _summary, mock_run_tests, mock_plan, mock_record,
+    tmp_path,
+):
+    """#213: a "{}" reply, made truthy by the attached _usage, became a fix_bug
+    task with no description and no files, and filed an empty follow-up issue."""
+    mock_repo_root.return_value = tmp_path
+    mock_run_tests.return_value = RunnerOutcome(passed=5, failed=0, errors=0, returncode=0)
+    mock_msg = MagicMock()
+    mock_msg.tool_calls = None
+    mock_msg.content = "{}"
+    client = MagicMock()
+    client.chat.completions.create.return_value.choices = [MagicMock(message=mock_msg)]
+    client.chat.completions.create.return_value.usage = MagicMock(prompt_tokens=10, completion_tokens=2)
+
+    result = run_improvement_cycle(client=client, state={}, config=SafetyConfig(), model=DEFAULT_OPENAI_MODEL)
+
+    assert result is None
+    mock_plan.assert_not_called()
+    mock_record.assert_not_called()
