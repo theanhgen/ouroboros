@@ -1,4 +1,3 @@
-2026-09-28 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | add_feature | Create a new helper module `src/ouroboros/json_helpers.py` w | failed | no code generated
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | reviewer rejected
 2026-09-28 | refactor | Extract JSON storage and path resolution utilities from dupl | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Create storage_helpers.py with centralized JSON file handlin | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-29 | fix_bug | In src/ouroboros/memory.py, modify MemoryStore.index_code to | failed | no plan generated
 2026-09-29 | refactor | Extract JSON file handling utilities from backlog.py into a  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
