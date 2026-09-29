@@ -1,4 +1,3 @@
-2026-09-28 | add_test | Add unit test to verify MemoryStore.index_code uses CodeASTV | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | refactor | Refactor MemoryStore.index_code to properly categorize AST-d | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | refactor | Extract the large _build_failed_attempts_context function (a | failed | reviewer rejected
 2026-09-28 | refactor | Create src/ouroboros/storage_helpers.py module to consolidat | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | refactor | Extract duplicated JSON file handling utilities into a share | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-29 | add_feature | Implement a confidence calibration evaluation in the Python  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
