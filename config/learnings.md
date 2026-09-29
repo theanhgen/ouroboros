@@ -1,4 +1,3 @@
-2026-09-28 | fix_bug | Fix incomplete memory bank rebuilding in MemoryStore.index_c | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-28 | fix_bug | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | no plan generated
 2026-09-28 | refactor | Create storage_helpers.py module with centralized utilities  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | fix_bug | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-29 | refactor | Extract regression validation helper functions from validate | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-09-29 | refactor | Extract common JSON file handling utilities from src/ourobor | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-29 | refactor | Extract common JSON file handling utilities from src/ourobor | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
