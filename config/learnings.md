@@ -1,4 +1,3 @@
-2026-09-27 | fix_bug | Fix MemoryStore.index_code to use CodeASTVisitor for normal  | failed | no code generated
 2026-09-27 | refactor | Create a centralized `storage_helpers.py` module that provid | failed | no code generated
 2026-09-27 | refactor | Integrate CodeASTVisitor into MemoryStore.index_code for nor | failed | no plan generated
 2026-09-27 | refactor | Integrate CodeASTVisitor into MemoryStore.index_code to extr | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-29 | fix_bug | Fix inconsistent rejected entries format in filter_untrusted | failed | no plan generated
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
 2026-09-29 | refactor | Extract backlog JSON file handling utilities into src/ourobo | failed | no plan generated
+2026-09-29 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | no code generated
