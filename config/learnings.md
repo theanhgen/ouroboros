@@ -1,4 +1,3 @@
-2026-09-28 | fix_bug |  | success | tests: 1340 -> 1340
 2026-09-28 | refactor | Extract duplicated JSON storage and path resolution patterns | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | refactor | Refactor MemoryStore.index_code to consistently use CodeASTV | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | refactor | Extract duplicated JSON storage and path resolution utilitie | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to categorize AST-derived facts i | failed | no code generated
+2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with centralize JSON | failed | reviewer rejected
