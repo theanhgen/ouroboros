@@ -1,4 +1,3 @@
-2026-09-29 | fix_bug | Fix MemoryStore.index_code to categorize AST-derived facts i | failed | no plan generated
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no code generated
 2026-09-29 | refactor | Extract JSON file handling utilities into storage_helpers.py | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-09-30 | fix_test | Fix coverage_percent extraction in src/ouroboros/test_runner | failed | no code generated
 2026-09-30 | fix_test | Fix coverage_percent extraction in test_runner.py to support | failed | no code generated
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities into a share | failed | out of scope: targets 4 files, cap is 3
+2026-09-30 | fix_test | Extract coverage_percent extraction from _parse_pytest_outpu | failed | no plan generated
