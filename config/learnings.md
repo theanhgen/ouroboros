@@ -1,4 +1,3 @@
-2026-09-29 | refactor | Extract common JSON file handling and path resolution utilit | failed | out of scope: targets 4 files, cap is 3
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with central utiliti | failed | out of scope: targets 4 files, cap is 3
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
 2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | reviewer rejected
 2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | Unparseable: src/ouroboros/test_runner.py (line 58: expected an indented block a
+2026-09-30 | refactor | Simplify _parse_pytest_output function by extracting complex | failed | no plan generated
