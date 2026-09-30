@@ -1,4 +1,3 @@
-2026-09-28 | refactor | Create a centralized storage_helpers.py module to eliminate  | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | refactor | Extract JSON file handling and path resolution utilities int | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-09-30 | refactor | Extract common JSON file handling and path resolution patter | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | no code generated
 2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | no code generated
+2026-09-30 | refactor | Extract common JSON file handling utilities from metrics.py  | failed | no code generated
