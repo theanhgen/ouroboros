@@ -1,4 +1,3 @@
-2026-09-29 | fix_bug | Fix inconsistent rejected entries format in filter_untrusted | failed | no plan generated
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
 2026-09-29 | refactor | Extract backlog JSON file handling utilities into src/ourobo | failed | no plan generated
 2026-09-29 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities into a commo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities into a commo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
