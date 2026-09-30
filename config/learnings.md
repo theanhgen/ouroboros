@@ -1,4 +1,3 @@
-2026-09-29 | fix_bug |  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path(re | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path(re | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | fix_bug | Fix inconsistent rejected entries format in filter_untrusted | failed | no plan generated
@@ -96,5 +95,6 @@
 2026-09-30 | add_test | Add unit tests for coverage_percent extraction in _parse_pyt | failed | no plan generated
 2026-09-30 | refactor | Refactor the monolithic _parse_pytest_output function in src | failed | no plan generated
 2026-09-30 | refactor | Extract coverage_percent logic from monolithic _parse_pytest | failed | reviewer rejected
+2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
