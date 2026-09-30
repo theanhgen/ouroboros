@@ -1,4 +1,3 @@
-2026-09-29 | refactor | Extract duplicated JSON file handling utilities into src/our | failed | no code generated
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with helper function | failed | reviewer rejected
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no code generated
 2026-09-29 | add_test | Add comprehensive test coverage for MemoryStore.index_code c | failed | generation failed: EditMismatch: src/ouroboros/memory.py: SEARCH block not foun
@@ -98,3 +97,4 @@
 2026-09-30 | refactor | Extract JSON file handling utilities into a centralized stor | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-30 | fix_bug | Extract coverage_percent extraction logic from _parse_pytest | failed | no plan generated
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities into a share | failed | out of scope: targets 6 files, cap is 3
+2026-09-30 | fix_test | Fix coverage_percent extraction in _parse_pytest_output to h | failed | no plan generated
