@@ -1,4 +1,3 @@
-2026-09-29 | add_test | Add a test for the test runner to ensure the test_result cla | failed | no plan generated
 2026-09-29 | refactor | Extract and enhance test result data structures in src/ourob | failed | no plan generated
 2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | no plan generated
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path(re | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-09-30 | add_test | Add unit tests for coverage_percent extraction in _parse_pyt | failed | no plan generated
 2026-09-30 | refactor | Extract the monolithic _parse_pytest_output function into fo | failed | no plan generated
 2026-09-30 | add_test | Add unit tests for coverage_percent extraction in _parse_pyt | failed | no plan generated
+2026-09-30 | refactor | Refactor the monolithic _parse_pytest_output function in src | failed | no plan generated
