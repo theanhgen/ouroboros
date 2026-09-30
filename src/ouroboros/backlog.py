@@ -20,6 +20,31 @@ def _backlog_path(repo_root: Path) -> Path:
     return repo_root / BACKLOG_FILE
 
 
+def _extract_items(data: Any, ensure: bool = False) -> List[Dict[str, Any]]:
+    """Extract the items list from data, which may be a legacy bare list or a dict
+    with an 'items' key.
+
+    When ensure=True, the function mutates data to guarantee a 'items' key
+    containing a list before returning it. Otherwise missing or invalid items
+    result in an empty list without side effects.
+    """
+    # Extracted from load_backlog and _update_backlog internal logic.
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        items = data.get("items")
+        if isinstance(items, list):
+            return items
+        if ensure:
+            # Ensure data has a valid 'items' list
+            data["items"] = []
+            return data["items"]
+        # ensure=False and items missing/invalid
+        return []
+    # Any other type
+    return []
+
+
 def load_backlog(repo_root: Path) -> List[Dict[str, Any]]:
     try:
         data = load_json_file(
@@ -32,13 +57,8 @@ def load_backlog(repo_root: Path) -> List[Dict[str, Any]]:
         log.error(f"Failed to load backlog: {e}")
         raise
 
-    if isinstance(data, dict):
-        items = data.get("items")
-    else:
-        items = data
-    # A null or non-list payload is corruption, not an empty backlog's shape;
-    # returning it would break the annotated contract for every caller.
-    return items if isinstance(items, list) else []
+    items = _extract_items(data)
+    return items
 
 
 def save_backlog(repo_root: Path, items: List[Dict[str, Any]]) -> None:
@@ -53,15 +73,7 @@ def _update_backlog(repo_root: Path, mutate) -> Any:
     write drops the earlier one with no error anywhere.
     """
     def _apply(data: Any) -> Any:
-        # load_backlog accepts an older bare-list file, so the mutators have to
-        # as well; calling .get on one raised AttributeError.
-        if isinstance(data, list):
-            items = data
-        else:
-            items = data.get("items") if isinstance(data, dict) else None
-            if not isinstance(items, list):
-                items = []
-                data["items"] = items
+        items = _extract_items(data, ensure=True)
         return mutate(items)
 
     return update_json_file(
