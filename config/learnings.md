@@ -1,4 +1,3 @@
-2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path(re | failed | reviewer rejected
 2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | no plan generated
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to categorize AST-derived facts i | failed | no plan generated
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-09-30 | fix_test | Extract coverage_percent extraction logic from _parse_pytest | failed | no plan generated
 2026-09-30 | fix_test | Extract coverage_percent extraction logic from _parse_pytest | failed | no plan generated
 2026-09-30 | fix_test | Fix coverage_percent extraction in src/ouroboros/test_runner | failed | no code generated
+2026-09-30 | fix_test | Fix coverage_percent extraction in test_runner.py to support | failed | no code generated
