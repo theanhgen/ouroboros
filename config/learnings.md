@@ -1,4 +1,3 @@
-2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to categorize AST-derived facts i | failed | no code generated
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with centralize JSON | failed | reviewer rejected
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no code generated
@@ -98,3 +97,4 @@
 2026-09-30 | fix_bug | Extract coverage_percent from pytest output supporting decim | failed | no code generated
 2026-09-30 | fix_test | Fix coverage_percent extraction in test_runner.py to support | failed | no plan generated
 2026-09-30 | refactor | Extract duplicated JSON load/save utilities into a shared he | failed | out of scope: targets 4 files, cap is 3
+2026-09-30 | add_feature | Implement test failure triage in test_runner.py: add a _tria | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
