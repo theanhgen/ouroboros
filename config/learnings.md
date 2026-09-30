@@ -1,4 +1,3 @@
-2026-09-28 | refactor | Create a centralized storage_helpers.py module with common u | failed | no code generated
 2026-09-28 | refactor | Create centralized storage_helpers.py module to eliminate du | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | refactor | Create a centralized storage_helpers.py module to eliminate  | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | no code generated
 2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | no plan generated
 2026-09-30 | refactor | Extract common JSON file handling and path resolution patter | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | no code generated
