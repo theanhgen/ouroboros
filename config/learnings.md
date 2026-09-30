@@ -1,4 +1,3 @@
-2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | no plan generated
 2026-09-29 | add_test | Add test coverage for self_question.generate_codebase_questi | reverted | Test regression detected: 0 failures before, 1 after
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-09-30 | fix_bug | Extract coverage_percent extraction logic from _parse_pytest | failed | no code generated
 2026-09-30 | fix_test | Extract coverage_percent extraction logic from _parse_pytest | failed | no plan generated
 2026-09-30 | fix_test | Extract coverage_percent extraction logic from _parse_pytest | failed | no plan generated
+2026-09-30 | fix_bug | Extract coverage_percent from pytest output supporting decim | failed | no code generated
