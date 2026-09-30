@@ -1,4 +1,3 @@
-2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
 2026-09-28 | fix_bug | Extract categorization logic from MemoryStore.index_code int | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-28 | fix_bug |  | success | tests: 1353 -> 1353
 2026-09-28 | refactor | Extract duplicated JSON file handling patterns into a centra | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-09-30 | refactor | Extract duplicated items extraction logic in backlog.py into | success | tests: 1358 -> 1358
 2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | no code generated
 2026-09-30 | refactor | Extract the duplicated items extraction logic in backlog.py  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-09-30 | refactor | Extract the duplicated JSON file handling pattern from evalu | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
