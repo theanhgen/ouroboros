@@ -88,9 +88,7 @@ def _parse_pytest_output(output: str) -> dict:
             result["skipped"] = int(skipped_match.group(1))
 
     # Match coverage line like "TOTAL                                          1272    169    87%"
-    cov_match = re.search(r"TOTAL\s+\d+\s+\d+\s+(\d+)%", output)
-    if cov_match:
-        result["coverage"] = float(cov_match.group(1))
+    result["coverage"] = _extract_coverage_from_output(output)
 
     # Parse FAILED and ERROR summary lines. Collection errors omit the
     # "::test_name" delimiter, e.g. "ERROR tests/test_foo.py - ImportError".
@@ -146,6 +144,11 @@ def _parse_pytest_output(output: str) -> dict:
 
     return result
 
+def _extract_coverage_from_output(output: str) -> Optional[float]:
+    """Extract coverage percent from pytest output using the TOTAL line.
+    Supports both integer and decimal percentages (e.g., 80.5%)."""
+    match = re.search(r"TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)%", output)
+    return float(match.group(1)) if match else None
 
 def _run_tests_sandboxed(repo_root: Path, config: SafetyConfig, timeout: int) -> RunnerOutcome:
     """Run tests inside a Docker container."""
