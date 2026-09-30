@@ -1,4 +1,3 @@
-2026-09-28 | refactor | Extract JSON file handling and path resolution utilities int | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | refactor | Consolidate JSON file handling patterns from metrics.py into | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | refactor | Extract backlog JSON file handling utilities into a dedicate | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-28 | refactor | Consolidate JSON file handling patterns from backlog.py and  | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-30 | refactor | Extract common JSON file handling utilities from metrics.py  | failed | no code generated
 2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
