@@ -1,4 +1,3 @@
-2026-09-28 | refactor | Consolidate JSON file handling patterns from backlog.py and  | failed | no plan generated
 2026-09-28 | refactor | Create src/ouroboros/_storage_helpers.py with resolve_path,  | failed | out of scope: targets 4 files, cap is 3
 2026-09-28 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
 2026-09-29 | refactor | Extract common JSON file handling and path resolution utilit | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-30 | refactor | Extract duplicated items extraction logic in backlog.py into | failed | no code generated
+2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
