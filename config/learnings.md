@@ -1,4 +1,3 @@
-2026-09-29 | refactor | Extract JSON file handling utilities into storage_helpers.py | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to categorize AST-derived facts i | failed | no code generated
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path(re | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-09-30 | fix_test | Extract coverage_percent extraction from _parse_pytest_outpu | failed | no plan generated
 2026-10-01 | refactor | Extract JSON file handling utilities from backlog.py, metric | failed | out of scope: targets 4 files, cap is 3
 2026-10-01 | refactor | Consolidate duplicated JSON read/write logic by leveraging e | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-01 | fix_test | Extract coverage_percent extraction logic from _parse_pytest | success | tests: 1358 -> 1358
