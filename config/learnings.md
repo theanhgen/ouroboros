@@ -1,4 +1,3 @@
-2026-09-30 | refactor | Simplify _parse_pytest_output function by extracting complex | failed | no plan generated
 2026-09-30 | add_feature | Implement test_failure_triage function in improvement.py tha | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-09-30 | refactor | Refactor the monolithic _parse_pytest_output function by ext | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-30 | add_test | Add unit tests for coverage_percent extraction in _parse_pyt | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
 2026-10-01 | refactor | Extract duplicated JSON persistence patterns into a shared s | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
