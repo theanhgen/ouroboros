@@ -1,4 +1,3 @@
-2026-09-29 | refactor | Extract common JSON file handling logic from backlog.py and  | failed | no plan generated
 2026-09-29 | refactor | Simplify backlog.py to use storage.py utilities directly wit | failed | no plan generated
 2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-29 | refactor | Simplify JSON file handling in backlog.py and metrics.py by  | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | reviewer rejected
 2026-10-01 | fix_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
