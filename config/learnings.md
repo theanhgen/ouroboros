@@ -1,4 +1,3 @@
-2026-09-30 | refactor | Extract coverage_percent logic from monolithic _parse_pytest | failed | reviewer rejected
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-02 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | success | tests: 1404 -> 1404
 2026-10-02 | add_test | Add comprehensive unit test for test_runner._extract_coverag | failed | no plan generated
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no plan generated
+2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no code generated
