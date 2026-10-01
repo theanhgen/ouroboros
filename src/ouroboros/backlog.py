@@ -72,13 +72,20 @@ def _update_backlog(repo_root: Path, mutate) -> Any:
     interleave: both read version N, each appends its own item, and the later
     write drops the earlier one with no error anywhere.
     """
+    captured_result = None
+    
     def _apply(data: Any) -> Any:
+        nonlocal captured_result
         items = _extract_items(data, ensure=True)
-        return mutate(items)
-
-    return update_json_file(
+        captured_result = mutate(items)
+        # Always return a valid items list - never null/None
+        return {"items": items}
+    
+    update_json_file(
         _backlog_path(repo_root), _apply, default={"items": []}
     )
+    
+    return captured_result
 
 
 def add_item(
