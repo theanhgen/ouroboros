@@ -1,6 +1,5 @@
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
-2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities into a commo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities into a commo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-02 | add_test | Add comprehensive unit test for test_runner._extract_coverag | failed | no plan generated
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no plan generated
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no code generated
+2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
