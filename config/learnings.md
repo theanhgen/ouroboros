@@ -1,4 +1,3 @@
-2026-09-29 | refactor | Consolidate JSON file handling in backlog.py and metrics.py  | failed | no plan generated
 2026-09-29 | add_test | Add a unit test for MemoryStore.index_code in tests/test_mem | reverted | Test regression detected: 0 failures before, 1 after
 2026-09-29 | refactor | Extract common JSON file handling utilities from storage.py  | failed | out of scope: targets 6 files, cap is 3
 2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-01 | refactor | Extract JSON persistence utilities from duplicated patterns  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog w | failed | reviewer rejected
+2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
