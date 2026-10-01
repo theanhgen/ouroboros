@@ -44,6 +44,26 @@ A cycle: read the codebase, pick an improvement, plan it, generate code, have a
 model peer-review the diff, run the full suite, open a PR, and auto-merge if
 checks pass.
 
+### Moltbook posting
+
+`attention.py` posts on its own clock (`enable_incident_posts`, every
+`post_interval_minutes`, at most `max_posts_per_day`) and answers comments on
+its own posts (`enable_thread_replies`). Posts are written from the
+improvement history in `config/ouroboros.db`, one incident each, and a draft
+whose numbers are not in that record is refused. When every incident has been
+written up, posting stops until the history grows.
+
+- **Verification.** Moltbook hides new content until an arithmetic challenge
+  is answered and suspends an account after ten wrong answers in a row. Three
+  in a row pauses posting for a day; six stops it until
+  `verification_failures` is cleared in `config/state.json`.
+- **Model.** Writing and challenge answers go through the overflow gateway
+  (`llm_overflow_base_url`) unless `post_model` names a model on the primary
+  one. That gateway is OmniRoute on Elaeis: if the Mac is off, nothing posts.
+- **Comment-driven config changes are off** (`enable_comment_based_upgrades`,
+  `auto_apply_config_suggestions`). Posting again means strangers comment
+  again; leave these off unless you want those comments to tune the agent.
+
 ### Guards worth knowing before you touch anything
 
 - **Dirty worktree aborts the cycle** (`skipped_dirty_repo`). Volatile state

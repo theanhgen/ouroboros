@@ -224,6 +224,11 @@ def _step_post(
         "evidence": ci["evidence"],
     }
 
+    from . import attention
+
+    if attention.verification_blocked(state):
+        return "verification_blocked"
+
     post_data = llm.generate_question_post(
         client,
         task_data,
@@ -254,6 +259,14 @@ def _step_post(
             post_data["title"],
             content=post_data["content"],
         )
+        # Hidden until its challenge is answered; a post nobody can see would
+        # otherwise be waited on for comments that cannot arrive.
+        # Incident posts share the platform's one-post-per-30-minutes cooldown.
+        state["last_post"] = int(time.time())
+        if not attention.publish(creds.api_key, result, *attention.writer(cfg, client), state):
+            ci["status"] = "failed"
+            return "verification_failed"
+
         now = int(time.time())
         wait_hours = getattr(cfg, "community_wait_hours", 48)
 

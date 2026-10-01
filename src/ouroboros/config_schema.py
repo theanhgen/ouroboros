@@ -51,6 +51,12 @@ _BOUNDS: Dict[str, Bounds] = {
     # these floor at 0 rather than 1.
     "max_comments_per_cycle": Bounds(0, 100),
     "community_min_comments_for_early": Bounds(0, 1_000),
+    # Moltbook's own limits are the bounds: a post every 30 minutes, 50
+    # comments a day. Zero is "none today", as for max_comments_per_cycle.
+    "post_interval_minutes": Bounds(30, 525_600),
+    "max_posts_per_day": Bounds(0, 48),
+    "max_replies_per_cycle": Bounds(0, 10),
+    "max_replies_per_day": Bounds(0, 50),
     # An hour of the day.
     "oddities_digest_hour": Bounds(0, 23),
 }
