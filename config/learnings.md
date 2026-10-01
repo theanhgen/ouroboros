@@ -1,4 +1,3 @@
-2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-09-30 | refactor | Extract duplicated items extraction logic in backlog.py into | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | reviewer rejected
 2026-10-01 | refactor | Consolidate JSON persistence utilities in backlog.py to fix  | failed | out of scope: targets 5 files, cap is 3
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no code generated
+2026-10-01 | refactor | Extract JSON persistence utilities from duplicated patterns  | failed | out of scope: targets 4 files, cap is 3
