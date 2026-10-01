@@ -1,4 +1,3 @@
-2026-09-29 | refactor | Extract duplicated JSON file handling utilities into a share | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-09-29 | add_feature | Implement a confidence calibration evaluation in the Python  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-09-29 | refactor | Refactor MemoryStore.index_code to extract the complex fact  | failed | no plan generated
 2026-09-29 | refactor | Extract duplicated path resolution and JSON file handling ut | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
 2026-10-01 | fix_test | Extract decimal coverage_percent extraction logic from _pars | duplicate | already completed: Extract coverage_percent extraction logic from _parse_pytest
 2026-10-01 | refactor | Extract common JSON persistence utilities into shared storag | failed | out of scope: targets 4 files, cap is 3
+2026-10-01 | refactor | Consolidate JSON persistence patterns by updating wiki.py to | failed | no code generated
