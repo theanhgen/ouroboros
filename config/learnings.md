@@ -1,4 +1,3 @@
-2026-09-30 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | reviewer rejected
 2026-09-30 | refactor | Extract brittle pytest parsing logic from _parse_pytest_outp | failed | Unparseable: src/ouroboros/test_runner.py (line 58: expected an indented block a
 2026-09-30 | refactor | Simplify _parse_pytest_output function by extracting complex | failed | no plan generated
 2026-09-30 | add_feature | Implement test_failure_triage function in improvement.py tha | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no code generated
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
