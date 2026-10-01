@@ -1,4 +1,3 @@
-2026-09-30 | refactor | Extract the duplicated JSON file handling pattern from evalu | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | out of scope: targets 4 files, cap is 3
 2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | no code generated
 2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-01 | add_test | Add unit test for _extract_coverage_from_output to verify it | failed | no plan generated
 2026-10-01 | add_test | Add unit tests for _extract_coverage_from_output to ensure i | failed | no code generated
 2026-10-01 | refactor | Refactor backlog.py's JSON persistence to use storage.update | failed | no code generated
+2026-10-01 | fix_bug | Fix data-loss bug in backlog.py's _update_backlog function:  | failed | no code generated
