@@ -1,4 +1,3 @@
-2026-09-29 | fix_bug | Fix MemoryStore.index_code to categorize AST-derived facts i | failed | no code generated
 2026-09-29 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path(re | failed | no plan generated
 2026-09-29 | add_feature | Add a reusable bounded list trimming utility to centralize c | failed | out of scope: targets 4 files, cap is 3
 2026-09-29 | fix_bug | Fix MemoryStore.index_code to properly categorize AST-derive | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-01 | refactor | Consolidate duplicated JSON read/write logic by leveraging e | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-01 | fix_test | Extract coverage_percent extraction logic from _parse_pytest | success | tests: 1358 -> 1358
 2026-10-01 | fix_test | Extract coverage_percent extraction from _parse_pytest_outpu | duplicate | already completed: Extract coverage_percent extraction logic from _parse_pytest
+2026-10-01 | refactor | Extract common JSON persistence utilities into shared storag | failed | out of scope: targets 4 files, cap is 3
