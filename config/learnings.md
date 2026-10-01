@@ -1,4 +1,3 @@
-2026-09-30 | refactor | Extract common JSON file handling pattern from backlog.py in | failed | no code generated
 2026-09-30 | refactor | Extract duplicated items extraction logic in backlog.py into | success | tests: 1358 -> 1358
 2026-09-30 | refactor | Extract common JSON file handling utilities from backlog.py  | failed | no code generated
 2026-09-30 | refactor | Extract the duplicated items extraction logic in backlog.py  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-01 | refactor | Refactor JSON persistence logic in src/ouroboros/backlog.py, | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
 2026-10-01 | refactor | Extract JSON persistence utilities into shared helpers modul | failed | out of scope: targets 4 files, cap is 3
+2026-10-01 | add_test | Add direct unit test for _extract_coverage_from_output to en | failed | no plan generated
