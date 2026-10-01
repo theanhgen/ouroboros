@@ -249,6 +249,18 @@ class RunnerConfig:
     # Read via getattr in community_improvement and set in the tracked
     # agent.json, but never declared here, so nothing validated it.
     community_post_interval_hours: float = 1.0
+    # Incident posts and thread replies: see attention.py. Operator-only (not
+    # in COMMENT_SUGGESTIBLE_FIELDS). The platform allows a post every 30
+    # minutes and 50 comments a day; these sit inside both.
+    enable_incident_posts: bool = False
+    post_interval_minutes: int = 120
+    max_posts_per_day: int = 12
+    enable_thread_replies: bool = False
+    max_replies_per_cycle: int = 3
+    max_replies_per_day: int = 30
+    # Empty means the overflow gateway's model when one is configured,
+    # otherwise improvement_model. See attention.writer.
+    post_model: str = ""
     # GitHub issue resolution
     enable_github_improvement: bool = False
     github_improvement_interval_hours: int = 12
@@ -403,6 +415,13 @@ def load_runner_config() -> RunnerConfig:
         community_min_comments_for_early=int(data.get("community_min_comments_for_early", 3)),
         community_improvement_interval_hours=int(data.get("community_improvement_interval_hours", 72)),
         community_post_interval_hours=float(data.get("community_post_interval_hours", 1.0)),
+        enable_incident_posts=bool(data.get("enable_incident_posts", False)),
+        post_interval_minutes=int(data.get("post_interval_minutes", 120)),
+        max_posts_per_day=int(data.get("max_posts_per_day", 12)),
+        enable_thread_replies=bool(data.get("enable_thread_replies", False)),
+        max_replies_per_cycle=int(data.get("max_replies_per_cycle", 3)),
+        max_replies_per_day=int(data.get("max_replies_per_day", 30)),
+        post_model=str(data.get("post_model") or ""),
         enable_github_improvement=bool(data.get("enable_github_improvement", False)),
         github_improvement_interval_hours=int(data.get("github_improvement_interval_hours", 12)),
         enable_issue_scouting=bool(data.get("enable_issue_scouting", False)),
@@ -1332,7 +1351,16 @@ def run_loop() -> int:
                         if cfg.dry_run:
                             log.info("[dry-run] Would comment on %s: %s", post.get("id"), comment_text)
                         else:
+                            from . import attention
+
+                            if attention.verification_blocked(state):
+                                break
                             comment_result = create_comment(creds.api_key, post.get("id"), comment_text)
+                            if not attention.publish(
+                                creds.api_key, comment_result,
+                                *attention.writer(cfg, openai_client), state,
+                            ):
+                                continue
                             log.info("Commented on post %s", post.get("id"))
                             post_url = _post_url(post.get("id"))
                             comment_url = _comment_url(post.get("id"), comment_result.get("id"))
@@ -1538,11 +1566,13 @@ def run_loop() -> int:
 
                     # -- Auto-posting --
                     if cfg.enable_auto_post and cfg.post_after_self_question:
+                        from . import attention
+
                         last_post = state.get("last_post")
                         should_post = (
                             last_post is None or
                             (now - int(last_post)) >= cfg.min_post_interval_hours * 3600
-                        )
+                        ) and not attention.verification_blocked(state)
 
                         if should_post:
                             try:
@@ -1561,6 +1591,11 @@ def run_loop() -> int:
                                         content=post_data["content"],
                                     )
                                     state["last_post"] = now
+                                    if not attention.publish(
+                                        creds.api_key, post_result,
+                                        *attention.writer(cfg, _sq_client), state,
+                                    ):
+                                        raise MoltbookError("verification challenge failed")
                                     log.info("[auto-post] Created post: %s", post_result.get("id"))
                                     _notify(
                                         cfg,
@@ -1910,6 +1945,20 @@ def run_loop() -> int:
                         "Error during community improvement step",
                         is_error=True,
                     )
+
+            # -- Incident posts and replies in our own threads --
+            if creds is not None and (cfg.enable_incident_posts or cfg.enable_thread_replies):
+                try:
+                    from . import attention
+
+                    attention.step(
+                        cfg, state, creds, openai_client,
+                        lambda message, **kw: _notify(cfg, state, message, **kw),
+                    )
+                    save_state(state)
+                except Exception:
+                    log.exception("Error during attention step")
+                    _notify(cfg, state, "Error during attention step", is_error=True)
 
             # -- Wiki update (once per day) --
             if cfg.enable_wiki:
