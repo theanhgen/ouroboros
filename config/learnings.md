@@ -1,4 +1,3 @@
-2026-09-29 | refactor | Extract fact categorization logic from MemoryStore.index_cod | failed | no plan generated
 2026-09-29 | refactor | Extract duplicated JSON file handling and path resolution ut | failed | no plan generated
 2026-09-29 | refactor | Create storage_helpers.py with centralized JSON file handlin | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-09-29 | fix_bug | In src/ouroboros/memory.py, modify MemoryStore.index_code to | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
 2026-10-01 | refactor | Extract JSON persistence utilities into a new shared module  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-01 | refactor | Consolidate wiki.py's JSON persistence patterns to use exist | failed | no plan generated
+2026-10-01 | refactor | Extract common JSON persistence utilities into shared storag | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
