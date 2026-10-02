@@ -1,4 +1,3 @@
-2026-09-30 | fix_test | Extract coverage_percent extraction from _parse_pytest_outpu | failed | no plan generated
 2026-10-01 | refactor | Extract JSON file handling utilities from backlog.py, metric | failed | out of scope: targets 4 files, cap is 3
 2026-10-01 | refactor | Consolidate duplicated JSON read/write logic by leveraging e | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-01 | fix_test | Extract coverage_percent extraction logic from _parse_pytest | success | tests: 1358 -> 1358
@@ -98,3 +97,4 @@
 2026-10-02 | refactor | Extract common JSON file handling patterns from backlog.py i | failed | no plan generated
 2026-10-02 | refactor | Extract atomic JSON file writing utilities from backlog.py i | failed | no plan generated
 2026-10-02 | refactor | Extract common JSON file handling pattern from storage.py: C | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-02 | fix_bug | Add early validation gate in fix_bug pipeline to require fai | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
