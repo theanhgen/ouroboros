@@ -54,6 +54,200 @@ class RunnerOutcome:
             f"{self.errors} errors (returncode={self.returncode}){cov}"
         )
 
+    def cluster_failures_by_root_cause(self) -> dict:
+        """
+        Group failures by fault category (file, error type, line range) with associated tracebacks.
+        
+        Returns:
+            A dictionary mapping categories to their failure information:
+            {
+                "file:error_type:line_range": {
+                    "file": "normalized_file_path",
+                    "error_type": "normalized_error_type",
+                    "line_range": "start-end" or "single_line",
+                    "failures": [
+                        {
+                            "test_name": str,
+                            "file": str,
+                            "line": int or None,
+                            "message": str,
+                            "traceback": str
+                        },
+                        ...
+                    ],
+                    "count": int
+                },
+                ...
+            }
+        """
+        # Step 1: Extract failures from input
+        failures = self.failure_details
+        
+        # Step 2: Initialize result structure
+        clustered = {}
+        
+        # Step 3: Process each failure
+        for failure in failures:
+            # Step 3a: Extract and normalize error type from message
+            error_type = _extract_error_type(failure.message)
+            
+            # Step 3b: Normalize file path
+            normalized_file = _normalize_file_path(failure.file)
+            
+            # Step 3c: Create line range string
+            line_range = _create_line_range(failure.line)
+            
+            # Step 3d: Create category key
+            category_key = f"{normalized_file}:{error_type}:{line_range}"
+            
+            # Step 3e: Initialize category entry if not exists
+            if category_key not in clustered:
+                clustered[category_key] = {
+                    "file": normalized_file,
+                    "error_type": error_type,
+                    "line_range": line_range,
+                    "failures": [],
+                    "count": 0
+                }
+            
+            # Step 3f: Add failure to category
+            clustered[category_key]["failures"].append({
+                "test_name": failure.test_name,
+                "file": failure.file,
+                "line": failure.line,
+                "message": failure.message,
+                "traceback": failure.traceback
+            })
+            clustered[category_key]["count"] += 1
+        
+        # Step 4: Return clustered results
+        return clustered
+
+
+def _extract_error_type(message: str) -> str:
+    """
+    Extract normalized error type from failure message.
+    
+    Args:
+        message: The failure message
+        
+    Returns:
+        Normalized error type string
+    """
+    if not message:
+        return "Unknown"
+    
+    # Standard Python error types
+    error_types = [
+        "AssertionError", "ValueError", "TypeError", "ImportError", "KeyError",
+        "AttributeError", "SyntaxError", "NameError", "IndexError", "TimeoutError",
+        "ConnectionError", "OSError", "PermissionError", "FileNotFoundError",
+        "NotImplementedError", "RuntimeError", "StopIteration", "StopAsyncIteration",
+        "MemoryError", "OverflowError", "ZeroDivisionError", "RecursionError",
+        "NotADirectoryError", "IsADirectoryError", "BlockingIOError", "ChildProcessError",
+        "BrokenPipeError", "ConnectionAbortedError", "ConnectionRefusedError",
+        "ConnectionResetError", "FileExistsError", "InterruptedError", "ProcessLookupError"
+    ]
+    
+    # First check for standard error types
+    for error_type in error_types:
+        if error_type in message:
+            return error_type
+    
+    # Handle warnings
+    if "Warning" in message:
+        # Extract specific warning type
+        warning_match = re.search(r'\b(\w+Warning)\b', message)
+        if warning_match:
+            return warning_match.group(1)
+        return "Warning"
+    
+    # Handle "error:" pattern
+    if "error:" in message.lower():
+        error_desc = re.search(r'error:\s*(.+)', message, re.IGNORECASE)
+        if error_desc:
+            words = error_desc.group(1).strip().split()
+            if words:
+                return words[0].title()
+        return "Error"
+    
+    # Extract from "File "...", line N" pattern
+    file_line_match = re.search(r'File\s+"[^"]+",\s*line\s+\d+', message)
+    if file_line_match:
+        # Try to get error message after file:line
+        after_file_line = re.search(r'File\s+"[^"]+",\s*line\s+\d+[:\s]+(.+)', message)
+        if after_file_line:
+            error_desc = after_file_line.group(1).strip()
+            if error_desc:
+                # Get first word of error description
+                first_word = error_desc.split()[0]
+                return first_word.title() if first_word else "Error"
+        return "Error"
+    
+    # Extract first meaningful word from message as error type
+    skip_words = {"Error", "Exception", "Warning", "Traceback", "File", "test", "Test"}
+    words = message.split()
+    for word in words:
+        word = re.sub(r'[^\w]', '', word)
+        if word and word not in skip_words and len(word) > 2:
+            return word.title()
+    
+    return "Unknown"
+
+
+def _normalize_file_path(file_path: str) -> str:
+    """
+    Normalize file path for consistent categorization.
+    
+    Args:
+        file_path: Original file path
+        
+    Returns:
+        Normalized file path
+    """
+    if not file_path:
+        return "unknown"
+    
+    # Convert to Path object
+    path = Path(file_path)
+    
+    # Try to get absolute path
+    try:
+        normalized = str(path.resolve())
+    except:
+        normalized = file_path
+    
+    # Normalize path separators
+    normalized = normalized.replace('/', '.').replace('\\', '.')
+    
+    # Remove leading ./ or .\\
+    if normalized.startswith('./'):
+        normalized = normalized[2:]
+    elif normalized.startswith('.\\\\'):
+        normalized = normalized[3:]
+    
+    # Remove .py extension
+    if normalized.endswith('.py'):
+        normalized = normalized[:-3]
+    
+    return normalized
+
+
+def _create_line_range(line: Optional[int]) -> str:
+    """
+    Create a line range string from a single line number.
+    
+    Args:
+        line: Line number or None
+        
+    Returns:
+        Line range string (e.g., "10-15" or "42")
+    """
+    if line is None:
+        return "unknown"
+    
+    return str(line)
+
 
 def _parse_pytest_output(output: str) -> dict:
     """Parse pytest output into counts and failure details."""
