@@ -1,6 +1,5 @@
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
-2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | no plan generated
 2026-09-30 | fix_bug | Fix coverage_percent extraction to handle decimal percentage | failed | reviewer rejected
 2026-09-30 | fix_bug | Fix coverage_percent extraction in _parse_pytest_output to h | failed | no plan generated
 2026-09-30 | fix_bug | Fix coverage_percent extraction in _parse_pytest_output to h | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no code generated
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no code generated
 2026-10-02 | add_test | Add unit tests for test_runner._extract_coverage_from_output | success | tests: 1404 -> 1413
+2026-10-02 | fix_bug | Fix the critical data-loss bug in backlog.py's _update_backl | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
