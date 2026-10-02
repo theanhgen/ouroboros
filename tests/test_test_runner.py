@@ -420,3 +420,81 @@ def test_extract_coverage_from_output_with_whitespace():
     """Test TOTAL line with tabs and multiple spaces."""
     output = "TOTAL\t5\t2\t100%"
     assert _extract_coverage_from_output(output) == 100.0
+
+def test_extract_coverage_from_output_leading_whitespace():
+    """Test TOTAL line with leading whitespace."""
+    output = "\nTOTAL 10 5 85%"
+    assert _extract_coverage_from_output(output) == 85.0
+
+def test_extract_coverage_from_output_space_before_percent():
+    """Test TOTAL line with space before percent sign."""
+    output = "TOTAL 10 5 85 %"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_extra_columns():
+    """Test TOTAL line with extra columns (more than three numbers)."""
+    output = "TOTAL 10 5 85 90%"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_total_word_in_middle_of_line():
+    """Test TOTAL appearing in the middle of a line."""
+    output = "ERROR: TOTAL is 0%"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_negative_percentage():
+    """Test TOTAL line with negative percentage."""
+    output = "TOTAL 10 5 -10%"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_non_numeric_percentage():
+    """Test TOTAL line with non‑numeric percentage."""
+    output = "TOTAL 10 5 foo%"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_no_integer_part():
+    """Test TOTAL line with decimal like .5% (no integer part)."""
+    output = "TOTAL 10 5 .5%"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_trailing_decimal():
+    """Test TOTAL line with trailing decimal without fraction (e.g., 80.)."""
+    output = "TOTAL 10 5 80."
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_only_two_numbers():
+    """Test TOTAL line with only two numbers."""
+    output = "TOTAL 10 5"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_only_one_number():
+    """Test TOTAL line with only one number."""
+    output = "TOTAL 10"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_percent_without_numbers():
+    """Test TOTAL line with only percent sign."""
+    output = "TOTAL %"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_decimal_with_trailing_zeros():
+    """Test TOTAL line with decimal percentage including trailing zeros."""
+    output = "TOTAL 10 5 100.00%"
+    assert _extract_coverage_from_output(output) == 100.0
+
+def test_parse_pytest_output_with_coverage():
+    """Test that coverage is correctly parsed when the output contains a TOTAL line and mixed test outcomes."""
+    # Include a coverage line, a failure, an error, and a warning.
+    output = """
+[WARNING] Some deprecation warning
+FAILED tests/test_foo.py::test_bar - AssertionError
+TOTAL   100  15  85.3%
+ERROR tests/test_baz.py::test_setup - RuntimeError
+3 passed, 1 failed, 1 error in 0.52s
+"""
+    parsed = _parse_pytest_output(output)
+    assert parsed["coverage"] == 85.3
+    assert parsed["failed"] == 1
+    assert parsed["errors"] == 1
+    assert parsed["passed"] == 3
+    # Ensure at least one failure detail was extracted
+    assert len(parsed["failures"]) == 2

@@ -147,7 +147,8 @@ def _parse_pytest_output(output: str) -> dict:
 def _extract_coverage_from_output(output: str) -> Optional[float]:
     """Extract coverage percent from pytest output using the TOTAL line.
     Supports both integer and decimal percentages (e.g., 80.5%)."""
-    match = re.search(r"TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)%", output)
+    # Allow optional leading whitespace for robustness.
+    match = re.search(r"\s*TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)%", output)
     return float(match.group(1)) if match else None
 
 def _run_tests_sandboxed(repo_root: Path, config: SafetyConfig, timeout: int) -> RunnerOutcome:
