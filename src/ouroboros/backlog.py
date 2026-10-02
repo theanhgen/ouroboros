@@ -78,8 +78,16 @@ def _update_backlog(repo_root: Path, mutate) -> Any:
         nonlocal captured_result
         items = _extract_items(data, ensure=True)
         captured_result = mutate(items)
-        # Always return a valid items list - never null/None
-        return {"items": items}
+
+        # Preserve any existing keys (e.g., metadata) while updating items.
+        # If the original data is a list (legacy format), wrap into a dict with items.
+        if isinstance(data, list):
+            new_data = {"items": items}
+        else:
+            # Data is expected to be a dict after ensure=True.
+            new_data = dict(data)   # shallow copy to avoid mutating original
+            new_data["items"] = items
+        return new_data
     
     update_json_file(
         _backlog_path(repo_root), _apply, default={"items": []}
