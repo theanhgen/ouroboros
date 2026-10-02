@@ -1,4 +1,3 @@
-2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog w | failed | reviewer rejected
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-02 | add_test | Add comprehensive tests for the JSON file handling pattern ( | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-03 | add_feature | Add a validation gate in improvement.py that requires failin | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-03 | add_test | Add comprehensive JSON file handling tests for metrics.py to | failed | no code generated
+2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | no code generated
