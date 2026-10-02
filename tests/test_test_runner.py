@@ -1,6 +1,6 @@
 """Tests for test_runner module."""
 
-from ouroboros.test_runner import RunnerOutcome, _parse_pytest_output
+from ouroboros.test_runner import RunnerOutcome, _parse_pytest_output, _extract_coverage_from_output
 
 def test_test_result_success():
     r = RunnerOutcome(passed=5, failed=0, errors=0, returncode=0)
@@ -371,3 +371,52 @@ def test_parse_pytest_output_skipped_mixed():
     result = _parse_pytest_output("4 passed, 2 skipped in 0.30s")
     assert result["passed"] == 4
     assert result["skipped"] == 2
+
+def test_extract_coverage_from_output_integer():
+    """Test integer percentage extraction."""
+    output = "some output\nTOTAL   10   5  80%\nmore output"
+    assert _extract_coverage_from_output(output) == 80.0
+
+def test_extract_coverage_from_output_decimal():
+    """Test decimal percentage extraction."""
+    output = "TOTAL   20   10  87.5%"
+    assert _extract_coverage_from_output(output) == 87.5
+
+def test_extract_coverage_from_output_no_match():
+    """Test output without TOTAL line."""
+    output = "no coverage here"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_missing_percent():
+    """Test TOTAL line missing percent sign."""
+    output = "TOTAL   5   2   95"
+    assert _extract_coverage_from_output(output) is None
+
+def test_extract_coverage_from_output_extra_text():
+    """Test coverage line surrounded by other text."""
+    output = "Some warning\nTOTAL   30   12  66.7%\nError: something"
+    assert _extract_coverage_from_output(output) == 66.7
+
+def test_extract_coverage_from_output_multiple_totals():
+    """Test that the first TOTAL match is used."""
+    output = "TOTAL   10   5  50%\nTOTAL   20   8  75%"
+    assert _extract_coverage_from_output(output) == 50.0
+
+def test_extract_coverage_from_output_mixed_test_outcomes():
+    """Test coverage extraction when output includes warnings, failures, errors."""
+    output = """
+[WARNING] Deprecation warning
+FAILED tests/test_foo.py::test_bar
+TOTAL   100  15  85.3%
+ERROR tests/test_baz.py::test_setup
+"""
+    assert _extract_coverage_from_output(output) == 85.3
+
+def test_extract_coverage_from_output_empty_string():
+    """Test empty output string."""
+    assert _extract_coverage_from_output("") is None
+
+def test_extract_coverage_from_output_with_whitespace():
+    """Test TOTAL line with tabs and multiple spaces."""
+    output = "TOTAL\t5\t2\t100%"
+    assert _extract_coverage_from_output(output) == 100.0
