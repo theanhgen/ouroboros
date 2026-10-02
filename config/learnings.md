@@ -1,5 +1,4 @@
 2026-09-30 | fix_test | Extract coverage_percent extraction logic from _parse_pytest | failed | no plan generated
-2026-09-30 | fix_test | Extract coverage_percent extraction logic from _parse_pytest | failed | no plan generated
 2026-09-30 | fix_test | Fix coverage_percent extraction in src/ouroboros/test_runner | failed | no code generated
 2026-09-30 | fix_test | Fix coverage_percent extraction in test_runner.py to support | failed | no code generated
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities into a share | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-02 | add_test | Add unit tests for fix_bug validation pipeline to capture wh | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-02 | fix_bug | Fix the fix_bug validation pipeline by adding detailed failu | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-02 | add_feature | Add failure triage mechanism to categorize test failures by  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-02 | refactor | Extract common JSON file handling pattern into a reusable ut | failed | out of scope: targets 4 files, cap is 3
