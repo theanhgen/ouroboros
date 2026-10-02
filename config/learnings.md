@@ -1,4 +1,3 @@
-2026-10-01 | refactor | Refactor backlog.py to use existing storage.load_json_file a | failed | reviewer rejected
 2026-10-01 | refactor | Consolidate JSON persistence patterns in backlog.py, metrics | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-01 | refactor | Refactor backlog.py to safely use existing storage.load_json | failed | no plan generated
 2026-10-01 | refactor | Extract JSON persistence utilities from evaluation.py to sup | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-02 | refactor | Replace manual JSON load/save logic in backlog.py, metrics.p | success | tests: 1445 -> 1445
 2026-10-02 | fix_test | Enhance test_runner._parse_pytest_output to parse each faili | failed | no plan generated
 2026-10-02 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to pa | failed | no plan generated
+2026-10-02 | add_test | Enhance test_runner._parse_pytest_output to parse each faili | failed | no plan generated
