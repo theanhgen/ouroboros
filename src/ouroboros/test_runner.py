@@ -10,6 +10,7 @@ from typing import List, Optional
 
 from .config import SafetyConfig
 
+_COVERAGE_PATTERN = re.compile(r"\s*TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)%")
 log = logging.getLogger(__name__)
 
 @dataclass
@@ -148,7 +149,7 @@ def _extract_coverage_from_output(output: str) -> Optional[float]:
     """Extract coverage percent from pytest output using the TOTAL line.
     Supports both integer and decimal percentages (e.g., 80.5%)."""
     # Allow optional leading whitespace for robustness.
-    match = re.search(r"\s*TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?)%", output)
+    match = _COVERAGE_PATTERN.search(output)
     return float(match.group(1)) if match else None
 
 def _run_tests_sandboxed(repo_root: Path, config: SafetyConfig, timeout: int) -> RunnerOutcome:
