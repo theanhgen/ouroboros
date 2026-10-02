@@ -1,4 +1,3 @@
-2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog w | failed | reviewer rejected
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog w | failed | reviewer rejected
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-02 | add_feature | Add a `capture_tracebacks` flag to test_runner._parse_pytest | failed | no plan generated
 2026-10-02 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | no plan generated
 2026-10-02 | add_feature | Add a validation gate in test_runner._parse_pytest_output th | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-02 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | no plan generated
