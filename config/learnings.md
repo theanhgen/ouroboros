@@ -1,4 +1,3 @@
-2026-10-01 | fix_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-02 | add_test | Enhance test_runner._parse_pytest_output to capture detailed | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-02 | fix_test | Enhance test_runner._parse_pytest_output to capture detailed | failed | no code generated
 2026-10-02 | add_test | Add a test to validate that the test runner's failure triage | failed | no code generated
+2026-10-02 | fix_bug | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | no plan generated
