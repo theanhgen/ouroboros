@@ -1,4 +1,3 @@
-2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
 2026-10-01 | fix_test | Extract decimal coverage_percent extraction logic from _pars | duplicate | already completed: Extract coverage_percent extraction logic from _parse_pytest
 2026-10-01 | refactor | Extract common JSON persistence utilities into shared storag | failed | out of scope: targets 4 files, cap is 3
 2026-10-01 | refactor | Consolidate JSON persistence patterns by updating wiki.py to | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-02 | refactor | Extract the pytest coverage extraction logic from test_runne | failed | no plan generated
 2026-10-02 | fix_test | Enhance test_runner._parse_pytest_output to capture detailed | failed | no plan generated
 2026-10-02 | refactor | Extract the duplicated JSON file handling pattern from evalu | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-02 | refactor | Extract common JSON file handling pattern from metrics.py: c | failed | reviewer rejected
