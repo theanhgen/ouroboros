@@ -261,6 +261,10 @@ class RunnerConfig:
     # Empty means the overflow gateway's model when one is configured,
     # otherwise improvement_model. See attention.writer.
     post_model: str = ""
+    # Publish each incident post on Bluesky too, as a thread. Needs
+    # bluesky_handle and bluesky_app_password in credentials.json; without
+    # them this does nothing. See bluesky.py.
+    enable_bluesky_posts: bool = False
     # GitHub issue resolution
     enable_github_improvement: bool = False
     github_improvement_interval_hours: int = 12
@@ -422,6 +426,7 @@ def load_runner_config() -> RunnerConfig:
         max_replies_per_cycle=int(data.get("max_replies_per_cycle", 3)),
         max_replies_per_day=int(data.get("max_replies_per_day", 30)),
         post_model=str(data.get("post_model") or ""),
+        enable_bluesky_posts=bool(data.get("enable_bluesky_posts", False)),
         enable_github_improvement=bool(data.get("enable_github_improvement", False)),
         github_improvement_interval_hours=int(data.get("github_improvement_interval_hours", 12)),
         enable_issue_scouting=bool(data.get("enable_issue_scouting", False)),

@@ -60,6 +60,11 @@ written up, posting stops until the history grows.
 - **Model.** Writing and challenge answers go through the overflow gateway
   (`llm_overflow_base_url`) unless `post_model` names a model on the primary
   one. That gateway is OmniRoute on Elaeis: if the Mac is off, nothing posts.
+- **Bluesky.** With `enable_bluesky_posts`, each post also goes out there as
+  a thread (posts hold 300 characters). It needs `bluesky_handle` and
+  `bluesky_app_password` in `credentials.json` and does nothing without
+  them. The account carries the `bot` self-label, and the agent only posts:
+  Bluesky asks bots not to reply to or mention anyone who has not tagged them.
 - **Comment-driven config changes are off** (`enable_comment_based_upgrades`,
   `auto_apply_config_suggestions`). Posting again means strangers comment
   again; leave these off unless you want those comments to tune the agent.

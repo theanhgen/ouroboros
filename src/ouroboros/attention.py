@@ -530,11 +530,53 @@ def step_post(
         return "verification_failed"
 
     post_id = (result.get("post") or {}).get("id") or result.get("id")
-    my_posts.append({"id": post_id, "ts": now, "title": post["title"], "content": post["content"]})
+    entry = {"id": post_id, "ts": now, "title": post["title"], "content": post["content"]}
+    my_posts.append(entry)
     state["my_posts"] = my_posts[-MAX_MY_POSTS:]
     log.info("[post] Published: %s (%s)", post["title"], post_id)
     notify(f"New post: {post['title']}\nURL: {moltbook._post_url(post_id)}")
+    if getattr(cfg, "enable_bluesky_posts", False):
+        cross_post_bluesky(state, post, entry, notify)
     return "posted"
+
+
+def cross_post_bluesky(
+    state: Dict[str, Any],
+    post: Dict[str, str],
+    entry: Dict[str, Any],
+    notify: Callable[..., None],
+) -> Optional[str]:
+    """Publish the same post on Bluesky as a thread. Returns its URL.
+
+    Never raises: the Moltbook post is already out, and a second platform
+    being down must not turn that cycle into an error.
+    """
+    from . import bluesky
+
+    try:
+        creds = bluesky.load_credentials()
+        if creds is None:
+            log.debug("[bluesky] no credentials; skipping")
+            return None
+        session = bluesky.create_session(creds)
+        if not state.get("bluesky_labelled"):
+            state["bluesky_labelled"] = bluesky.ensure_bot_label(session)
+        parts = bluesky.split_thread(post["title"], post["content"])
+        try:
+            posted = bluesky.post_thread(session, parts)
+        except bluesky.BlueskyError as exc:
+            posted = getattr(exc, "posted", [])
+            log.warning("[bluesky] thread cut short at %d of %d", len(posted), len(parts), exc_info=True)
+            if not posted:
+                return None
+        entry["bsky_uri"] = posted[0]["uri"]
+        url = bluesky.post_url(session.handle, posted[0]["uri"])
+        log.info("[bluesky] Published %d-part thread: %s", len(posted), url)
+        notify(f"Bluesky: {post['title']}\nURL: {url}")
+        return url
+    except Exception:
+        log.warning("[bluesky] cross-post failed", exc_info=True)
+        return None
 
 
 def _author(record: Dict[str, Any]) -> Optional[str]:
