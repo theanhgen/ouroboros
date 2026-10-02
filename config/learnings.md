@@ -1,4 +1,3 @@
-2026-10-01 | refactor | Extract common JSON persistence utilities into shared storag | failed | out of scope: targets 4 files, cap is 3
 2026-10-01 | refactor | Consolidate JSON persistence patterns by using existing stor | failed | no plan generated
 2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
 2026-10-01 | fix_test | Extract decimal coverage_percent extraction logic from _pars | duplicate | already completed: Extract coverage_percent extraction logic from _parse_pytest
@@ -98,3 +97,4 @@
 2026-10-02 | refactor | Extract common JSON file handling pattern from test_runner._ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-02 | refactor | Extract common JSON file handling pattern from test_runner._ | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-02 | refactor | Extract the pytest coverage extraction logic from test_runne | failed | no plan generated
+2026-10-02 | fix_test | Enhance test_runner._parse_pytest_output to capture detailed | failed | no plan generated
