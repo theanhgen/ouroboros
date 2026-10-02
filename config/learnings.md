@@ -1,4 +1,3 @@
-2026-09-30 | refactor | Extract duplicated JSON file handling utilities into a share | failed | out of scope: targets 6 files, cap is 3
 2026-09-30 | fix_test | Fix coverage_percent extraction in _parse_pytest_output to h | failed | no plan generated
 2026-09-30 | fix_bug | Extract coverage_percent logic from _parse_pytest_output in  | failed | no plan generated
 2026-09-30 | fix_test | Extract coverage_percent extraction logic from _parse_pytest | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-02 | refactor | Extract atomic JSON file writing pattern into shared utility | failed | out of scope: targets 4 files, cap is 3
 2026-10-02 | refactor | Extract atomic JSON file writing pattern into shared utility | failed | no code generated
 2026-10-02 | refactor | Refactor _extract_coverage_from_output to use a compiled reg | failed | no plan generated
+2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no plan generated
