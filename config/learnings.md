@@ -1,4 +1,3 @@
-2026-09-30 | fix_bug | Fix coverage_percent extraction in _parse_pytest_output to h | failed | no plan generated
 2026-09-30 | fix_bug | Fix coverage_percent extraction in _parse_pytest_output to h | failed | reviewer rejected
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities into a share | failed | out of scope: targets 4 files, cap is 3
 2026-09-30 | refactor | Extract duplicated JSON file handling utilities into a share | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | generation failed: EditMismatch: path/to/file.py: not one of the files provided
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | success | tests: 1413 -> 1426
 2026-10-02 | fix_bug | Fix coverage extraction from pytest output: enhance _extract | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-02 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
