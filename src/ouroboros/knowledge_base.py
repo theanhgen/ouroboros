@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .storage import load_json_file, save_json_file
+from .storage import load_json_file, save_json_file, update_json_file
 
 log = logging.getLogger(__name__)
 
@@ -155,7 +155,17 @@ def get_summary(
     if summary:
         kb["summary_cache"] = summary
         kb["summary_updated_at"] = now
-        save_kb(kb, path)
+        # Refactored manual load-modify-save pattern into atomic utility call
+        path_to_use = path or KB_PATH
+        
+        def _update_scalars(data: Any) -> Dict[str, Any]:
+            scalars = dict(data)
+            scalars["summary_cache"] = summary
+            scalars["summary_updated_at"] = now
+            return scalars
+
+        update_json_file(path_to_use, _update_scalars, default=KB_DEFAULT)
+        
         return summary
 
     # Fallback to cached if generation fails
