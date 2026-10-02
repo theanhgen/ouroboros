@@ -1,4 +1,3 @@
-2026-09-30 | fix_bug | Extract coverage_percent from pytest output supporting decim | failed | no code generated
 2026-09-30 | fix_test | Fix coverage_percent extraction in test_runner.py to support | failed | no plan generated
 2026-09-30 | refactor | Extract duplicated JSON load/save utilities into a shared he | failed | out of scope: targets 4 files, cap is 3
 2026-09-30 | add_feature | Implement test failure triage in test_runner.py: add a _tria | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-02 | refactor | Refactor test_runner._extract_coverage_from_output to use a  | failed | no plan generated
 2026-10-02 | refactor | Create storage_utils.py with atomic JSON file writing utilit | failed | no plan generated
 2026-10-02 | refactor | Extract the regex pattern in _extract_coverage_from_output i | success | tests: 1426 -> 1426
+2026-10-02 | refactor | Extract atomic JSON file writing pattern from backlog.py and | failed | no code generated
