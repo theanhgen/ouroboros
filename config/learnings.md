@@ -1,4 +1,3 @@
-2026-10-01 | add_test | Add test case for decimal coverage percentage extraction in  | failed | no plan generated
 2026-10-01 | refactor | Extract JSON persistence utilities into a new shared module  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-01 | refactor | Consolidate wiki.py's JSON persistence patterns to use exist | failed | no plan generated
 2026-10-01 | refactor | Extract common JSON persistence utilities into shared storag | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-02 | refactor | Extract common JSON file handling pattern into storage_utils | failed | no plan generated
 2026-10-02 | fix_bug | Add early validation gate in fix_bug pipeline by enhancing t | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-02 | add_test | Enhance test_runner._parse_pytest_output to parse each faili | failed | no plan generated
+2026-10-02 | refactor | Extract common JSON file handling pattern from evaluation.py | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
