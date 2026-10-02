@@ -46,17 +46,14 @@ def _extract_items(data: Any, ensure: bool = False) -> List[Dict[str, Any]]:
 
 
 def load_backlog(repo_root: Path) -> List[Dict[str, Any]]:
-    try:
-        data = load_json_file(
-            _backlog_path(repo_root),
-            default={"items": []},
-            error_msg="Corrupt backlog file, returning empty",
-            logger=log,
-        )
-    except Exception as e:
-        log.error(f"Failed to load backlog: {e}")
-        raise
-
+    # Replaced manual try/except with direct utility call.
+    # load_json_file handles error_msg and logger internally.
+    data = load_json_file(
+        _backlog_path(repo_root),
+        default={"items": []},
+        error_msg="Corrupt backlog file, returning empty",
+        logger=log,
+    )
     items = _extract_items(data)
     return items
 
@@ -103,12 +100,6 @@ def add_item(
     priority: int = 5,
     source: str = "auto",
 ) -> Dict[str, Any]:
-    try:
-        items = load_backlog(repo_root)
-    except Exception as e:
-        log.error(f"Failed to load backlog: {e}")
-        raise
-
     def _add(items: List[Dict[str, Any]]) -> Dict[str, Any]:
         # Dedup pending items by description similarity
         for item in items:
