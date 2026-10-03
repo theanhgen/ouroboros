@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .storage import load_json_file, save_json_file, update_json_file
+from .state_persistence import _state_path
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ MAX_SNAPSHOTS = 200
 
 
 def _metrics_path(repo_root: Path) -> Path:
-    return repo_root / METRICS_FILE
+    return _state_path(repo_root, METRICS_FILE)
 
 
 def _coerce_snapshots(data: Any) -> Optional[List[Dict[str, Any]]]:
