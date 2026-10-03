@@ -1,4 +1,3 @@
-2026-10-02 | add_test | Add unit tests for fix_bug validation pipeline to capture wh | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-02 | fix_bug | Fix the fix_bug validation pipeline by adding detailed failu | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-02 | add_feature | Add failure triage mechanism to categorize test failures by  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-02 | refactor | Extract common JSON file handling pattern into a reusable ut | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-03 | refactor | Create a centralized _path utility in src/ouroboros/state_pe | failed | out of scope: targets 4 files, cap is 3
 2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | no plan generated
 2026-10-03 | refactor | Extract failure location parsing logic into a dedicated extr | failed | no code generated
+2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | reviewer rejected
