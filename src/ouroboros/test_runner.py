@@ -124,6 +124,51 @@ class RunnerOutcome:
         return clustered
 
 
+def extract_failure_location(failure_detail: FailureDetail) -> tuple[str, Optional[int], str]:
+    """
+    Extract structured failure location information from a FailureDetail object.
+    
+    This helper function parses failure detail strings and returns structured
+    (file_path, line_number, traceback) tuples while preserving all existing
+    traceback data in the RunnerOutcome.failure_details.
+    
+    Args:
+        failure_detail: FailureDetail object containing failure information
+        
+    Returns:
+        Tuple containing (file_path, line_number, traceback):
+        - file_path: String representation of the file where failure occurred
+        - line_number: Optional integer line number where failure occurred
+        - traceback: Full traceback string from the failure
+        
+    Examples:
+        >>> failure = FailureDetail(
+        ...     test_name="test_example",
+        ...     file="src/ouroboros/test_runner.py",
+        ...     line=42,
+        ...     message="AssertionError: expected 5 got 3",
+        ...     traceback="Traceback (most recent call last):\\n  File ...\\nAssertionError: expected 5 got 3"
+        ... )
+        >>> file_path, line_number, traceback = extract_failure_location(failure)
+        >>> file_path
+        'src/ouroboros/test_runner.py'
+        >>> line_number
+        42
+        >>> traceback.startswith('Traceback (most recent call last):')
+        True
+    """
+    # Extract file path directly from failure_detail
+    file_path = failure_detail.file
+    
+    # Extract line number directly from failure_detail
+    line_number = failure_detail.line
+    
+    # Extract full traceback directly from failure_detail (preserving all data)
+    traceback = failure_detail.traceback
+    
+    return (file_path, line_number, traceback)
+
+
 def _extract_error_type(message: str) -> str:
     """
     Extract normalized error type from failure message.
