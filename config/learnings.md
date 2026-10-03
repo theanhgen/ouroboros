@@ -1,4 +1,3 @@
-2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no plan generated
 2026-10-02 | refactor | Extract atomic JSON file writing pattern into shared utility | failed | out of scope: targets 4 files, cap is 3
 2026-10-02 | refactor | Refactor test_runner._extract_coverage_from_output to use a  | failed | no plan generated
 2026-10-02 | refactor | Refactor test_runner._extract_coverage_from_output to use a  | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-03 | add_test | Add extract_failure_location helper in src/ouroboros/test_ru | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-03 | add_feature | Add a FailureReason enum to metrics.py to track why improvem | failed | no plan generated
 2026-10-03 | add_test | Add extract_failure_location helper in src/ouroboros/test_ru | failed | no plan generated
+2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | no plan generated
