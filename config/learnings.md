@@ -1,4 +1,3 @@
-2026-10-01 | add_feature | Add mandatory bug-fix evidence validation to ensure only bug | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-01 | add_test | Add unit tests for _extract_coverage_from_output to verify i | failed | generation failed: EditMismatch: path/to/ouroboros/test_runner.py: not one of t
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | reviewer rejected
 2026-10-01 | refactor | Consolidate JSON persistence utilities in backlog.py to fix  | failed | out of scope: targets 5 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-03 | refactor | Extract common JSON file handling patterns from src/ouroboro | failed | out of scope: targets 6 files, cap is 3
 2026-10-03 | add_feature | Add extract_failure_location helper function to test_runner. | failed | no code generated
 2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ex | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ex | failed | no plan generated
