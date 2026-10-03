@@ -1,5 +1,4 @@
 2026-10-02 | refactor | Refactor test_runner._extract_coverage_from_output to use a  | failed | no plan generated
-2026-10-02 | refactor | Refactor test_runner._extract_coverage_from_output to use a  | failed | no plan generated
 2026-10-02 | refactor | Create storage_utils.py with atomic JSON file writing utilit | failed | no plan generated
 2026-10-02 | refactor | Extract the regex pattern in _extract_coverage_from_output i | success | tests: 1426 -> 1426
 2026-10-02 | refactor | Extract atomic JSON file writing pattern from backlog.py and | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | no plan generated
 2026-10-03 | refactor | Extract common JSON file handling patterns into a reusable s | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-03 | refactor | Extract the common 'resolve path → load JSON/dicts/lists → w | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
