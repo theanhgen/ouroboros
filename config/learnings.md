@@ -1,4 +1,3 @@
-2026-10-01 | fix_bug | Fix backlog.py's _update_backlog data-loss bug by ensuring m | failed | reviewer rejected
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-02 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-02 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | success | tests: 1404 -> 1404
@@ -98,3 +97,4 @@
 2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ex | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-03 | fix_test | Add extract_failure_location helper function to src/ouroboro | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-03 | refactor | Extract duplicated JSON file handling patterns into a reusab | failed | no plan generated
+2026-10-03 | add_feature | Add a robust extract_failure_location helper in src/ouroboro | failed | reviewer rejected
