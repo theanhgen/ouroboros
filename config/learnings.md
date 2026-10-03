@@ -1,4 +1,3 @@
-2026-10-01 | add_test | Add unit tests for _extract_coverage_from_output to ensure i | failed | no code generated
 2026-10-01 | refactor | Refactor backlog.py's JSON persistence to use storage.update | failed | no code generated
 2026-10-01 | fix_bug | Fix data-loss bug in backlog.py's _update_backlog function:  | failed | no code generated
 2026-10-01 | add_test | Add unit test for _extract_coverage_from_output to verify it | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ex | failed | no plan generated
 2026-10-03 | fix_bug | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-03 | add_feature | Add a helper function `extract_failure_location` to `src/our | failed | generation failed: EditMismatch: src/ouroboros/test_runner.py: SEARCH block not
