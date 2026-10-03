@@ -1,4 +1,3 @@
-2026-10-02 | add_test | Add comprehensive unit test for test_runner._extract_coverag | failed | no plan generated
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no plan generated
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no code generated
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-03 | fix_test | Add extract_failure_location helper function to src/ouroboro | failed | generation failed: EditMismatch: /src/ouroboros/test_runner.py: not one of the 
 2026-10-03 | refactor | Create a storage helpers module in src/ouroboros/_storage_co | failed | out of scope: targets 4 files, cap is 3
 2026-10-03 | refactor | Create src/ouroboros/storage_helpers.py with reusable JSON f | failed | no plan generated
+2026-10-03 | refactor | Add extract_failure_location helper function to src/ouroboro | failed | no code generated
