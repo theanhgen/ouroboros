@@ -1,4 +1,3 @@
-2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no code generated
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
 2026-10-01 | refactor | Extract duplicated JSON persistence patterns into a shared s | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-03 | fix_test | Add extract_failure_location helper function to src/ouroboro | failed | no code generated
 2026-10-03 | add_test | Add comprehensive tests for a new extract_failure_location h | failed | no code generated
 2026-10-03 | add_feature | Add extract_failure_location helper function to src/ouroboro | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-03 | refactor | Create src/ouroboros/storage_helpers.py with reusable functi | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
