@@ -1,4 +1,3 @@
-2026-10-01 | fix_bug | Fix data-loss bug in backlog.py's _update_backlog function:  | failed | no code generated
 2026-10-01 | add_test | Add unit test for _extract_coverage_from_output to verify it | failed | no code generated
 2026-10-01 | refactor | Extract JSON persistence utilities into shared helpers modul | failed | out of scope: targets 5 files, cap is 3
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-03 | fix_bug | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-03 | add_feature | Add a helper function `extract_failure_location` to `src/our | failed | generation failed: EditMismatch: src/ouroboros/test_runner.py: SEARCH block not
 2026-10-03 | refactor | Create src/ouroboros/storage_helpers.py with reusable functi | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ex | failed | no code generated
