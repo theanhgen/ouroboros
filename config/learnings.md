@@ -1,4 +1,3 @@
-2026-10-02 | fix_bug | Fix coverage extraction from pytest output: enhance _extract | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-02 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
 2026-10-02 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-02 | fix_bug | Fix the critical data-loss bug in backlog.py's _update_backl | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-03 | refactor | Extract the common file reading/writing pattern from backlog | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-03 | add_feature | Add a lightweight failure reason field to metrics.py to trac | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py, src
 2026-10-03 | add_feature | Add robust failure location extraction to src/ouroboros/test | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-03 | add_feature | Add failure reason field to metrics.py to track why improvem | failed | out of scope: targets forbidden file(s): src/ouroboros/policies.py, src/ou
