@@ -1,4 +1,3 @@
-2026-10-02 | refactor | Extract atomic JSON file writing pattern into shared utility | failed | no code generated
 2026-10-02 | refactor | Refactor _extract_coverage_from_output to use a compiled reg | failed | no plan generated
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | no plan generated
 2026-10-02 | refactor | Extract atomic JSON file writing pattern into shared utility | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-03 | refactor | Extract duplicated JSON file handling patterns from evaluati | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-03 | add_test | Add extract_failure_location helper in src/ouroboros/test_ru | failed | no plan generated
 2026-10-03 | add_test | Add extract_failure_location helper in src/ouroboros/test_ru | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-03 | add_feature | Add a FailureReason enum to metrics.py to track why improvem | failed | no plan generated
