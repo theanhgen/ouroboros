@@ -1,4 +1,3 @@
-2026-10-01 | refactor | Extract JSON persistence utilities into shared helpers modul | failed | out of scope: targets 4 files, cap is 3
 2026-10-01 | add_test | Add direct unit test for _extract_coverage_from_output to en | failed | no plan generated
 2026-10-01 | add_test | Add unit test for _extract_coverage_from_output to verify it | failed | no plan generated
 2026-10-01 | add_test | Add unit tests for _extract_coverage_from_output to ensure i | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-03 | add_feature | Add a validation gate in test_runner._parse_pytest_output th | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-03 | refactor | Extract duplicated JSON file handling patterns into a centra | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | no plan generated
+2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
