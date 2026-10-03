@@ -1,4 +1,3 @@
-2026-10-02 | fix_bug | Fix the critical data-loss bug in backlog.py's _update_backl | success | tests: 1426 -> 1426
 2026-10-02 | refactor | Extract atomic JSON file writing pattern into shared utility | failed | out of scope: targets 4 files, cap is 3
 2026-10-02 | refactor | Extract atomic JSON file writing pattern into shared utility | failed | no code generated
 2026-10-02 | refactor | Refactor _extract_coverage_from_output to use a compiled reg | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-03 | add_feature | Add bug-fix pipeline monitoring to track where improvements  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-03 | add_test | Add extract_failure_location helper in src/ouroboros/test_ru | failed | no code generated
 2026-10-03 | refactor | Extract duplicated JSON file handling patterns from evaluati | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-03 | add_test | Add extract_failure_location helper in src/ouroboros/test_ru | failed | no plan generated
