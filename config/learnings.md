@@ -1,4 +1,3 @@
-2026-10-02 | refactor | Extract atomic JSON file writing utilities from backlog.py i | failed | no plan generated
 2026-10-02 | refactor | Extract common JSON file handling pattern from storage.py: C | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-02 | fix_bug | Add early validation gate in fix_bug pipeline to require fai | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-02 | refactor | Extract the JSON file handling pattern from improvement.py i | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-03 | refactor | Extract duplicated JSON file handling patterns into a reusab | failed | no code generated
 2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | success | tests: 1445 -> 1448
 2026-10-04 | refactor | Extract common repository path resolution into a reusable _s | failed | Too many files changed: 4 > 3
+2026-10-04 | refactor | Extract common repository path resolution into a reusable _s | success | tests: 1448 -> 1448
