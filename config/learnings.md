@@ -1,4 +1,3 @@
-2026-10-01 | refactor | Extract JSON persistence utilities from duplicated patterns  | failed | out of scope: targets 4 files, cap is 3
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | reviewer rejected
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
 2026-10-01 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-03 | add_feature | Create src/ouroboros/storage_helpers.py with reusable functi | failed | out of scope: targets 4 files, cap is 3
 2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ex | failed | no code generated
 2026-10-03 | add_feature | Add extract_failure_location helper function to src/ouroboro | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-03 | fix_test | Add extract_failure_location helper function to src/ouroboro | failed | no code generated
