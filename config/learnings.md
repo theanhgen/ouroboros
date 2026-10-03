@@ -1,4 +1,3 @@
-2026-10-02 | add_test | Add unit tests for test_runner._extract_coverage_from_output | success | tests: 1404 -> 1413
 2026-10-02 | fix_bug | Fix the critical data-loss bug in backlog.py's _update_backl | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | generation failed: EditMismatch: path/to/file.py: not one of the files provided
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | success | tests: 1413 -> 1426
@@ -98,3 +97,4 @@
 2026-10-03 | refactor | Extract the core backlog update logic from _update_backlog i | failed | no code generated
 2026-10-03 | refactor | Create src/ouroboros/storage_helpers.py with resolve_path, l | failed | no code generated
 2026-10-03 | refactor | Create src/ouroboros/storage_helpers.py with centralized uti | failed | no plan generated
+2026-10-03 | add_test | Add test helper function to extract failure location from te | failed | no plan generated
