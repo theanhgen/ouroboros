@@ -1,4 +1,3 @@
-2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | failed | generation failed: EditMismatch: path/to/file.py: not one of the files provided
 2026-10-02 | add_test | Add comprehensive unit tests for test_runner._extract_covera | success | tests: 1413 -> 1426
 2026-10-02 | fix_bug | Fix coverage extraction from pytest output: enhance _extract | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-02 | fix_bug | Fix critical data-loss bug in backlog.py's _update_backlog f | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-03 | refactor | Create src/ouroboros/storage_helpers.py with centralized uti | failed | no plan generated
 2026-10-03 | add_test | Add test helper function to extract failure location from te | failed | no plan generated
 2026-10-03 | refactor | Extract the common file reading/writing pattern from backlog | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-03 | add_feature | Add a lightweight failure reason field to metrics.py to trac | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py, src
