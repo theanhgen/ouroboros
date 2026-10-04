@@ -1,4 +1,3 @@
-2026-10-03 | fix_test | Add extract_failure_location helper function to src/ouroboro | failed | generation failed: EditMismatch: /src/ouroboros/test_runner.py: not one of the 
 2026-10-03 | refactor | Create a storage helpers module in src/ouroboros/_storage_co | failed | out of scope: targets 4 files, cap is 3
 2026-10-03 | refactor | Create src/ouroboros/storage_helpers.py with reusable JSON f | failed | no plan generated
 2026-10-03 | refactor | Add extract_failure_location helper function to src/ouroboro | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-04 | add_test | Add comprehensive unit tests for the parse_json_reply functi | failed | no plan generated
 2026-10-04 | add_test | Add comprehensive unit tests for the extract_failure_locatio | failed | no plan generated
+2026-10-04 | add_test | Add comprehensive unit tests for previously untested functio | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
