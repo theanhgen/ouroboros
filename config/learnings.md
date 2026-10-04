@@ -1,4 +1,3 @@
-2026-10-03 | add_test | Add comprehensive tests for a new extract_failure_location h | failed | no code generated
 2026-10-03 | add_feature | Add extract_failure_location helper function to src/ouroboro | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-03 | refactor | Create src/ouroboros/storage_helpers.py with reusable functi | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-03 | add_feature | Create a robust extract_failure_location helper function in  | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-04 | add_test | Add test for the improved extract_failure_location function  | failed | no code generated
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location function in  | failed | no code generated
 2026-10-04 | refactor | Extract duplicate filtering logic from src/ouroboros/backlog | failed | no code generated
+2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
