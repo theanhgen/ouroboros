@@ -124,6 +124,63 @@ class RunnerOutcome:
         return clustered
 
 
+def _parse_location_from_string(location_string: str, source: str = "") -> tuple[Optional[str], Optional[int]]:
+    """
+    Parse location information from a string containing file/line information.
+    
+    This helper function extracts file paths and line numbers from various formats:
+    - 'file:line' patterns (e.g., 'src/test.py:42')
+    - 'File "filename", line N' patterns from tracebacks
+    - Error messages that contain location information
+    
+    Args:
+        location_string: The string to parse for location information
+        source: Optional source label ('message' or 'traceback') for context
+        
+    Returns:
+        Tuple containing (file_path, line_number):
+        - file_path: Extracted file path (may be None if not found)
+        - line_number: Extracted line number (may be None if not found)
+    """
+    if not location_string:
+        return (None, None)
+    
+    # Pattern 1: file:line format (most common in failure messages)
+    file_line_pattern = r'(?:^|\s)([/\w\.-]+)\.(\w+):(\d+)'
+    match = re.search(file_line_pattern, location_string)
+    if match:
+        file_path = match.group(1) + '.' + match.group(2)
+        line_number = int(match.group(3))
+        return (file_path, line_number)
+    
+    # Pattern 2: File "filename", line N format (from Python tracebacks)
+    file_line_traceback_pattern = r'File\s+"([^"]+)",\s*line\s+(\d+)'
+    match = re.search(file_line_traceback_pattern, location_string)
+    if match:
+        file_path = match.group(1)
+        line_number = int(match.group(2))
+        return (file_path, line_number)
+    
+    # Pattern 3: file:line format with .py extension
+    file_line_py_pattern = r'(?:^|\s)([/\w\.-]+):(\d+)'
+    match = re.search(file_line_py_pattern, location_string)
+    if match:
+        file_path = match.group(1)
+        line_number = int(match.group(2))
+        return (file_path, line_number)
+    
+    # Pattern 4: Extract file path and line from error messages with context
+    # Look for patterns like: in file.py line 42, etc.
+    context_pattern = r'(?:in|at)\s+([/\w\.-]+)\s+(?:line|on)?\s*(\d+)'
+    match = re.search(context_pattern, location_string, re.IGNORECASE)
+    if match:
+        file_path = match.group(1)
+        line_number = int(match.group(2))
+        return (file_path, line_number)
+    
+    return (None, None)
+
+
 def extract_failure_location(failure_detail: FailureDetail) -> tuple[str, Optional[int], str]:
     """
     Extract structured failure location information from a FailureDetail object.
@@ -131,6 +188,11 @@ def extract_failure_location(failure_detail: FailureDetail) -> tuple[str, Option
     This helper function parses failure detail strings and returns structured
     (file_path, line_number, traceback) tuples while preserving all existing
     traceback data in the RunnerOutcome.failure_details.
+    
+    The function attempts to extract location information from multiple sources:
+    1. The failure_detail.message field for 'file:line' patterns
+    2. The failure_detail.traceback field for 'File "...", line N' patterns
+    3. Falls back to the original file/line attributes from the FailureDetail object
     
     Args:
         failure_detail: FailureDetail object containing failure information
@@ -157,13 +219,21 @@ def extract_failure_location(failure_detail: FailureDetail) -> tuple[str, Option
         >>> traceback.startswith('Traceback (most recent call last):')
         True
     """
-    # Extract file path directly from failure_detail
-    file_path = failure_detail.file
+    # First, try to extract location from the failure message
+    parsed_file, parsed_line = _parse_location_from_string(failure_detail.message, "message")
     
-    # Extract line number directly from failure_detail
-    line_number = failure_detail.line
+    # If we found location info from the message, use it; otherwise use original
+    if parsed_file:
+        file_path = parsed_file
+    else:
+        file_path = failure_detail.file
     
-    # Extract full traceback directly from failure_detail (preserving all data)
+    if parsed_line is not None:
+        line_number = parsed_line
+    else:
+        line_number = failure_detail.line
+    
+    # Always preserve the full traceback data
     traceback = failure_detail.traceback
     
     return (file_path, line_number, traceback)
