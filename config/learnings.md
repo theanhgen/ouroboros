@@ -1,4 +1,3 @@
-2026-10-03 | add_feature | Add a helper function extract_failure_location to src/ourobo | failed | no plan generated
 2026-10-03 | add_feature | Create src/ouroboros/storage_helpers.py with reusable functi | failed | out of scope: targets 4 files, cap is 3
 2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ex | failed | no code generated
 2026-10-03 | add_feature | Add extract_failure_location helper function to src/ouroboro | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
 2026-10-04 | add_test | Add FailureTriage class to test_runner.py that clusters fail | failed | no plan generated
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
+2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | generation failed: EditMismatch: src/ouroboros/test_runner.py: SEARCH block not
