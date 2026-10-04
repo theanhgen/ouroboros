@@ -1,4 +1,3 @@
-2026-10-02 | fix_test | Enhance test_runner._parse_pytest_output to parse each faili | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-02 | add_test | Enhance test_runner._parse_pytest_output to capture detailed | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-02 | fix_test | Enhance test_runner._parse_pytest_output to capture detailed | failed | no code generated
 2026-10-02 | add_test | Add a test to validate that the test runner's failure triage | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-04 | fix_bug | Implement per-task failure taxonomy logger in improvement._r | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-04 | refactor | Replace the simplistic extract_failure_location helper funct | failed | no code generated
 2026-10-04 | refactor | Extract duplicated repository path resolution and JSON file  | failed | no plan generated
+2026-10-04 | refactor | Create src/ouroboros/storage_helpers.py with centralized fil | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
