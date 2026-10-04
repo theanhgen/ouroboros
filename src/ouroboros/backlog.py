@@ -7,6 +7,8 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from collections import Counter
+from statistics import mean
 
 from .model_defaults import DEFAULT_OPENAI_MODEL
 from .storage import load_json_file, save_json_file, update_json_file
@@ -213,6 +215,123 @@ def format_backlog_for_llm(items: List[Dict[str, Any]]) -> str:
             f"{item.get('description', '')} (attempts: {item.get('attempts', 0)})"
         )
     return "\n".join(lines)
+
+
+def filter_backlog_items(
+    repo_root: Path,
+    status_filter: Optional[str] = None,
+    priority_filter: Optional[int] = None,
+    source_filter: Optional[str] = None,
+    limit: Optional[int] = None
+) -> List[Dict[str, Any]]:
+    """
+    Filter backlog items based on specified criteria.
+    
+    Args:
+        repo_root: Root directory of the repository
+        status_filter: Filter items by status ("pending", "done", "abandoned")
+        priority_filter: Filter items by exact priority value (1-10)
+        source_filter: Filter items by source ("auto", "backlog_organizer", etc.)
+        limit: Maximum number of items to return
+    
+    Returns:
+        List of filtered backlog items
+    """
+    items = load_backlog(repo_root)
+    
+    # Apply status filter
+    if status_filter is not None:
+        items = [item for item in items if item.get("status") == status_filter]
+    
+    # Apply priority filter
+    if priority_filter is not None:
+        items = [item for item in items if item.get("priority") == priority_filter]
+    
+    # Apply source filter
+    if source_filter is not None:
+        items = [item for item in items if item.get("source") == source_filter]
+    
+    # Apply limit
+    if limit is not None and limit >= 0:
+        items = items[:limit]
+    
+    return items
+
+
+def format_priority_report(repo_root: Path) -> str:
+    """
+    Generate a visual report showing task distribution by priority and status.
+    
+    Creates ASCII bar charts and summary statistics to help users quickly
+    identify critical tasks and understand backlog composition.
+    
+    Args:
+        repo_root: Root directory of the repository
+    
+    Returns:
+        Formatted string report with distributions and statistics
+    """
+    items = load_backlog(repo_root)
+    
+    # Calculate distributions using Counter
+    priority_items = [item.get("priority") for item in items if isinstance(item.get("priority"), int)]
+    priority_dist = Counter(priority_items)
+    
+    # Ensure all priorities 1-10 are present
+    priority_dist_full = {p: priority_dist.get(p, 0) for p in range(1, 11)}
+    
+    status_dist = Counter(item.get("status", "unknown") for item in items)
+    source_dist = Counter(item.get("source", "unknown") for item in items)
+    
+    total_items = len(items)
+    pending_items = sum(1 for item in items if item.get("status") == "pending")
+    
+    # Calculate average priority
+    if priority_items:
+        avg_priority = mean(priority_items)
+    else:
+        avg_priority = 0.0
+    
+    # Build report
+    report_lines = ["=== PRIORITY REPORT ===\n"]
+    
+    # Priority distribution
+    report_lines.append("PRIORITY DISTRIBUTION:")
+    max_bar_length = 40  # For visual scaling
+    for priority in range(1, 11):
+        count = priority_dist_full[priority]
+        percentage = (count / total_items * 100) if total_items > 0 else 0
+        bar_length = int(max_bar_length * count / max(1, total_items))
+        bar = "█" * bar_length
+        report_lines.append(f"P{priority}: {bar:<{max_bar_length}} ({percentage:.0f}%) - {count} items")
+    report_lines.append("")
+    
+    # Status distribution
+    report_lines.append("STATUS DISTRIBUTION:")
+    for status, count in status_dist.items():
+        percentage = (count / total_items * 100) if total_items > 0 else 0
+        bar_length = int(max_bar_length * count / max(1, total_items))
+        bar = "█" * bar_length
+        report_lines.append(f"{status}: {bar:<{max_bar_length}} ({percentage:.0f}%) - {count} items")
+    report_lines.append("")
+    
+    # Source distribution (if there are multiple sources)
+    if len(source_dist) > 1:
+        report_lines.append("SOURCE DISTRIBUTION:")
+        for source, count in source_dist.items():
+            percentage = (count / total_items * 100) if total_items > 0 else 0
+            bar_length = int(max_bar_length * count / max(1, total_items))
+            bar = "█" * bar_length
+            report_lines.append(f"{source}: {bar:<{max_bar_length}} ({percentage:.0f}%) - {count} items")
+        report_lines.append("")
+    
+    # Summary statistics
+    report_lines.append("SUMMARY STATISTICS:")
+    report_lines.append(f"Total items: {total_items}")
+    report_lines.append(f"Pending items: {pending_items}")
+    report_lines.append(f"Average priority: {avg_priority:.1f}")
+    
+    return "\n".join(report_lines)
 
 
 def _valid_entry_fields(entry: Dict[str, Any]) -> bool:
