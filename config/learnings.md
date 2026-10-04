@@ -1,4 +1,3 @@
-2026-10-02 | fix_test | Enhance test_runner._parse_pytest_output to capture detailed | failed | no plan generated
 2026-10-02 | refactor | Extract the duplicated JSON file handling pattern from evalu | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-02 | refactor | Extract common JSON file handling pattern from metrics.py: c | failed | reviewer rejected
 2026-10-02 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to pa | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-04 | refactor | Extract common repository path resolution into a reusable _s | failed | no plan generated
 2026-10-04 | refactor | Consolidate duplicate repository path resolution functions b | failed | no plan generated
 2026-10-04 | refactor | Extract the common repository path resolution pattern from b | failed | no code generated
+2026-10-04 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | no code generated
