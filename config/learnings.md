@@ -1,4 +1,3 @@
-2026-10-02 | add_test | Add a test to validate that the test runner's failure triage | failed | no code generated
 2026-10-02 | fix_bug | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | no plan generated
 2026-10-02 | add_feature | Add a `capture_tracebacks` flag to test_runner._parse_pytest | failed | no plan generated
 2026-10-02 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-04 | refactor | Create src/ouroboros/storage_helpers.py with centralized fil | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-04 | refactor | Extract duplicated repository path resolution and JSON file  | failed | out of scope: targets 6 files, cap is 3
 2026-10-04 | fix_bug | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
+2026-10-04 | add_feature | Add advanced task filtering and priority visualization to th | success | tests: 1448 -> 1448
