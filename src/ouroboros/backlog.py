@@ -216,6 +216,33 @@ def format_backlog_for_llm(items: List[Dict[str, Any]]) -> str:
         )
     return "\n".join(lines)
 
+def _filter_backlog_items(
+    repo_root: Path,
+    status_filter: Optional[str] = None,
+    priority_filter: Optional[int] = None,
+    source_filter: Optional[str] = None,
+    limit: Optional[int] = None
+) -> List[Dict[str, Any]]:
+    """Internal helper to filter backlog items based on criteria."""
+    items = load_backlog(repo_root)
+    
+    # Apply status filter
+    if status_filter is not None:
+        items = [item for item in items if item.get("status") == status_filter]
+    
+    # Apply priority filter
+    if priority_filter is not None:
+        items = [item for item in items if item.get("priority") == priority_filter]
+    
+    # Apply source filter
+    if source_filter is not None:
+        items = [item for item in items if item.get("source") == source_filter]
+    
+    # Apply limit
+    if limit is not None and limit >= 0:
+        items = items[:limit]
+    
+    return items
 
 def filter_backlog_items(
     repo_root: Path,
@@ -237,25 +264,9 @@ def filter_backlog_items(
     Returns:
         List of filtered backlog items
     """
-    items = load_backlog(repo_root)
-    
-    # Apply status filter
-    if status_filter is not None:
-        items = [item for item in items if item.get("status") == status_filter]
-    
-    # Apply priority filter
-    if priority_filter is not None:
-        items = [item for item in items if item.get("priority") == priority_filter]
-    
-    # Apply source filter
-    if source_filter is not None:
-        items = [item for item in items if item.get("source") == source_filter]
-    
-    # Apply limit
-    if limit is not None and limit >= 0:
-        items = items[:limit]
-    
-    return items
+    return _filter_backlog_items(
+        repo_root, status_filter, priority_filter, source_filter, limit
+    )
 
 
 def format_priority_report(repo_root: Path) -> str:
