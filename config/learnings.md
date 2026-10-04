@@ -1,4 +1,3 @@
-2026-10-03 | add_feature | Add extract_failure_location helper function to test_runner. | failed | no code generated
 2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ex | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ex | failed | no plan generated
 2026-10-03 | add_feature | Add a helper function extract_failure_location to src/ourobo | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no code generated
 2026-10-04 | refactor | Extract duplicated history/prompt context/state path/JSON re | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-04 | refactor | Extract duplicate filtering logic from format_priority_repor | failed | no code generated
+2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
