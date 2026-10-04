@@ -1,4 +1,3 @@
-2026-10-02 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ca | failed | no plan generated
 2026-10-02 | add_test | Add comprehensive tests for the common JSON file handling pa | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-02 | add_test | Add comprehensive tests for the JSON file handling pattern ( | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-03 | add_feature | Add a validation gate in improvement.py that requires failin | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-04 | add_test | Add comprehensive failure taxonomy logging to test_runner.py | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-04 | add_test | Add failing test requirement gate to improvement pipeline by | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-04 | refactor | Create src/ouroboros/storage_helpers.py with centralized rep | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-04 | add_test | Create FailureTriage class in test_runner.py that categorize | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
