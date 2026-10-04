@@ -1,4 +1,3 @@
-2026-10-03 | fix_test | Enhance src/ouroboros/test_runner._parse_pytest_output to ex | failed | no code generated
 2026-10-03 | add_feature | Add extract_failure_location helper function to src/ouroboro | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-03 | fix_test | Add extract_failure_location helper function to src/ouroboro | failed | no code generated
 2026-10-03 | add_test | Add comprehensive tests for a new extract_failure_location h | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | generation failed: EditMismatch: src/ouroboros/test_runner.py: SEARCH block not
 2026-10-04 | refactor | Extract duplicated history/state/path management patterns in | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-04 | add_test | Add test for the improved extract_failure_location function  | failed | no code generated
