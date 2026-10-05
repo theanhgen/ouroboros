@@ -15,10 +15,10 @@ from ouroboros.backlog import (
     load_backlog,
     save_backlog,
     add_item,
-    mark_done,
-    mark_failed,
     get_pending,
     format_backlog_for_llm,
+    format_priority_report,
+    OrganizeResult,
 )
 from pytest import fixture
 
