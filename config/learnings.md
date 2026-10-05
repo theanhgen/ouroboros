@@ -1,4 +1,3 @@
-2026-10-03 | refactor | Extract duplicated JSON file handling patterns into a reusab | failed | no code generated
 2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | success | tests: 1445 -> 1448
 2026-10-04 | refactor | Extract common repository path resolution into a reusable _s | failed | Too many files changed: 4 > 3
 2026-10-04 | refactor | Extract common repository path resolution into a reusable _s | success | tests: 1448 -> 1448
@@ -98,3 +97,4 @@
 2026-10-05 | refactor | Extract common state persistence patterns into src/ouroboros | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-05 | add_test | Add comprehensive unit tests for format_priority_report func | failed | no code generated
 2026-10-05 | refactor | Extract common JSON read/write patterns from backlog.py into | success | tests: 1448 -> 1448
+2026-10-05 | add_test | Add focused unit tests for format_priority_report function i | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
