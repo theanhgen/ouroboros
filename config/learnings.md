@@ -1,4 +1,3 @@
-2026-10-04 | refactor | Extract duplicated repository path resolution and JSON file  | failed | out of scope: targets 6 files, cap is 3
 2026-10-04 | fix_bug | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
 2026-10-04 | add_feature | Add advanced task filtering and priority visualization to th | success | tests: 1448 -> 1448
 2026-10-04 | fix_bug | Fix the stuck fix_bug improvement lane by implementing a fai | failed | out of scope: targets forbidden file(s): src/ouroboros/policies.py
@@ -97,4 +96,5 @@
 2026-10-05 | refactor | Create src/ouroboros/storage_helpers.py to consolidate dupli | failed | out of scope: targets 4 files, cap is 3
 2026-10-05 | refactor | Create src/ouroboros/storage_helpers.py with centralized fil | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | no plan generated
+2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
