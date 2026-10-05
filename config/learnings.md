@@ -1,4 +1,3 @@
-2026-10-03 | refactor | Create a centralized _path utility in src/ouroboros/state_pe | failed | out of scope: targets 4 files, cap is 3
 2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | no plan generated
 2026-10-03 | refactor | Extract failure location parsing logic into a dedicated extr | failed | no code generated
 2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-05 | refactor | Extract common state persistence patterns from duplicated mo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-05 | add_test | Add comprehensive unit tests for extract_failure_location an | failed | no code generated
 2026-10-05 | add_test | Add comprehensive unit tests for format_priority_report func | failed | no code generated
+2026-10-05 | refactor | Create src/ouroboros/storage_helpers.py with three internal  | failed | no code generated
