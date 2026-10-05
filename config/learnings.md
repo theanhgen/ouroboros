@@ -1,4 +1,3 @@
-2026-10-04 | refactor | Extract common repository path resolution into a reusable _s | failed | no plan generated
 2026-10-04 | refactor | Consolidate duplicate repository path resolution functions b | failed | no plan generated
 2026-10-04 | refactor | Extract the common repository path resolution pattern from b | failed | no code generated
 2026-10-04 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-05 | fix_bug | Fix the bug-fix evidence chain by implementing a pre-fix val | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-05 | fix_test | Add comprehensive unit tests for extract_failure_location an | failed | no code generated
 2026-10-05 | add_test | Add comprehensive unit tests for _backlog_path() function in | failed | no code generated
+2026-10-05 | add_test | Add comprehensive unit tests for format_priority_report func | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
