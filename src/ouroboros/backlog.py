@@ -19,6 +19,29 @@ log = logging.getLogger(__name__)
 BACKLOG_FILE = "config/backlog.json"
 
 
+def _load_backlog_items(repo_root: Path) -> List[Dict[str, Any]]:
+    """Load backlog items from the backlog file.
+    
+    Handles reading the JSON file with directory creation, default values,
+    and error handling. Returns the items list from the file.
+    """
+    data = load_json_file(
+        _backlog_path(repo_root),
+        default={"items": []},
+        error_msg="Corrupt backlog file, returning empty",
+        logger=log,
+    )
+    return _extract_items(data)
+
+
+def _save_backlog_items(repo_root: Path, items: List[Dict[str, Any]]) -> None:
+    """Save backlog items to the backlog file.
+    
+    Writes the items to the file with atomic write logic.
+    """
+    save_json_file(_backlog_path(repo_root), {"items": items})
+
+
 def _backlog_path(repo_root: Path) -> Path:
     return _state_path(repo_root, BACKLOG_FILE)
 
@@ -49,20 +72,13 @@ def _extract_items(data: Any, ensure: bool = False) -> List[Dict[str, Any]]:
 
 
 def load_backlog(repo_root: Path) -> List[Dict[str, Any]]:
-    # Replaced manual try/except with direct utility call.
-    # load_json_file handles error_msg and logger internally.
-    data = load_json_file(
-        _backlog_path(repo_root),
-        default={"items": []},
-        error_msg="Corrupt backlog file, returning empty",
-        logger=log,
-    )
-    items = _extract_items(data)
-    return items
+    """Load backlog items from the backlog file."""
+    return _load_backlog_items(repo_root)
 
 
 def save_backlog(repo_root: Path, items: List[Dict[str, Any]]) -> None:
-    save_json_file(_backlog_path(repo_root), {"items": items})
+    """Save backlog items to the backlog file."""
+    _save_backlog_items(repo_root, items)
 
 
 def _update_backlog(repo_root: Path, mutate) -> Any:
