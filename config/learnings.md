@@ -1,4 +1,3 @@
-2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | no plan generated
 2026-10-03 | refactor | Extract common JSON file handling patterns into a reusable s | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-03 | add_test | Add extract_failure_location helper function to src/ouroboro | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-03 | refactor | Extract the common 'resolve path → load JSON/dicts/lists → w | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-05 | add_test | Add comprehensive unit tests for the extract_failure_locatio | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-05 | add_test | Add comprehensive unit tests for extract_failure_location an | failed | no code generated
 2026-10-05 | add_test | Add comprehensive unit tests for extract_failure_location an | failed | no plan generated
+2026-10-05 | add_test | Add comprehensive unit tests for extract_failure_location an | failed | no code generated
