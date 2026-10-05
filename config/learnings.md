@@ -1,4 +1,3 @@
-2026-10-04 | refactor | Create src/ouroboros/storage_helpers.py with centralized rep | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-04 | add_test | Create FailureTriage class in test_runner.py that categorize | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | reviewer rejected
 2026-10-05 | fix_bug | Fix item_coverage function to correctly calculate coverage o | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-05 | fix_bug | Fix item_coverage function in src/ouroboros/backlog.py to co | failed | reviewer rejected
