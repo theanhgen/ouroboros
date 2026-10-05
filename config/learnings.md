@@ -1,4 +1,3 @@
-2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
 2026-10-04 | add_test | Add comprehensive test coverage for filter_backlog_items fun | failed | no plan generated
 2026-10-04 | fix_bug | Add a failing test requirement gate to the improvement pipel | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-05 | fix_bug | Fix item_coverage function's docstring and ensure correct Ja | failed | no plan generated
 2026-10-05 | fix_bug | Fix item_coverage function in src/ouroboros/backlog.py to co | failed | no code generated
 2026-10-06 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-06 | fix_bug | Fix item_coverage function in src/ouroboros/backlog.py to co | failed | no plan generated
