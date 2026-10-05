@@ -1,0 +1,53 @@
+diff --git a/src/ouroboros/backends.py b/src/ouroboros/backends.py
+index 2c17d98c..3eac919b 100644
+--- a/src/ouroboros/backends.py
++++ b/src/ouroboros/backends.py
+@@ -53,6 +53,9 @@ _EXTRA_BIN_DIRS = (
+ )
+ 
+ _DEFAULT_TIMEOUT = 600
++# Free gateway models are slow, and a codex edit run is many turns of them:
++# on the Pi two real tasks each ran out the 600s default mid-edit.
++_GATEWAY_AGENT_TIMEOUT = 1800
+ 
+ 
+ class CLIBackendError(RuntimeError):
+@@ -653,16 +656,21 @@ def _run_codex_with_fallbacks(
+     models: List[Optional[str]] = [model]
+     if base_url:
+         models += [m for m in (getattr(config, "codex_fallback_models", None) or ()) if m != model]
++        timeout = max(timeout, _GATEWAY_AGENT_TIMEOUT)
+     last_exc: Optional[Exception] = None
+     for i, candidate in enumerate(models):
+         if i:
+             _reset_worktree(repo, untracked_before, dirty_before)
+-            log.warning("codex on %s failed (%s); trying %s", models[i - 1], last_exc, candidate)
++            log.warning("codex on %s failed (%s); trying %s", models[i - 1], str(last_exc)[:200], candidate)
+         try:
+             return _run_codex(
+                 binary, prompt, model=candidate, cwd=str(repo), edit=True, timeout=timeout,
+                 base_url=base_url, reasoning_effort=effort if base_url else None,
+             )
++        except subprocess.TimeoutExpired:
++            # A slow model, not a busy one: the next is no faster, and trying
++            # it would stack another full timeout onto the cycle.
++            raise
+         except Exception as exc:
+             last_exc = exc
+     assert last_exc is not None
+diff --git a/src/ouroboros/llm.py b/src/ouroboros/llm.py
+index 092d10b2..8eec3f01 100644
+--- a/src/ouroboros/llm.py
++++ b/src/ouroboros/llm.py
+@@ -64,7 +64,10 @@ def make_client(
+     so one setting covers a fallback list that mixes both kinds.
+     """
+     if base_url:
+-        client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0)
++        # The SDK's 600s default let one hung free-model request stall a
++        # cycle for 10 minutes before the retry. 300s still fits a long
++        # generate reply at free-tier speed.
++        client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0, timeout=300)
+     else:
+         client = OpenAI(api_key=api_key, max_retries=0)
+     client._ouroboros_fallback_models = list(fallback_models or [])

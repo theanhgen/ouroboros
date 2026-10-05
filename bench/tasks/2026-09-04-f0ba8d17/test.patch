@@ -1,0 +1,93 @@
+diff --git a/tests/test_llm.py b/tests/test_llm.py
+index e53b628f..37747977 100644
+--- a/tests/test_llm.py
++++ b/tests/test_llm.py
+@@ -9,6 +9,8 @@ from ouroboros.llm import (
+     MAX_CODEBASE_SUMMARY_TOKENS,
+     MAX_HISTORY_TOKENS,
+     MAX_TEST_OUTPUT_TOKENS,
++    analyze_code_suggestions,
++    analyze_comments_for_upgrades,
+     answer_question,
+     create_completion,
+     fit_messages_to_budget,
+@@ -483,3 +485,42 @@ def test_cli_agent_prompt_is_bounded():
+     prompt = _build_agent_prompt(task, "P" * 500_000, config, model="gemma4")
+ 
+     assert estimate_tokens(prompt) <= model_input_budget("gemma4")
++
++
++# -- comment rendering with a malformed author (#113) -----------------------
++
++MALFORMED_AUTHORS = [
++    ({"content": "x"}, "Comment by unknown: x"),                    # key absent
++    ({"author": None, "content": "x"}, "Comment by unknown: x"),    # explicit null
++    ({"author": {}, "content": "x"}, "Comment by unknown: x"),      # no name
++    ({"author": 42, "content": "x"}, "Comment by unknown: x"),      # not an object
++    ({"author": "bob", "content": "x"}, "Comment by bob: x"),       # bare name
++    ({"author": {"name": "bob"}, "content": "x"}, "Comment by bob: x"),
++]
++
++
++@pytest.mark.parametrize("comment,expected", MALFORMED_AUTHORS)
++def test_analyze_code_suggestions_renders_a_malformed_author(comment, expected):
++    """A null author raised AttributeError before the try, so the caller's
++    error boundary never ran and community_improvement stayed in 'analyzing'
++    -- a status the 24h stale-state sweep does not clear."""
++    client = mock.MagicMock()
++    client.chat.completions.create.return_value = _mock_openai_response('{"has_actionable": false}')
++
++    result = analyze_code_suggestions(client, "problem", {}, [comment])
++
++    assert result == {"has_actionable": False}
++    user_msg = client.chat.completions.create.call_args.kwargs["messages"][1]["content"]
++    assert expected in user_msg
++
++
++@pytest.mark.parametrize("comment,expected", MALFORMED_AUTHORS)
++def test_analyze_comments_for_upgrades_renders_a_malformed_author(comment, expected):
++    client = mock.MagicMock()
++    client.chat.completions.create.return_value = _mock_openai_response('{"has_upgrade": false}')
++
++    result = analyze_comments_for_upgrades(client, "title", "post", [comment])
++
++    assert result == {"has_upgrade": False}
++    user_msg = client.chat.completions.create.call_args.kwargs["messages"][1]["content"]
++    assert expected in user_msg
+diff --git a/tests/test_moltbook.py b/tests/test_moltbook.py
+index c971992a..f935fba1 100644
+--- a/tests/test_moltbook.py
++++ b/tests/test_moltbook.py
+@@ -14,6 +14,7 @@ from ouroboros.moltbook import (
+     MoltbookError,
+     RunnerConfig,
+     _trim_self_question_log,
++    get_my_posts,
+     load_credentials,
+     load_runner_config,
+     load_state,
+@@ -977,3 +978,24 @@ def test_the_daily_improvement_cap_defaults_to_the_safety_default():
+     from ouroboros.config import SafetyConfig
+ 
+     assert RunnerConfig().max_improvements_per_day == SafetyConfig().max_improvements_per_day
++
++
++# -- get_my_posts with a malformed author (#113) --
++
++
++@pytest.mark.parametrize("bad", [
++    {"id": "1"},                      # author key absent
++    {"id": "1", "author": None},      # explicit JSON null
++    {"id": "1", "author": "agent"},   # not an object
++    {"id": "1", "author": 42},
++])
++def test_get_my_posts_skips_a_record_with_a_malformed_author(bad):
++    """A null author aborted the whole poll instead of skipping one record.
++
++    `.get("author", {})` only falls back when the key is absent, so an
++    explicit null raised AttributeError -- and the caller never advanced
++    last_comment_check, so every later cycle re-read the same bad feed.
++    """
++    mine = {"id": "2", "author": {"name": "agent"}}
++    with mock.patch("ouroboros.moltbook.get_feed", return_value={"posts": [bad, mine]}):
++        assert get_my_posts("key", "agent") == [mine]
