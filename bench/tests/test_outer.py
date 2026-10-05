@@ -126,3 +126,13 @@ def test_habits_take_the_first_signature_in_pipeline_order():
 def test_top_habit_skips_outcomes_that_are_not_habits():
     table = {"resolved": {"count": 5}, "invalid": {"count": 4}, "generate_empty": {"count": 1}}
     assert habits.top_habit(table) == "generate_empty"
+
+
+def test_request_note_flags_tool_calls_when_no_tools_were_offered():
+    log = ("INFO bench: request 1: model=m tools=True response_format=None history_tool_calls=0 -> "
+           "finish=tool_calls content_chars=0 tool_calls=1 completion_tokens=1 reasoning_tokens=1\n"
+           "INFO bench: request 2: model=m tools=False response_format=json_object history_tool_calls=1"
+           " -> finish=error content_chars=0 tool_calls=1 completion_tokens=1 reasoning_tokens=1\n")
+    note = habits.request_note(log)
+    assert note.startswith("1 of 2 requests: offered no tools")
+    assert outer.scrub(note) == note  # carries nothing task-specific

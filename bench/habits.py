@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -49,6 +50,29 @@ def _f2p(row: dict) -> tuple[int, int]:
         return int(done), int(total)
     except ValueError:
         return 0, 0
+
+
+_REQUEST_RE = re.compile(r"bench: request \d+: .*tools=(True|False) .*-> finish=(\w+) "
+                         r"content_chars=(\d+) tool_calls=(\d+)")
+
+
+def request_note(log: str) -> str:
+    """What the replies looked like, from run.py's per-request log lines.
+
+    The 2026-10-05 diagnostic: offered no tools, north-mini-code still emits a
+    tool call, which OpenRouter returns as finish=error with no content -- in
+    every ReAct round and in the plan step.
+    """
+    shapes = _REQUEST_RE.findall(log)
+    stray = sum(1 for tools, finish, _, calls in shapes if tools == "False" and int(calls))
+    empty = sum(1 for _, finish, chars, calls in shapes if not int(chars) and not int(calls))
+    parts = []
+    if stray:
+        parts.append(f"{stray} of {len(shapes)} requests: offered no tools, the model "
+                     "replied with a tool call anyway (finish=error, no text)")
+    if empty:
+        parts.append(f"{empty} of {len(shapes)} requests: empty reply")
+    return "; ".join(parts)
 
 
 def _evidence(log: str, *needles: str) -> str:
@@ -110,6 +134,9 @@ def habits(run_dir: Path) -> dict:
         log_path = run_dir / f"{row['id']}.log"
         log = log_path.read_text(errors="replace") if log_path.exists() else ""
         sig, evidence = classify(row, log)
+        note = request_note(log)
+        if note and sig != "resolved":
+            evidence = f"{evidence} [{note}]" if evidence else f"[{note}]"
         table[sig]["count"] += 1
         table[sig]["tasks"].append({"id": row["id"], "evidence": evidence})
     order = {s: i for i, (s, _) in enumerate(SIGNATURES)}

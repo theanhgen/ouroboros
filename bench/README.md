@@ -6,7 +6,8 @@ touch. Why and how: [PLAN.md](PLAN.md).
 
 `bench/` is outside `allowed_modification_paths`, so the agent cannot edit the tasks, the
 harness or the results. CI does not run it (CI runs `pytest tests/` only). It runs on
-Elaeis, never on rubrum.
+Elaeis, never on rubrum, from a checkout **outside `$HOME`**: the sandbox denies reads
+under `$HOME`, so `run.py` refuses a checkout there.
 
 ## Run
 
@@ -20,11 +21,18 @@ python -m venv .venv && .venv/bin/pip install -e '.[test]'
 .venv/bin/python bench/run.py --mode gold --split all
 .venv/bin/python bench/run.py --mode null --split all
 
-# 3. Score the pipeline at this checkout's HEAD. Uses production's OpenRouter key,
-#    which the live agent shares: keep --max-requests well under what it has left today.
+# 3. Score the pipeline at this checkout's HEAD. Uses production's OpenRouter key, which
+#    the live agent shares. All bench use together stops at BENCH_DAILY_CAP requests/day
+#    (default 300, ledger in bench/results/ledger.tsv).
 export BW_SESSION="$(~/.agents/skills/custom/bitwarden-cli/scripts/bw-session.sh)"
-BENCH_LLM_API_KEY="$(bw get item 'OmniRoute / openrouter' | jq -r .notes | sed -n 's/^API_KEY=//p')" \
-  .venv/bin/python bench/run.py --mode cycle --split dev --max-requests 250 --note "what changed"
+export BENCH_LLM_API_KEY="$(bw get item 'OmniRoute / openrouter' | jq -r .notes | sed -n 's/^API_KEY=//p')"
+.venv/bin/python bench/run.py --mode cycle --split dev --note "what changed"
+
+# 4. The outer loop (PLAN.md, Phase 2): one step per invocation, same key and cap.
+.venv/bin/python bench/outer.py                      # calibrate main, or screen one program.md edit
+.venv/bin/python bench/outer.py --confirm <exp-id>   # one paired replicate, ~270 requests
+.venv/bin/python bench/outer.py --heldout <exp-id> --open-pr
+.venv/bin/python bench/habits.py                     # why the newest run missed what it missed
 
 # Harness tests
 .venv/bin/python -m pytest bench/tests -q
@@ -56,3 +64,10 @@ tasks means nothing.
 
 Tasks are sorted by date and every third one is `heldout`. Decide on `dev`; check
 `heldout` occasionally, to catch the dev set being overfit.
+
+`dev` is further split for the outer loop. `smoke` is 10 fixed tasks
+(`tasks/SMOKE.json`) used for screening. `confirm` is the other 19, where keep/discard is
+decided, so the tasks that picked an edit never also judge it.
+
+`experiments.tsv` gets one row per outer-loop step: the habit targeted, the hypothesis,
+screen or paired-confirm numbers (wins, losses, McNemar p), and the decision.

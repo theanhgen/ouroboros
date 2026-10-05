@@ -1,6 +1,6 @@
 # bench — a fixed scoreboard for the improvement pipeline
 
-Status: Phase 1 built and baselined 2026-10-05. Phase 2 approved 2026-10-05 (OpenRouter only); steps 1-3 and 5 being built, step 4 deferred.
+Status: Phase 1 built and baselined 2026-10-05. Phase 2 (OpenRouter only) built 2026-10-05: steps 1-3 and 5; step 4 deferred. No experiment has run yet: main needs 2 smoke runs first.
 
 ## Why
 
@@ -200,94 +200,102 @@ empty, or the free model returns an empty completion. That is production's
 
 Every model call the bench and the outer loop make goes through the OpenRouter key that
 production already uses: free models only, no second account, no Codex or other runtime in
-the loop. That key has ~1000 free requests/day, and production spends ~500 of them. So:
+the loop. That key has ~1000 free requests/day; production spends ~500.
 
-- **one shared request budget.** `outer.py` takes `--max-requests` for the whole
-  experiment (editor + both bench runs) and stops on the first daily-quota 429, the same
-  way `run.py` does;
-- **the editor is a free model.** `nvidia/nemotron-3-ultra-550b-a55b:free` by default,
-  the largest free model and the one production already trusts as its reviewer.
-  `--editor-model` overrides it. It gets one request per experiment, two if the first
-  reply is unusable;
-- **screening on a `smoke` split.** 10 fixed dev tasks: the 6 that got past identify in
-  the baseline (both resolved ones included, so a lost fix shows) plus 4 idle ones spread
-  across the date range. That's ~70 requests per run. A candidate that wins on `smoke`
-  gets one full `dev` run before it's kept;
-- **`main` is scored once, not per experiment.** The reference for a task set is the mean
-  of every `main` run at the same `agent_sha`, `model_cfg` and `task_set` already in
-  `results.tsv`. An experiment pays only for the candidate's run, unless `main` has fewer
-  than 2 runs on that set.
+- **A daily cap across all bench use.** `bench/results/ledger.tsv` records every request
+  any run or editor call spends, by day. `run.py` and `outer.py` both stop at
+  `BENCH_DAILY_CAP` (default 300), which leaves production its ~500 with headroom. A 429
+  must never be the first sign the day is spent. `outer.py` won't start a step it can't
+  finish within what's left, because a run cut short is thrown away.
+- **The editor is a free model:** `nvidia/nemotron-3-ultra-550b-a55b:free` by default
+  (`--editor-model`). It gets one request per experiment, two if the first reply fails
+  validation. It runs with no client retries, so every call is counted.
 
-That's ~3–4 screening experiments a day, against autoresearch's 100 a night. Expect weeks,
-not a night.
+### Steps (built 2026-10-05, design changed by the review below)
 
-### Steps
+1. **`src/ouroboros/program.md`** holds the sections `identify`, `react_final`, `plan`,
+   `edit` and `review`, byte-identical to the strings they replaced. The parent commit's
+   strings were extracted by AST and compared: all 5 are identical. 1458 tests pass.
+   `prompts.load_program_section` reads the file next to the module, never the cwd, and
+   raises on a missing section. `program.md` is in `forbidden_modification_paths` and
+   ships as package data.
+2. **`bench/habits.py`**: one signature per task, first match in pipeline order. The
+   baseline classifies as 18 `react_empty_final`, 5 `no_task_other`, 2 `generate_empty`,
+   1 `generate_truncated`, 1 `out_of_scope`, 2 `resolved`. From run.py's per-request log
+   lines it adds the reply shape (finish reason, text or tool call, tools offered or not).
+3. **`bench/outer.py`**, one step per invocation:
+   - **screen** (`outer.py`): the editor gets `program.md`, the cycle code that sends
+     each section, the habit table, and past experiments. The habit table has signatures,
+     counts and *scrubbed* log lines (no task ids, files, tests or quoted model text). The
+     reply is validated: same sections, each ≤2× its old size, no F2P test names. It's
+     committed on a local `bench/program-<id>` branch and run on **`smoke`** (10 fixed dev
+     tasks). It passes if it resolves ≥ main's mean + 1, with no more false merges or
+     broken tests than main. Main's smoke mean comes from ≥2 complete cached runs of the
+     same agent code (matched by the `src/ouroboros` tree, not the commit). Screening only
+     filters: it decides nothing.
+   - **confirm** (`--confirm <id>`): one paired replicate a day on **`confirm`**, the
+     other 19 dev tasks, so the tasks that picked the candidate never decide it. Fresh
+     main and candidate runs, alternating order. **Keep** needs an exact one-sided McNemar
+     test on (task, replicate) pairs where they disagree: p ≤ 0.1, and false merges and
+     broken tests summed no higher than main's. After 3 replicates without that, or once p
+     can't get there, it's discarded.
+   - **heldout** (`--heldout <id>`): main and the kept edit on the 14 `heldout` tasks.
+     `--open-pr` opens a PR only if it passes (wins ≥ losses, no new harm). A human merges.
+   - Every step is a row in `bench/experiments.tsv`. Discarded branches are deleted;
+     their diff and editor prompt stay in `bench/results/outer-<id>/`.
+4. **Merge gate for pipeline changes**: deferred. It's a production gate and needs a bench
+   run reachable from rubrum. Revisit once something has been kept.
+5. **Held-out**: per kept edit (step 3), not every ~10.
 
-1. **Move the cycle's prompts into `src/ouroboros/program.md`** (operator commit,
-   behaviour-neutral). The sections are `identify`, `react_final`, `plan`, `edit` and
-   `review`: the system prompts now inline in `llm.identify_improvements`,
-   `plan_code_change`, `_EDIT_SYSTEM_PROMPT` and `review_code_changes`, plus
-   `improvement._REACT_FINAL_PROMPT`. A loader in `prompts.py` reads named sections from
-   the file next to the module (never the cwd: under the bench, the cwd is a task
-   snapshot holding an older `program.md`). A missing section is an error, not a silent
-   fallback, so a broken edit fails loudly instead of quietly scoring the old prompt.
-   - **`program.md` is added to `forbidden_modification_paths`**, as a bare filename. Today
-     `src/ouroboros/` is in `allowed_modification_paths`, so the live cycle could rewrite
-     the very file the outer loop is scoring. Changing it becomes an operator or
-     outer-loop PR.
-   - **Proof of no behaviour change, with no LLM spend:** a one-off check that every
-     section is byte-identical to the string it replaces (run against the parent commit,
-     output in the PR), the full suite, and gold/null still at 43/0. A bench run can't
-     prove it, because free models differ run to run.
-   - `pyproject.toml` ships `program.md` as package data.
-2. **Failure taxonomy** (`bench/habits.py`, deterministic, no LLM). Each row plus its
-   worker log gets exactly one signature, the first that matches, in pipeline order:
-   `out_of_scope`, `identify_error`, `react_empty_final`, `named_no_task`,
-   `no_task_other`, `plan_failed`, `generate_empty`, `generate_truncated`,
-   `edit_mismatch`, `reviewer_rejected`, `tests_regressed`, `false_merge`,
-   `partial_fix` (some F2P pass), `wrong_fix`, `resolved`. Output: counts per signature,
-   evidence task ids, and a line or two of log for each. The baseline run classifies as
-   18 `react_empty_final`, 5 other no-task, 2 `generate_empty`, 1 `generate_truncated`,
-   1 `out_of_scope`, 2 `resolved`.
-3. **Outer loop** (`bench/outer.py`, on Elaeis), one experiment per invocation:
-   - read the habit table for the newest `main` run on `smoke` (or `dev`) and the last
-     20 rows of `bench/experiments.tsv`, discarded ones included, so it doesn't retry them;
-   - send the editor model `program.md`, the habit table with evidence, the cycle code
-     that uses each section (read-only context, so it knows what the prompts feed), and
-     the past experiments. It must reply with a full new `program.md` and a one-line
-     hypothesis;
-   - **validate before spending:** same section names, only `program.md` changes, each
-     section within 2× its old size, `{placeholders}` (if any) kept. A violation is
-     logged as `invalid_edit`, at the cost of one request;
-   - commit the candidate on a local branch `bench/program-<id>` in a temp worktree (so
-     `agent_sha` differs from `main`) and run `run.py --agent-src <worktree>/src` on
-     `smoke`;
-   - **keep** if candidate resolved ≥ main mean + 1, `false_merge` and `broke_other`
-     don't rise, and no task `main` resolved in every one of its runs is lost. Then run
-     `dev` once, and keep for good only if `dev` resolved ≥ the `main` dev mean. Otherwise
-     discard;
-   - log every experiment (id, date, habit, hypothesis, editor model, smoke/dev numbers,
-     keep/discard/invalid, requests, branch) to `bench/experiments.tsv`. Kept branches
-     stay local. Opening a PR is `--open-pr`, off by default; the owner merges.
-   - Hard limits: it writes only `program.md`, in a temp worktree. The editor model gets
-     no tools and no file access, and never sees `bench/tasks` (gold patches) or test
-     contents, only signatures and log lines.
-4. **Merge gate for pipeline changes**: deferred. It's a production gate (operator commit
-   to `evaluation.py`/`git_ops.py`) and needs a bench run reachable from rubrum. Revisit
-   once the outer loop has kept something.
-5. **Held-out check**: `outer.py --heldout` runs `heldout` for `main` and for the newest
-   kept branch. Run it every ~10 kept experiments. If `dev` rises and `heldout` doesn't,
-   the dev set is being overfit: stop and mine new tasks.
+Cost at the default cap: a screen is ~70 requests (calibration is 2 × ~70, once per agent
+code version), a confirm replicate ~270, a heldout check ~200. So ~3 screens a day, or one
+confirm replicate. From a screen pass to a PR is 2–4 days.
 
-### Already visible in the baseline, outside the outer loop's reach
+### Diagnostic: what the top habit actually is (2026-10-05, run `20261005-161646-cycle-e1da`)
 
-18 of 29 dev tasks hit 7 requests: identify, 5 ReAct rounds that keep calling tools, then
-the forced final answer comes back as `''`. In `improvement._run_improvement_cycle` the
-ReAct rounds and the forced final call send `response_format=json_object` with no `tools`
-argument, while the history holds tool calls. That may be what makes free models answer
-empty. It's a hypothesis, not a verified cause. The outer loop can't test it, because it
-may only edit `program.md`. It's an operator experiment: bench `main` against a branch
-that changes the round calls, then decide on the numbers.
+Request logging on two `react_empty_final` tasks (14 requests) showed the following.
+Offered no tools, `cohere/north-mini-code:free` still replies with a tool call, and
+OpenRouter returns it as `finish=error` with no text:
+
+- in **every** ReAct round: the rounds send `response_format=json_object` and no
+  `tools`, while the history holds tool calls;
+- in the **plan** step too, which has no tool history at all. One task got past identify
+  and died there ("model returned nothing").
+
+The loop still runs those tool calls, so ReAct "works" by accident until the forced final
+answer, which then comes back empty or names no task. There are two levers:
+
+- a code fix (pass `tools` in the rounds), which is an operator change to
+  `improvement.py`;
+- a prompt fix ("you have no tools in this step; answer in text"), which the outer loop can
+  find on its own.
+
+The code fix should be benched as `main` vs a branch before anyone ships it.
+
+### Plan review (2026-10-05, Phase 2)
+
+A dual review ran on the Phase 2 plan, but only 2 of 4 reviewers produced one. codex and
+agy (Gemini) did; agy-claude has a stale model pin, and agy-gpt was out of Antigravity
+quota. Confirmed and fixed:
+
+- the keep rule picked noise (one run, a cached mean, a dev check with no safety gates)
+  → the paired McNemar confirmation on tasks disjoint from screening;
+- incomplete runs could count as controls → only complete runs count;
+- per-invocation budgets didn't protect production's daily share → the ledger and the
+  daily cap;
+- a checkout under `$HOME` can't be read inside the sandbox → `run.py` refuses one. The
+  sandbox now also denies the harness `.git`, whose history holds every fix;
+- evidence lines could leak task specifics to the editor → scrubbed, and task ids dropped;
+- a PR before held-out → the held-out check gates `--open-pr`;
+- the top habit may be a code bug → partly: see the diagnostic above.
+
+Unresolved, for the owner:
+
+- `prompts.py` and `llm.py` stay agent-editable. The cycle could change the loader rather
+  than `program.md`. That change would be visible in review, but the forbid list doesn't
+  stop it.
+- The crash half of that finding is guarded: every section is required by the test
+  suite, the editor's output is validated with the same regex, and CRLF is normalised.
 
 ### What is not taken from the video
 
