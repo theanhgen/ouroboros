@@ -98,6 +98,9 @@ class SafetyConfig:
         # edit the code that enforces it. github_improvement.py turns issue text
         # written by strangers into code changes, so it is immutable too.
         "github_improvement.py",
+        # The cycle's own instructions. The bench's outer loop scores edits to
+        # this file; the cycle must not change what it is scored on.
+        "program.md",
     )
 
     # GitHub logins whose issues may drive an autonomous fix. This repository is

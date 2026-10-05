@@ -1,6 +1,6 @@
 # bench — a fixed scoreboard for the improvement pipeline
 
-Status: Phase 1 built and baselined 2026-10-05. Phase 2 needs the owner's sign-off.
+Status: Phase 1 built and baselined 2026-10-05. Phase 2 approved 2026-10-05 (OpenRouter only); steps 1-3 and 5 being built, step 4 deferred.
 
 ## Why
 
@@ -196,41 +196,98 @@ baseline shows exactly that. Most dev tasks end `idle`: the ReAct loop's final a
 empty, or the free model returns an empty completion. That is production's
 59-idle-of-65 pattern, and a "habit" an outer loop can target.
 
+### Constraint: everything runs on OpenRouter (owner, 2026-10-05)
+
+Every model call the bench and the outer loop make goes through the OpenRouter key that
+production already uses: free models only, no second account, no Codex or other runtime in
+the loop. That key has ~1000 free requests/day, and production spends ~500 of them. So:
+
+- **one shared request budget.** `outer.py` takes `--max-requests` for the whole
+  experiment (editor + both bench runs) and stops on the first daily-quota 429, the same
+  way `run.py` does;
+- **the editor is a free model.** `nvidia/nemotron-3-ultra-550b-a55b:free` by default,
+  the largest free model and the one production already trusts as its reviewer.
+  `--editor-model` overrides it. It gets one request per experiment, two if the first
+  reply is unusable;
+- **screening on a `smoke` split.** 10 fixed dev tasks: the 6 that got past identify in
+  the baseline (both resolved ones included, so a lost fix shows) plus 4 idle ones spread
+  across the date range. That's ~70 requests per run. A candidate that wins on `smoke`
+  gets one full `dev` run before it's kept;
+- **`main` is scored once, not per experiment.** The reference for a task set is the mean
+  of every `main` run at the same `agent_sha`, `model_cfg` and `task_set` already in
+  `results.tsv`. An experiment pays only for the candidate's run, unless `main` has fewer
+  than 2 runs on that set.
+
+That's ~3–4 screening experiments a day, against autoresearch's 100 a night. Expect weeks,
+not a night.
+
 ### Steps
 
-1. **Hoist the pipeline prompts into `src/ouroboros/program.md`** (operator commit,
-   behaviour-neutral). This means the identify, plan, generate and review system prompts
-   now inline in `llm.py`, plus `_EDIT_SYSTEM_PROMPT`. `llm.py` loads named sections.
-   Proof of no behaviour change: an identical bench score at the same seed, and the full
-   suite passing.
-2. **Failure taxonomy** (`bench/habits.py`, deterministic, no LLM). Each task's worker
-   log and row is classified into a fixed signature set: `react_empty_final`,
-   `named_no_task`, `empty_completion`, `plan_failed`, `reviewer_rejected`,
-   `regression_reverted`, `wrong_target_files`, `fixed_symptom_not_cause` (F2P partial),
-   `false_merge`. Output: counts plus evidence task ids. The video's "habit with the rounds
-   that show it".
-3. **Outer loop** (`bench/outer.py`, on Elaeis, autoresearch-style):
-   - read the habit table and the last N rows of `results.tsv` (including discarded
-     experiments, so it doesn't retry them);
-   - ask a strong model (Codex `task --effort xhigh`, not the free model) for **one**
-     edit to `program.md` that targets the top habit, with the evidence attached;
-   - score the candidate: `bench/run.py --agent-src <candidate worktree>` on dev, paired
-     with `main` on the same tasks, k runs;
-   - **keep** only if resolved rises by ≥1 task on average, no previously-resolved task is
-     lost in ≥2 of k runs, and `false_merge` doesn't rise. Otherwise discard. Log
-     keep/discard, habit, diff and score to `bench/experiments.tsv`;
-   - a kept edit becomes a normal PR with the bench numbers in the body. A human merges
-     it (first weeks), later the gate below does.
-   - Hard limits: the outer loop may edit only `program.md`. It can't touch `bench/`, the
-     tests or forbidden files. The editor model never sees the gold patches (they stay
-     outside its sandbox).
-4. **Merge gate for pipeline changes** (operator commit to `evaluation.py`/`git_ops.py`,
-   staged per brief §4). An autonomous PR that touches `program.md`, `llm.py`,
-   `backends.py` or `codebase.py` needs a passing bench check from Elaeis. Test-only,
-   refactor and docs PRs keep today's gate.
-5. **Held-out check** every ~10 kept experiments: run `heldout`. If dev rises and
-   held-out doesn't, the dev set is being overfit, so stop and rotate tasks in from new
-   fix commits.
+1. **Move the cycle's prompts into `src/ouroboros/program.md`** (operator commit,
+   behaviour-neutral). The sections are `identify`, `react_final`, `plan`, `edit` and
+   `review`: the system prompts now inline in `llm.identify_improvements`,
+   `plan_code_change`, `_EDIT_SYSTEM_PROMPT` and `review_code_changes`, plus
+   `improvement._REACT_FINAL_PROMPT`. A loader in `prompts.py` reads named sections from
+   the file next to the module (never the cwd: under the bench, the cwd is a task
+   snapshot holding an older `program.md`). A missing section is an error, not a silent
+   fallback, so a broken edit fails loudly instead of quietly scoring the old prompt.
+   - **`program.md` is added to `forbidden_modification_paths`**, as a bare filename. Today
+     `src/ouroboros/` is in `allowed_modification_paths`, so the live cycle could rewrite
+     the very file the outer loop is scoring. Changing it becomes an operator or
+     outer-loop PR.
+   - **Proof of no behaviour change, with no LLM spend:** a one-off check that every
+     section is byte-identical to the string it replaces (run against the parent commit,
+     output in the PR), the full suite, and gold/null still at 43/0. A bench run can't
+     prove it, because free models differ run to run.
+   - `pyproject.toml` ships `program.md` as package data.
+2. **Failure taxonomy** (`bench/habits.py`, deterministic, no LLM). Each row plus its
+   worker log gets exactly one signature, the first that matches, in pipeline order:
+   `out_of_scope`, `identify_error`, `react_empty_final`, `named_no_task`,
+   `no_task_other`, `plan_failed`, `generate_empty`, `generate_truncated`,
+   `edit_mismatch`, `reviewer_rejected`, `tests_regressed`, `false_merge`,
+   `partial_fix` (some F2P pass), `wrong_fix`, `resolved`. Output: counts per signature,
+   evidence task ids, and a line or two of log for each. The baseline run classifies as
+   18 `react_empty_final`, 5 other no-task, 2 `generate_empty`, 1 `generate_truncated`,
+   1 `out_of_scope`, 2 `resolved`.
+3. **Outer loop** (`bench/outer.py`, on Elaeis), one experiment per invocation:
+   - read the habit table for the newest `main` run on `smoke` (or `dev`) and the last
+     20 rows of `bench/experiments.tsv`, discarded ones included, so it doesn't retry them;
+   - send the editor model `program.md`, the habit table with evidence, the cycle code
+     that uses each section (read-only context, so it knows what the prompts feed), and
+     the past experiments. It must reply with a full new `program.md` and a one-line
+     hypothesis;
+   - **validate before spending:** same section names, only `program.md` changes, each
+     section within 2× its old size, `{placeholders}` (if any) kept. A violation is
+     logged as `invalid_edit`, at the cost of one request;
+   - commit the candidate on a local branch `bench/program-<id>` in a temp worktree (so
+     `agent_sha` differs from `main`) and run `run.py --agent-src <worktree>/src` on
+     `smoke`;
+   - **keep** if candidate resolved ≥ main mean + 1, `false_merge` and `broke_other`
+     don't rise, and no task `main` resolved in every one of its runs is lost. Then run
+     `dev` once, and keep for good only if `dev` resolved ≥ the `main` dev mean. Otherwise
+     discard;
+   - log every experiment (id, date, habit, hypothesis, editor model, smoke/dev numbers,
+     keep/discard/invalid, requests, branch) to `bench/experiments.tsv`. Kept branches
+     stay local. Opening a PR is `--open-pr`, off by default; the owner merges.
+   - Hard limits: it writes only `program.md`, in a temp worktree. The editor model gets
+     no tools and no file access, and never sees `bench/tasks` (gold patches) or test
+     contents, only signatures and log lines.
+4. **Merge gate for pipeline changes**: deferred. It's a production gate (operator commit
+   to `evaluation.py`/`git_ops.py`) and needs a bench run reachable from rubrum. Revisit
+   once the outer loop has kept something.
+5. **Held-out check**: `outer.py --heldout` runs `heldout` for `main` and for the newest
+   kept branch. Run it every ~10 kept experiments. If `dev` rises and `heldout` doesn't,
+   the dev set is being overfit: stop and mine new tasks.
+
+### Already visible in the baseline, outside the outer loop's reach
+
+18 of 29 dev tasks hit 7 requests: identify, 5 ReAct rounds that keep calling tools, then
+the forced final answer comes back as `''`. In `improvement._run_improvement_cycle` the
+ReAct rounds and the forced final call send `response_format=json_object` with no `tools`
+argument, while the history holds tool calls. That may be what makes free models answer
+empty. It's a hypothesis, not a verified cause. The outer loop can't test it, because it
+may only edit `program.md`. It's an operator experiment: bench `main` against a branch
+that changes the round calls, then decide on the numbers.
 
 ### What is not taken from the video
 
@@ -241,15 +298,6 @@ empty, or the free model returns an empty completion. That is production's
   memory; whether that context helps is something the outer loop can measure, not
   something to add blind.
 - Their sandbox vendor. `sandbox-exec` on Elaeis covers this.
-
-### The binding constraint: request budget
-
-One dev run is ~150–250 requests on a key that production already uses ~500/day of, so
-the outer loop gets **~1 experiment a day**. autoresearch got 100 a night. Options,
-cheapest first: (a) accept 1/day; (b) give bench its own OpenRouter account (a separate
-1000/day); (c) a smaller "smoke" dev subset (~10 tasks most sensitive to the top habit)
-for screening, with the full dev set only for candidates that pass. (b) or (c) needs the
-owner's call.
 
 ## Known limitations
 

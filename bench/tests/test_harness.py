@@ -74,8 +74,10 @@ def test_sandbox_blocks_gold_patches_and_home(tmp_path):
              "    try: os.listdir(p); print('ALLOWED', p)\n"
              "    except PermissionError: print('blocked', p)\n")
     cmd = run.sandbox_cmd([sys.executable, "-c", probe, str(common.TASKS_DIR),
-                           str(Path.home() / ".ssh"), str(work)], work, shared)
+                           str(Path.home() / ".ssh"), str(common.REPO / ".git"), str(work)],
+                          work, shared)
     out = subprocess.run(cmd, capture_output=True, text=True).stdout
     assert f"blocked {common.TASKS_DIR}" in out
     assert f"blocked {Path.home() / '.ssh'}" in out
+    assert f"blocked {common.REPO / '.git'}" in out
     assert f"ALLOWED {work}" in out

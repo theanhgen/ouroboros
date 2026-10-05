@@ -19,6 +19,7 @@ import argparse
 import fcntl
 import hashlib
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -44,6 +45,9 @@ def worker(args: argparse.Namespace) -> int:
     """Runs inside the snapshot (cwd), in its own process. Never call directly."""
     snap = Path.cwd()
     out = Path(args.worker_out)
+    # As production's CLI does. The INFO lines are what bench/habits.py reads
+    # to tell one way of failing from another.
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     sys.path.insert(0, str(Path(args.agent_src).resolve()))
     import openai.resources.chat.completions as occ
     import ouroboros
@@ -88,7 +92,23 @@ def worker(args: argparse.Namespace) -> int:
     def counted_create(self, *a, **kw):
         _take_request()
         try:
-            return real_create(self, *a, **kw)
+            resp = real_create(self, *a, **kw)
+            # The shape of every request and reply, for bench/habits.py: an
+            # empty answer reads very differently with and without tools offered.
+            choice = resp.choices[0] if getattr(resp, "choices", None) else None
+            msg = getattr(choice, "message", None)
+            details = getattr(getattr(resp, "usage", None), "completion_tokens_details", None)
+            logging.getLogger("bench").info(
+                "request %d: model=%s tools=%s response_format=%s history_tool_calls=%d -> "
+                "finish=%s content_chars=%d tool_calls=%d completion_tokens=%s reasoning_tokens=%s",
+                record["requests"], kw.get("model"), "tools" in kw,
+                (kw.get("response_format") or {}).get("type"),
+                sum(1 for m in kw.get("messages", []) if isinstance(m, dict) and m.get("tool_calls")),
+                getattr(choice, "finish_reason", None), len(getattr(msg, "content", None) or ""),
+                len(getattr(msg, "tool_calls", None) or []),
+                getattr(getattr(resp, "usage", None), "completion_tokens", None),
+                getattr(details, "reasoning_tokens", None))
+            return resp
         except Exception as exc:
             if "429" in str(exc):
                 record["quota_429"] += 1
@@ -161,6 +181,12 @@ def worker(args: argparse.Namespace) -> int:
 # --------------------------------------------------------------------------- parent
 
 def load_tasks(split: str, only: list[str]) -> list[dict]:
+    smoke = set()
+    if split in ("smoke", "confirm") and not only:
+        # smoke: a fixed subset of dev, for cheap screening (the outer loop).
+        # confirm: the rest of dev, so a keep is never decided on the tasks
+        # that picked the candidate.
+        smoke = set(json.loads((common.TASKS_DIR / "SMOKE.json").read_text())["tasks"])
     tasks = []
     for d in sorted(common.TASKS_DIR.iterdir()):
         if not (d / "task.json").exists():
@@ -168,7 +194,10 @@ def load_tasks(split: str, only: list[str]) -> list[dict]:
         t = json.loads((d / "task.json").read_text())
         if only and t["id"] not in only:
             continue
-        if not only and split != "all" and t["split"] != split:
+        if smoke:
+            if t["split"] != "dev" or (t["id"] in smoke) != (split == "smoke"):
+                continue
+        elif not only and split != "all" and t["split"] != split:
             continue
         t["dir"] = str(d)
         tasks.append(t)
@@ -210,7 +239,7 @@ SANDBOX_PROFILE = """(version 1)
        (subpath "/dev"))
 (deny file-read* (subpath "{home}"))
 (allow file-read* (subpath "{home}/.local/share/uv") (subpath "{home}/.cache/uv"))
-(deny file-read* (subpath "{tasks}") (subpath "{results}"))
+(deny file-read* (subpath "{tasks}") (subpath "{results}") (subpath "{git}"))
 """
 
 
@@ -218,13 +247,15 @@ def sandbox_cmd(cmd: list[str], work: Path, shared: Path) -> list[str]:
     """Jail the worker and everything it spawns, generated code included.
 
     Writes only into its own sandbox and the run's shared counter dir; no
-    reads of the user's home (keys, ssh, other repos) or of the gold patches.
+    reads of the user's home (keys, ssh, other repos), of the gold patches, or
+    of the harness repo's history, which holds every fix.
     Network stays open because the worker must reach the LLM gateway; the key
     is dropped from the environment once the client holds it.
     """
     profile = SANDBOX_PROFILE.format(
         work=work.resolve(), shared=shared.resolve(), home=Path.home().resolve(),
-        tasks=common.TASKS_DIR.resolve(), results=common.RESULTS_DIR.resolve())
+        tasks=common.TASKS_DIR.resolve(), results=common.RESULTS_DIR.resolve(),
+        git=(common.REPO / ".git").resolve())
     return ["sandbox-exec", "-p", profile, *cmd]
 
 
@@ -322,7 +353,7 @@ def run_task(task: dict, mode: str, run_dir: Path, args: argparse.Namespace) -> 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--mode", choices=("cycle", "gold", "null"), default="cycle")
-    ap.add_argument("--split", choices=("dev", "heldout", "all"), default="dev")
+    ap.add_argument("--split", choices=("dev", "smoke", "confirm", "heldout", "all"), default="dev")
     ap.add_argument("--task", action="append", default=[], help="run only these task ids")
     ap.add_argument("--workers", type=int, default=0,
                     help="parallel tasks (default: 2 for cycle, which shares a rate-limited key; 6 otherwise)")
@@ -338,10 +369,23 @@ def main() -> int:
 
     if args.worker:
         return worker(args)
+    if common.REPO.resolve().is_relative_to(Path.home().resolve()):
+        # The sandbox denies reads under $HOME, so the worker could not even
+        # load this harness or its venv from there.
+        print(f"run the bench from a checkout outside $HOME (this one is {common.REPO})",
+              file=sys.stderr)
+        return 2
     if args.mode == "cycle" and not os.environ.get("BENCH_LLM_API_KEY"):
         print("BENCH_LLM_API_KEY is not set (the OpenRouter key production uses)", file=sys.stderr)
         return 2
 
+    if args.mode == "cycle":
+        left = common.daily_left()
+        if left <= 0:
+            print(f"bench daily cap reached ({common.DAILY_CAP} requests; BENCH_DAILY_CAP)",
+                  file=sys.stderr)
+            return 2
+        args.max_requests = min(args.max_requests, left)
     args.workers = args.workers or (2 if args.mode == "cycle" else 6)
     # Outside bench/results, which the sandbox cannot read.
     args.shared = Path(tempfile.mkdtemp(prefix="bench-shared-"))
@@ -372,6 +416,7 @@ def main() -> int:
         rows = list(pool.map(one, tasks))
 
     (run_dir / "rows.json").write_text(json.dumps(rows, indent=2))
+    common.ledger_add(run_id, sum(r.get("requests", 0) for r in rows))
     scored = [r for r in rows if not r.get("invalid")]
     resolved = sum(bool(r.get("resolved")) for r in scored)
     usage = [r.get("usage") or {} for r in rows]
