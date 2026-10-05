@@ -1,4 +1,3 @@
-2026-10-03 | add_test | Add test helper function to extract failure location from te | failed | no plan generated
 2026-10-03 | refactor | Extract the common file reading/writing pattern from backlog | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-03 | add_feature | Add a lightweight failure reason field to metrics.py to trac | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py, src
 2026-10-03 | add_feature | Add robust failure location extraction to src/ouroboros/test | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-05 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no code generated
 2026-10-05 | add_test | Add comprehensive unit tests for the _format_failure_triage  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-05 | add_test | Add comprehensive unit tests for the extract_failure_locatio | failed | no plan generated
+2026-10-05 | fix_test | Enhance extract_failure_location to robustly parse failure l | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
