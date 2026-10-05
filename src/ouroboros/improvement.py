@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from . import backends, git_ops, llm
+from . import backends, git_ops, llm, prompts
 from .codebase import get_codebase_summary, get_repo_root, read_file_raw
 from .config import SafetyConfig
 from .evaluation import (
@@ -1161,12 +1161,6 @@ def run_improvement_cycle(
 
 _MAX_STALE_ATTEMPTS = 2
 
-_REACT_FINAL_PROMPT = (
-    "Stop investigating; no more tool calls. Reply now with only the JSON object "
-    "with keys: task_type, description, target_files, evidence, priority."
-)
-
-
 def _parse_react_answer(content: Optional[str]) -> Optional[Dict[str, Any]]:
     """Parse a ReAct final answer, or None (logged) when there is none."""
     try:
@@ -1434,7 +1428,7 @@ def _run_improvement_cycle(
                 # Force a final answer without tools. Say so: offered no tools,
                 # a model mid-investigation replied with empty content, and
                 # parsing that crashed the whole cycle (2026-09-25 00:29).
-                messages.append({"role": "user", "content": _REACT_FINAL_PROMPT})
+                messages.append({"role": "user", "content": prompts.load_program_section("react_final")})
                 resp = llm.create_completion(
                     identify_client,
                     model=model,

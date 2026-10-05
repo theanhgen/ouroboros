@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 from pathlib import Path
 
 def _prompts_path() -> str:
@@ -14,6 +15,24 @@ def _prompts_path() -> str:
     if p.exists():
         return str(p)
     return str(Path.cwd() / "src" / "ouroboros" / "prompts.json")
+
+_PROGRAM_PATH = Path(__file__).resolve().parent / "program.md"
+_PROGRAM_SECTION_RE = re.compile(r"<!-- section: (\w+) -->\n(.*?)\n<!-- end: \1 -->", re.S)
+
+
+def load_program_section(name: str) -> str:
+    """One step's system prompt from program.md, the cycle's "how to work" file.
+
+    Read from the file next to this module, never the cwd: under the bench the
+    cwd is a task snapshot carrying an older program.md. A missing section
+    raises rather than falling back, so a broken edit to the file fails loudly
+    instead of quietly running (and being scored on) some other prompt.
+    """
+    sections = dict(_PROGRAM_SECTION_RE.findall(_PROGRAM_PATH.read_text(encoding="utf-8")))
+    if name not in sections:
+        raise KeyError(f"program.md has no '{name}' section")
+    return sections[name]
+
 
 def load_comment_system_prompt() -> str:
     """System prompt for generating comments on posts."""

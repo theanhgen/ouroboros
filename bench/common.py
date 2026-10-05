@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import os
 import re
 import subprocess
@@ -13,6 +14,11 @@ BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parent
 TASKS_DIR = BENCH / "tasks"
 RESULTS_DIR = BENCH / "results"
+# Every request the bench spends on the OpenRouter key, by day, across runs and
+# outer-loop invocations. The key is production's: the bench gets what is left
+# under DAILY_CAP, and a 429 must never be the first sign the day is spent.
+LEDGER = RESULTS_DIR / "ledger.tsv"
+DAILY_CAP = int(os.environ.get("BENCH_DAILY_CAP", "300"))
 
 # Agent state that a historical snapshot carries and a fresh agent must not
 # see: it holds the agent's own notes about the very fix being benchmarked.
@@ -126,3 +132,25 @@ def run_pytest(snap: Path, test_paths: list[str], timeout: int) -> dict:
             outcomes[m.group(2)] = m.group(1).lower()
     return {"outcomes": outcomes, "seconds": time.time() - t0, "timed_out": False,
             "stdout": proc.stdout[-4000:], "returncode": proc.returncode}
+
+
+def ledger_used(day: str | None = None) -> int:
+    """Requests the bench has spent today (local date)."""
+    day = day or time.strftime("%Y-%m-%d")
+    if not LEDGER.exists():
+        return 0
+    return sum(int(line.split("\t")[2]) for line in LEDGER.read_text().splitlines()
+               if line.startswith(day + "\t"))
+
+
+def ledger_add(source: str, requests: int) -> None:
+    if requests <= 0:
+        return
+    LEDGER.parent.mkdir(parents=True, exist_ok=True)
+    with open(LEDGER, "a") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        f.write(f"{time.strftime('%Y-%m-%d')}\t{source}\t{requests}\n")
+
+
+def daily_left() -> int:
+    return max(0, DAILY_CAP - ledger_used())

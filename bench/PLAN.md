@@ -1,6 +1,6 @@
 # bench — a fixed scoreboard for the improvement pipeline
 
-Status: Phase 1 built and baselined 2026-10-05. Phase 2 needs the owner's sign-off.
+Status: Phase 1 built and baselined 2026-10-05. Phase 2 (OpenRouter only) built 2026-10-05: steps 1-3 and 5; step 4 deferred. No experiment has run yet: main needs 2 smoke runs first.
 
 ## Why
 
@@ -196,41 +196,106 @@ baseline shows exactly that. Most dev tasks end `idle`: the ReAct loop's final a
 empty, or the free model returns an empty completion. That is production's
 59-idle-of-65 pattern, and a "habit" an outer loop can target.
 
-### Steps
+### Constraint: everything runs on OpenRouter (owner, 2026-10-05)
 
-1. **Hoist the pipeline prompts into `src/ouroboros/program.md`** (operator commit,
-   behaviour-neutral). This means the identify, plan, generate and review system prompts
-   now inline in `llm.py`, plus `_EDIT_SYSTEM_PROMPT`. `llm.py` loads named sections.
-   Proof of no behaviour change: an identical bench score at the same seed, and the full
-   suite passing.
-2. **Failure taxonomy** (`bench/habits.py`, deterministic, no LLM). Each task's worker
-   log and row is classified into a fixed signature set: `react_empty_final`,
-   `named_no_task`, `empty_completion`, `plan_failed`, `reviewer_rejected`,
-   `regression_reverted`, `wrong_target_files`, `fixed_symptom_not_cause` (F2P partial),
-   `false_merge`. Output: counts plus evidence task ids. The video's "habit with the rounds
-   that show it".
-3. **Outer loop** (`bench/outer.py`, on Elaeis, autoresearch-style):
-   - read the habit table and the last N rows of `results.tsv` (including discarded
-     experiments, so it doesn't retry them);
-   - ask a strong model (Codex `task --effort xhigh`, not the free model) for **one**
-     edit to `program.md` that targets the top habit, with the evidence attached;
-   - score the candidate: `bench/run.py --agent-src <candidate worktree>` on dev, paired
-     with `main` on the same tasks, k runs;
-   - **keep** only if resolved rises by ≥1 task on average, no previously-resolved task is
-     lost in ≥2 of k runs, and `false_merge` doesn't rise. Otherwise discard. Log
-     keep/discard, habit, diff and score to `bench/experiments.tsv`;
-   - a kept edit becomes a normal PR with the bench numbers in the body. A human merges
-     it (first weeks), later the gate below does.
-   - Hard limits: the outer loop may edit only `program.md`. It can't touch `bench/`, the
-     tests or forbidden files. The editor model never sees the gold patches (they stay
-     outside its sandbox).
-4. **Merge gate for pipeline changes** (operator commit to `evaluation.py`/`git_ops.py`,
-   staged per brief §4). An autonomous PR that touches `program.md`, `llm.py`,
-   `backends.py` or `codebase.py` needs a passing bench check from Elaeis. Test-only,
-   refactor and docs PRs keep today's gate.
-5. **Held-out check** every ~10 kept experiments: run `heldout`. If dev rises and
-   held-out doesn't, the dev set is being overfit, so stop and rotate tasks in from new
-   fix commits.
+Every model call the bench and the outer loop make goes through the OpenRouter key that
+production already uses: free models only, no second account, no Codex or other runtime in
+the loop. That key has ~1000 free requests/day; production spends ~500.
+
+- **A daily cap across all bench use.** `bench/results/ledger.tsv` records every request
+  any run or editor call spends, by day. `run.py` and `outer.py` both stop at
+  `BENCH_DAILY_CAP` (default 300), which leaves production its ~500 with headroom. A 429
+  must never be the first sign the day is spent. `outer.py` won't start a step it can't
+  finish within what's left, because a run cut short is thrown away.
+- **The editor is a free model:** `nvidia/nemotron-3-ultra-550b-a55b:free` by default
+  (`--editor-model`). It gets one request per experiment, two if the first reply fails
+  validation. It runs with no client retries, so every call is counted.
+
+### Steps (built 2026-10-05, design changed by the review below)
+
+1. **`src/ouroboros/program.md`** holds the sections `identify`, `react_final`, `plan`,
+   `edit` and `review`, byte-identical to the strings they replaced. The parent commit's
+   strings were extracted by AST and compared: all 5 are identical. 1458 tests pass.
+   `prompts.load_program_section` reads the file next to the module, never the cwd, and
+   raises on a missing section. `program.md` is in `forbidden_modification_paths` and
+   ships as package data.
+2. **`bench/habits.py`**: one signature per task, first match in pipeline order. The
+   baseline classifies as 18 `react_empty_final`, 5 `no_task_other`, 2 `generate_empty`,
+   1 `generate_truncated`, 1 `out_of_scope`, 2 `resolved`. From run.py's per-request log
+   lines it adds the reply shape (finish reason, text or tool call, tools offered or not).
+3. **`bench/outer.py`**, one step per invocation:
+   - **screen** (`outer.py`): the editor gets `program.md`, the cycle code that sends
+     each section, the habit table, and past experiments. The habit table has signatures,
+     counts and *scrubbed* log lines (no task ids, files, tests or quoted model text). The
+     reply is validated: same sections, each ≤2× its old size, no F2P test names. It's
+     committed on a local `bench/program-<id>` branch and run on **`smoke`** (10 fixed dev
+     tasks). It passes if it resolves ≥ main's mean + 1, with no more false merges or
+     broken tests than main. Main's smoke mean comes from ≥2 complete cached runs of the
+     same agent code (matched by the `src/ouroboros` tree, not the commit). Screening only
+     filters: it decides nothing.
+   - **confirm** (`--confirm <id>`): one paired replicate a day on **`confirm`**, the
+     other 19 dev tasks, so the tasks that picked the candidate never decide it. Fresh
+     main and candidate runs, alternating order. **Keep** needs an exact one-sided McNemar
+     test on (task, replicate) pairs where they disagree: p ≤ 0.1, and false merges and
+     broken tests summed no higher than main's. After 3 replicates without that, or once p
+     can't get there, it's discarded.
+   - **heldout** (`--heldout <id>`): main and the kept edit on the 14 `heldout` tasks.
+     `--open-pr` opens a PR only if it passes (wins ≥ losses, no new harm). A human merges.
+   - Every step is a row in `bench/experiments.tsv`. Discarded branches are deleted;
+     their diff and editor prompt stay in `bench/results/outer-<id>/`.
+4. **Merge gate for pipeline changes**: deferred. It's a production gate and needs a bench
+   run reachable from rubrum. Revisit once something has been kept.
+5. **Held-out**: per kept edit (step 3), not every ~10.
+
+Cost at the default cap: a screen is ~70 requests (calibration is 2 × ~70, once per agent
+code version), a confirm replicate ~270, a heldout check ~200. So ~3 screens a day, or one
+confirm replicate. From a screen pass to a PR is 2–4 days.
+
+### Diagnostic: what the top habit actually is (2026-10-05, run `20261005-161646-cycle-e1da`)
+
+Request logging on two `react_empty_final` tasks (14 requests) showed the following.
+Offered no tools, `cohere/north-mini-code:free` still replies with a tool call, and
+OpenRouter returns it as `finish=error` with no text:
+
+- in **every** ReAct round: the rounds send `response_format=json_object` and no
+  `tools`, while the history holds tool calls;
+- in the **plan** step too, which has no tool history at all. One task got past identify
+  and died there ("model returned nothing").
+
+The loop still runs those tool calls, so ReAct "works" by accident until the forced final
+answer, which then comes back empty or names no task. There are two levers:
+
+- a code fix (pass `tools` in the rounds), which is an operator change to
+  `improvement.py`;
+- a prompt fix ("you have no tools in this step; answer in text"), which the outer loop can
+  find on its own.
+
+The code fix should be benched as `main` vs a branch before anyone ships it.
+
+### Plan review (2026-10-05, Phase 2)
+
+A dual review ran on the Phase 2 plan, but only 2 of 4 reviewers produced one. codex and
+agy (Gemini) did; agy-claude has a stale model pin, and agy-gpt was out of Antigravity
+quota. Confirmed and fixed:
+
+- the keep rule picked noise (one run, a cached mean, a dev check with no safety gates)
+  → the paired McNemar confirmation on tasks disjoint from screening;
+- incomplete runs could count as controls → only complete runs count;
+- per-invocation budgets didn't protect production's daily share → the ledger and the
+  daily cap;
+- a checkout under `$HOME` can't be read inside the sandbox → `run.py` refuses one. The
+  sandbox now also denies the harness `.git`, whose history holds every fix;
+- evidence lines could leak task specifics to the editor → scrubbed, and task ids dropped;
+- a PR before held-out → the held-out check gates `--open-pr`;
+- the top habit may be a code bug → partly: see the diagnostic above.
+
+Unresolved, for the owner:
+
+- `prompts.py` and `llm.py` stay agent-editable. The cycle could change the loader rather
+  than `program.md`. That change would be visible in review, but the forbid list doesn't
+  stop it.
+- The crash half of that finding is guarded: every section is required by the test
+  suite, the editor's output is validated with the same regex, and CRLF is normalised.
 
 ### What is not taken from the video
 
@@ -241,15 +306,6 @@ empty, or the free model returns an empty completion. That is production's
   memory; whether that context helps is something the outer loop can measure, not
   something to add blind.
 - Their sandbox vendor. `sandbox-exec` on Elaeis covers this.
-
-### The binding constraint: request budget
-
-One dev run is ~150–250 requests on a key that production already uses ~500/day of, so
-the outer loop gets **~1 experiment a day**. autoresearch got 100 a night. Options,
-cheapest first: (a) accept 1/day; (b) give bench its own OpenRouter account (a separate
-1000/day); (c) a smaller "smoke" dev subset (~10 tasks most sensitive to the top habit)
-for screening, with the full dev set only for candidates that pass. (b) or (c) needs the
-owner's call.
 
 ## Known limitations
 

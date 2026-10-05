@@ -541,23 +541,7 @@ def identify_improvements(
 
     Returns (result_dict, error_string). On success error_string is None.
     """
-    system_prompt = (
-        "You are an autonomous code quality agent. Identify ONE concrete, high-value "
-        "improvement for the Ouroboros codebase.\n\n"
-        "Task types: fix_test, add_test, fix_bug, refactor, improve_docs, add_feature.\n\n"
-        "Rules:\n"
-        "- The description MUST be specific and actionable: name the exact behavior to "
-        "change and the concrete outcome. Never write vague meta-tasks like 'investigate "
-        "why tests fail' -- state the actual fix.\n"
-        "- 'evidence' MUST cite a specific symptom: a failing test name, a code smell at a "
-        "named function, or a missing capability. No evidence -> do not propose it.\n"
-        "- 'target_files' MUST list real files you would edit.\n"
-        "- Only propose fix_test when tests are ACTUALLY failing in the report below. "
-        "When the suite is green, prefer substantive work (fix_bug, refactor, add_test, "
-        "add_feature) that measurably improves the codebase.\n"
-        "- Do not repeat a task that the recent history shows already failed the same way.\n\n"
-        "Output JSON with keys: task_type, description, target_files, evidence, priority."
-    )
+    system_prompt = prompts.load_program_section("identify")
     summary = truncate_to_tokens(
         summary, MAX_CODEBASE_SUMMARY_TOKENS, label="codebase summary"
     )
@@ -643,7 +627,7 @@ def plan_code_change(
     model: str = DEFAULT_OPENAI_MODEL,
     on_error: Optional[Callable[[str], None]] = None,
 ) -> tuple[Optional[str], Optional[dict]]:
-    system = "You are a senior Python developer. Create a step-by-step plan for the code change."
+    system = prompts.load_program_section("plan")
     user = (
         f"## Task\nType: {task.get('task_type')}\n"
         f"Description: {task.get('description')}\n"
@@ -658,25 +642,6 @@ def plan_code_change(
     content, usage = chat_completion(client, system, user, model, max_tokens=24000,
                                      on_error=on_error)
     return (content if content else None, usage)
-
-
-_EDIT_SYSTEM_PROMPT = """You change Python files by emitting SEARCH/REPLACE blocks. For each change:
-
-path/to/file.py
-<<<<<<< SEARCH
-exact lines copied from the current file
-=======
-the lines that replace them
->>>>>>> REPLACE
-
-Rules:
-- Put the file path alone on the line before each block.
-- SEARCH must match the current file exactly, character for character,
-  including indentation and blank lines, and must appear only once in it.
-  Include a few surrounding lines if needed to make it unique.
-- Keep blocks small: only the lines that change plus minimal context.
-- To create a new file, use an empty SEARCH section.
-- Output only the blocks. No explanations, no JSON."""
 
 
 def parse_edit_blocks(text: str) -> List[Tuple[str, str, str]]:
@@ -843,11 +808,12 @@ def generate_code(
     hundreds of requests per cycle and spent OpenRouter's daily free quota by
     5 a.m. on 2026-09-25).
     """
+    edit_prompt = prompts.load_program_section("edit")
     file_contents = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in files.items())
     user = f"## Plan\n{plan}\n\n## Constraints\n{constraints}\n\n## Current Code\n{file_contents}"
 
     content, usage = chat_completion(
-        client, _EDIT_SYSTEM_PROMPT, user, model,
+        client, edit_prompt, user, model,
         max_tokens=16000,
         on_error=on_error,
     )
@@ -872,7 +838,7 @@ def generate_code(
             "character from the Current Code above."
         )
         retry_content, retry_usage = chat_completion(
-            client, _EDIT_SYSTEM_PROMPT, retry_user, model, max_tokens=16000, on_error=on_error,
+            client, edit_prompt, retry_user, model, max_tokens=16000, on_error=on_error,
         )
         if retry_usage and usage:
             usage = {k: usage.get(k, 0) + retry_usage.get(k, 0) for k in usage}
@@ -901,17 +867,7 @@ def review_code_changes(
         f"### {c.get('file_path')}\n{c.get('description')}\n```python\n{c.get('new_content')}\n```"
         for c in changes
     ])
-    system = (
-        "You are a pragmatic senior code reviewer. An automated test suite runs AFTER "
-        "you and independently validates correctness, so tests -- not your intuition -- "
-        "are the safety net for behavior.\n\n"
-        "Reject (approved=false) ONLY when you can name a CONCRETE defect the change "
-        "introduces: a correctness bug, a security hole, or data loss -- and cite the "
-        "specific file and what breaks. Do NOT reject for style, naming, formatting, "
-        "missing tests, incomplete-but-harmless work, or hypothetical concerns. When you "
-        "cannot name a concrete defect, approve and list any concerns instead.\n\n"
-        "Output JSON with keys: 'approved' (boolean), 'feedback' (string), 'concerns' (list)."
-    )
+    system = prompts.load_program_section("review")
     user = (
         f"## Task\n{task.get('description')}\n\n## Proposed Changes\n{changes_text}\n\n"
         "Name any concrete correctness/security/data-loss defect this change introduces. "
