@@ -1,4 +1,3 @@
-2026-10-04 | refactor | Extract duplicate filtering logic from src/ouroboros/backlog | success | tests: 1448 -> 1448
 2026-10-04 | fix_bug | Replace the simplistic extract_failure_location helper funct | success | tests: 1448 -> 1448
 2026-10-04 | add_test | Add comprehensive unit tests for previously untested functio | failed | no code generated
 2026-10-04 | add_test | Add comprehensive unit tests for previously untested functio | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | reverted | Test regression detected: 0 failures before, 1 after
 2026-10-06 | fix_test | Fix incorrect test expectation for item_coverage function in | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-06 | refactor | Consolidate duplicated file handling patterns into a shared  | failed | no plan generated
+2026-10-06 | refactor | Extract duplicate file handling patterns into a shared stora | failed | out of scope: targets 5 files, cap is 3
