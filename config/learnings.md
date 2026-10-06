@@ -1,5 +1,4 @@
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
-2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no code generated
 2026-10-04 | refactor | Extract duplicated history/prompt context/state path/JSON re | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-04 | refactor | Extract duplicate filtering logic from format_priority_repor | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-06 | fix_test | Fix incorrect test expectation for item_coverage function in | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-06 | fix_test | Fix incorrect test expectations in tests/test_backlog.py for | failed | no plan generated
 2026-10-06 | add_feature | Add execution receipt tracking to storage.py to enable audit | failed | no code generated
+2026-10-06 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | no code generated
