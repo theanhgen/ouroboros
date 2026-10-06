@@ -1,4 +1,3 @@
-2026-10-05 | add_test | Add comprehensive unit tests for _backlog_path() function in | failed | no code generated
 2026-10-05 | add_test | Add comprehensive unit tests for format_priority_report func | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-05 | add_test | Add comprehensive unit tests for format_priority_report func | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-05 | add_test | Add comprehensive unit tests for FailureDetail and RunnerOut | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-06 | add_feature | Implement confidence calibration evaluation in the llm.py mo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-07 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-07 | refactor | Extract common JSON file handling utilities from src/ourobor | failed | no code generated
+2026-10-07 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
