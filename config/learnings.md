@@ -1,4 +1,3 @@
-2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-04 | add_test | Add comprehensive unit tests for the parse_json_reply functi | failed | no plan generated
 2026-10-04 | add_test | Add comprehensive unit tests for the extract_failure_locatio | failed | no plan generated
 2026-10-04 | add_test | Add comprehensive unit tests for previously untested functio | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-06 | refactor | Extract duplicated file handling patterns from backlog.py, m | failed | out of scope: targets 4 files, cap is 3
 2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | reviewer rejected
 2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | no code generated
+2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
