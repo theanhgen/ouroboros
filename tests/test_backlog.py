@@ -135,6 +135,86 @@ class TestBacklog:
         assert "[P1] fix: low (attempts: 2)" in formatted
         assert "done" not in formatted  # completed items should be excluded
 
+    def test_mark_done_status_progression(self):
+        """Test that mark_done changes status to done and adds completed_at."""
+        entry = add_item(self.tmp_dir, "feat", "test task")
+        assert entry["status"] == "pending"
+        assert "completed_at" not in entry
+
+        mark_done(self.tmp_dir, entry["id"])
+
+        items = load_backlog(self.tmp_dir)
+        assert len(items) == 1
+        assert items[0]["status"] == "done"
+        assert "completed_at" in items[0]
+        assert items[0]["completed_at"] > items[0]["created_at"]
+
+    def test_mark_failed_attempt_counting(self):
+        """Test that mark_failed increments attempts and remains pending until threshold."""
+        entry = add_item(self.tmp_dir, "feat", "test attempt")
+        item_id = entry["id"]
+        assert entry["attempts"] == 0
+        assert entry["status"] == "pending"
+
+        mark_failed(self.tmp_dir, item_id)
+        items = load_backlog(self.tmp_dir)
+        assert items[0]["attempts"] == 1
+        assert items[0]["status"] == "pending"
+
+        mark_failed(self.tmp_dir, item_id)
+        mark_failed(self.tmp_dir, item_id)
+        items = load_backlog(self.tmp_dir)
+        assert items[0]["attempts"] == 3
+        assert items[0]["status"] == "abandoned"
+
+    def test_mark_failed_status_progression_abandoned(self):
+        """Test status transitions: pending -> pending -> pending -> abandoned."""
+        entry = add_item(self.tmp_dir, "feat", "test prog")
+        item_id = entry["id"]
+
+        mark_failed(self.tmp_dir, item_id)
+        assert load_backlog(self.tmp_dir)[0]["status"] == "pending"
+
+        mark_failed(self.tmp_dir, item_id)
+        assert load_backlog(self.tmp_dir)[0]["status"] == "pending"
+
+        mark_failed(self.tmp_dir, item_id)
+        assert load_backlog(self.tmp_dir)[0]["status"] == "abandoned"
+
+    def test_abandoned_items_excluded_from_pending(self):
+        """Test that abandoned items are filtered out by get_pending."""
+        entry = add_item(self.tmp_dir, "feat", "test abandon")
+        item_id = entry["id"]
+
+        for _ in range(3):
+            mark_failed(self.tmp_dir, item_id)
+
+        pending = get_pending(self.tmp_dir)
+        assert len(pending) == 0
+
+        add_item(self.tmp_dir, "fix", "still pending")
+        pending = get_pending(self.tmp_dir)
+        assert len(pending) == 1
+        assert pending[0]["description"] == "still pending"
+
+    def test_mark_done_error_handling_non_existent(self):
+        """Test that mark_done handles non-existent items gracefully."""
+        add_item(self.tmp_dir, "feat", "existing")
+        initial_items = load_backlog(self.tmp_dir)
+
+        mark_done(self.tmp_dir, "non-existent-id-xyz")
+
+        assert load_backlog(self.tmp_dir) == initial_items
+
+    def test_mark_failed_error_handling_non_existent(self):
+        """Test that mark_failed handles non-existent items gracefully."""
+        add_item(self.tmp_dir, "feat", "existing")
+        initial_items = load_backlog(self.tmp_dir)
+
+        mark_failed(self.tmp_dir, "non-existent-id-xyz")
+
+        assert load_backlog(self.tmp_dir) == initial_items
+
 
 # -- centralised JSON IO -----------------------------------------------------
 
