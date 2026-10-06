@@ -1,4 +1,3 @@
-2026-10-05 | add_test | Add comprehensive unit tests for FailureDetail and RunnerOut | failed | reviewer rejected
 2026-10-05 | add_test | Add comprehensive unit tests for metrics.py covering load_me | failed | no plan generated
 2026-10-05 | add_test | Add comprehensive unit tests for extract_failure_location an | failed | no plan generated
 2026-10-05 | add_test | Add comprehensive unit tests for format_priority_report func | failed | out of scope: targets 15 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-07 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | success | tests: 1457 -> 1463
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | no plan generated
+2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | no code generated
