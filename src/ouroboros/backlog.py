@@ -180,9 +180,19 @@ def item_coverage(item: str, task: str) -> float:
     item names?
     """
     wi, wt = _content_words(item), _content_words(task)
+    
+    # Handle edge cases: no content words in either item or task
     if not wi or not wt:
         return 0.0
-    return len(wi & wt) / len(wi)
+    
+    # Calculate intersection size (words in both item and task)
+    intersection_size = len(wi & wt)
+    
+    # Calculate coverage: intersection size / item size
+    # This implements: len(target_words_in_source) / len(target_words)
+    coverage = intersection_size / len(wi)
+    
+    return coverage
 
 
 def _content_words(text: str) -> set:
