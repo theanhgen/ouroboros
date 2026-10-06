@@ -1,4 +1,3 @@
-2026-10-05 | add_test | Add comprehensive unit tests for extract_failure_location an | failed | no code generated
 2026-10-05 | add_test | Add comprehensive unit tests for extract_failure_location an | failed | no plan generated
 2026-10-05 | add_test | Add comprehensive unit tests for extract_failure_location an | failed | no code generated
 2026-10-05 | add_test | Add comprehensive unit tests for the MemoryStore class in sr | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-06 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | out of scope: targets 4 files, cap is 3
 2026-10-06 | add_test | Add comprehensive edge case tests for item_coverage function | failed | no plan generated
 2026-10-06 | add_test | Add unit tests for backlog.mark_done and backlog.mark_failed | failed | reviewer rejected
+2026-10-06 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | out of scope: targets 4 files, cap is 3
