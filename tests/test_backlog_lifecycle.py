@@ -65,6 +65,56 @@ class TestContentOverlap:
         assert backlog.content_overlap("the and to of", "the and to of") == 0.0
 
 
+# --------------------------------------------------------------- TestItemCoverage
+
+class TestItemCoverage:
+    def test_empty_item_string_returns_zero(self):
+        """Coverage for an empty item description should be 0.0."""
+        assert backlog.item_coverage("", "some task description") == 0.0
+
+    def test_empty_task_string_returns_zero(self):
+        """Coverage for a non-empty item but empty task should be 0.0."""
+        assert backlog.item_coverage("some item description", "") == 0.0
+
+    def test_no_overlapping_content_words_returns_zero(self):
+        """If the item words and task words have no intersection, coverage is 0.0."""
+        # Using words that are unlikely to overlap in a typical task.
+        item = "xyz abc def"
+        task = "foo bar baz"
+        assert backlog.item_coverage(item, task) == 0.0
+
+    def test_full_coverage_all_item_words_appear_in_task(self):
+        """If every word from the item appears in the task (ignoring stopwords),
+        coverage should be 1.0."""
+        item = "fix summary line parsing"
+        task = "Fix the summary line parsing in _parse_pytest_output"
+        assert backlog.item_coverage(item, task) == 1.0
+
+    # Additional edge case: item words are all stopwords (should behave like empty item)
+    def test_item_consists_only_of_stopwords_returns_zero(self):
+        item = "the and to of in"
+        task = "fix this issue"
+        assert backlog.item_coverage(item, task) == 0.0
+
+    # Edge case: task consists only of stopwords (should result in zero coverage if item has content words)
+    def test_task_consists_only_of_stopwords_returns_zero(self):
+        item = "fix bug"
+        task = "the and to of"
+        assert backlog.item_coverage(item, task) == 0.0
+
+    # Edge case: item is empty, task is empty
+    def test_both_item_and_task_empty(self):
+        assert backlog.item_coverage("", "") == 0.0
+
+    # Edge case: item is whitespace only
+    def test_item_whitespace_only(self):
+        assert backlog.item_coverage("   ", "some task") == 0.0
+
+    # Edge case: task is whitespace only
+    def test_task_whitespace_only(self):
+        assert backlog.item_coverage("some item", "   ") == 0.0
+
+
 # --------------------------------------------------------------- the epilogue
 
 class TestFinalizeBacklog:
