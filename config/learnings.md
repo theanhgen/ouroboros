@@ -1,4 +1,3 @@
-2026-10-04 | add_test | Add FailureTriage class to test_runner.py that clusters fail | failed | no plan generated
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | no plan generated
 2026-10-04 | fix_test | Replace the simplistic extract_failure_location helper funct | failed | generation failed: EditMismatch: src/ouroboros/test_runner.py: SEARCH block not
 2026-10-04 | refactor | Extract duplicated history/state/path management patterns in | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-06 | refactor | Create src/ouroboros/storage_helpers.py to consolidate dupli | failed | out of scope: targets 4 files, cap is 3
 2026-10-06 | fix_test | Fix incorrect test expectation for item_coverage in tests/te | failed | no plan generated
 2026-10-06 | refactor | Create src/ouroboros/storage_helpers.py to consolidate dupli | failed | no plan generated
+2026-10-06 | fix_test | Fix incorrect test expectation for item_coverage function in | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
