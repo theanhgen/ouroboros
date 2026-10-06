@@ -1,4 +1,3 @@
-2026-10-04 | refactor | Extract common path resolution and JSON load/save patterns i | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-04 | add_test | Add comprehensive unit tests for previously untested helper  | failed | no plan generated
 2026-10-04 | refactor | Extract common path resolution and JSON load/save patterns i | failed | no code generated
 2026-10-05 | refactor | Extract common path resolution and JSON load/save patterns i | failed | out of scope: targets 6 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-06 | refactor | Extract duplicate JSON file handling patterns from evaluatio | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-06 | fix_bug | Fix the item_coverage function to correctly calculate covera | duplicate | already completed: Fix the item_coverage function in src/ouroboros/backlog.py t
 2026-10-06 | fix_test | Fix incorrect test expectation for item_coverage in tests/te | failed | no plan generated
+2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | no plan generated
