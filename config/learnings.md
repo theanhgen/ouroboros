@@ -1,4 +1,3 @@
-2026-10-06 | fix_bug | Fix item_coverage function in src/ouroboros/backlog.py to co | failed | no plan generated
 2026-10-06 | fix_test | Fix incorrect test expectation for item_coverage in test_bac | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-06 | refactor | Implement test_failure_triage in src/ouroboros/improvement.p | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-06 | add_test | Add unit tests for format_priority_report in src/ouroboros/b | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-07 | refactor | Extract duplicated JSON file handling patterns from metrics. | failed | no plan generated
 2026-10-07 | refactor | Extract common JSON file handling pattern from src/ouroboros | failed | no plan generated
 2026-10-07 | refactor | Extract common JSON file handling pattern from src/ouroboros | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-07 | refactor | Remove duplicate JSON file path wrapper functions _backlog_p | failed | no plan generated
