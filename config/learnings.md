@@ -1,5 +1,4 @@
 2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | no plan generated
-2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | no plan generated
 2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-06 | add_test | Add edge case tests for the item_coverage function in tests/ | failed | no plan generated
 2026-10-06 | refactor | Extract JSON file handling patterns from backlog.py into a s | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-07 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-07 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | no plan generated
 2026-10-07 | fix_bug | Enforce that fix_bug tasks only run when there are actual fa | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-07 | fix_bug | Fix backlog.item_coverage() to distinguish between genuine d | failed | no code generated
