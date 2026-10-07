@@ -1,4 +1,3 @@
-2026-10-05 | refactor | Create src/ouroboros/storage_helpers.py to consolidate dupli | failed | out of scope: targets 4 files, cap is 3
 2026-10-05 | refactor | Create src/ouroboros/storage_helpers.py with centralized fil | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | no plan generated
 2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | no plan generated
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | reverted | Test regression detected: 0 failures before, 1 after
+2026-10-07 | fix_test | Fix the incomplete test_coverage_catches_it in tests/test_ba | failed | reviewer rejected
