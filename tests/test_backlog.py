@@ -215,6 +215,111 @@ class TestBacklog:
 
         assert load_backlog(self.tmp_dir) == initial_items
 
+    def test_mark_done_preserves_fields(self):
+        """Mark_done should only change status and add completed_at, leaving other fields unchanged."""
+        entry = add_item(self.tmp_dir, "refactor", "refactor core", priority=8)
+        original_task_type = entry["task_type"]
+        original_priority = entry["priority"]
+        original_desc = entry["description"]
+        mark_done(self.tmp_dir, entry["id"])
+        items = load_backlog(self.tmp_dir)
+        assert len(items) == 1
+        assert items[0]["task_type"] == original_task_type
+        assert items[0]["priority"] == original_priority
+        assert items[0]["description"] == original_desc
+        assert items[0]["status"] == "done"
+        assert "completed_at" in items[0]
+        assert items[0]["completed_at"] > items[0]["created_at"]
+
+    def test_mark_failed_increment_attempts_and_abandon(self):
+        """Mark_failed increments attempts and transitions to abandoned after 3 failures."""
+        entry = add_item(self.tmp_dir, "fix", "fix bug", priority=3)
+        item_id = entry["id"]
+        assert entry["attempts"] == 0
+        mark_failed(self.tmp_dir, item_id)
+        items = load_backlog(self.tmp_dir)
+        assert items[0]["attempts"] == 1
+        assert items[0]["status"] == "pending"
+        mark_failed(self.tmp_dir, item_id)
+        items = load_backlog(self.tmp_dir)
+        assert items[0]["attempts"] == 2
+        assert items[0]["status"] == "pending"
+        mark_failed(self.tmp_dir, item_id)
+        items = load_backlog(self.tmp_dir)
+        assert items[0]["attempts"] == 3
+        assert items[0]["status"] == "abandoned"
+        # Additional failures continue incrementing attempts
+        mark_failed(self.tmp_dir, item_id)
+        items = load_backlog(self.tmp_dir)
+        assert items[0]["attempts"] == 4
+        assert items[0]["status"] == "abandoned"
+
+    def test_mark_done_on_abandoned(self):
+        """Mark_done on an abandoned item should change its status to done and set completed_at."""
+        entry = add_item(self.tmp_dir, "feat", "some task")
+        for _ in range(3):
+            mark_failed(self.tmp_dir, entry["id"])
+        assert load_backlog(self.tmp_dir)[0]["status"] == "abandoned"
+        mark_done(self.tmp_dir, entry["id"])
+        items = load_backlog(self.tmp_dir)
+        assert items[0]["status"] == "done"
+        assert "completed_at" in items[0]
+
+    def test_mark_failed_on_done(self):
+        """Mark_failed on a done item should increment attempts and may cause abandonment."""
+        entry = add_item(self.tmp_dir, "feat", "some task")
+        mark_done(self.tmp_dir, entry["id"])
+        assert load_backlog(self.tmp_dir)[0]["status"] == "done"
+        mark_failed(self.tmp_dir, entry["id"])
+        items = load_backlog(self.tmp_dir)
+        assert items[0]["status"] == "done"
+        assert items[0]["attempts"] == 1
+        mark_failed(self.tmp_dir, entry["id"])
+        items = load_backlog(self.tmp_dir)
+        assert items[0]["status"] == "done"
+        assert items[0]["attempts"] == 2
+        mark_failed(self.tmp_dir, entry["id"])
+        items = load_backlog(self.tmp_dir)
+        assert items[0]["attempts"] == 3
+        assert items[0]["status"] == "abandoned"
+
+    def test_multiple_items_independent_tracking(self):
+        """Multiple items should evolve independently when marked."""
+        item1 = add_item(self.tmp_dir, "feat", "task1", priority=5)
+        item2 = add_item(self.tmp_dir, "fix", "task2", priority=7)
+        item3 = add_item(self.tmp_dir, "docs", "task3", priority=3)
+        mark_done(self.tmp_dir, item1["id"])
+        mark_failed(self.tmp_dir, item2["id"])
+        mark_failed(self.tmp_dir, item2["id"])
+        mark_failed(self.tmp_dir, item2["id"])  # abandons item2
+        items = load_backlog(self.tmp_dir)
+        status_by_id = {i["id"]: i["status"] for i in items}
+        assert status_by_id[item1["id"]] == "done"
+        assert status_by_id[item2["id"]] == "abandoned"
+        assert status_by_id[item3["id"]] == "pending"
+        # Ensure priority unchanged
+        priority_by_id = {i["id"]: i["priority"] for i in items}
+        assert priority_by_id[item1["id"]] == 5
+        assert priority_by_id[item2["id"]] == 7
+        assert priority_by_id[item3["id"]] == 3
+
+    def test_attempt_count_reset_behavior(self):
+        """New items start attempts at 0; attempts increment correctly and continue after abandonment."""
+        entry = add_item(self.tmp_dir, "fix", "new item")
+        assert entry["attempts"] == 0
+        mark_failed(self.tmp_dir, entry["id"])
+        assert load_backlog(self.tmp_dir)[0]["attempts"] == 1
+        mark_failed(self.tmp_dir, entry["id"])
+        assert load_backlog(self.tmp_dir)[0]["attempts"] == 2
+        mark_failed(self.tmp_dir, entry["id"])
+        assert load_backlog(self.tmp_dir)[0]["attempts"] == 3
+        assert load_backlog(self.tmp_dir)[0]["status"] == "abandoned"
+        mark_failed(self.tmp_dir, entry["id"])
+        assert load_backlog(self.tmp_dir)[0]["attempts"] == 4
+        assert load_backlog(self.tmp_dir)[0]["status"] == "abandoned"
+
+# -- centralised JSON IO -----
+
 
 # -- centralised JSON IO -----------------------------------------------------
 
