@@ -1,4 +1,3 @@
-2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | reviewer rejected
 2026-10-05 | fix_bug | Fix item_coverage function to correctly calculate coverage o | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-05 | fix_bug | Fix item_coverage function in src/ouroboros/backlog.py to co | failed | reviewer rejected
 2026-10-05 | fix_bug | Fix item_coverage function's docstring and ensure correct Ja | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-07 | refactor | Extract duplicated JSON file handling patterns from src/ouro | failed | no code generated
 2026-10-07 | refactor | Extract common JSON file handling patterns into shared _stor | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | reviewer rejected
+2026-10-07 | refactor | Extract common JSON file handling patterns from backlog.py i | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
