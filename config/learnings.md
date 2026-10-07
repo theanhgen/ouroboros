@@ -1,4 +1,3 @@
-2026-10-06 | add_feature | Add execution receipt tracking to storage.py to enable audit | failed | no code generated
 2026-10-06 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | no code generated
 2026-10-06 | refactor | Extract duplicated file handling patterns into centralized s | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-06 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-07 | refactor | Extract duplicated JSON file path handling from backlog.py a | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-07 | fix_bug | Remove duplicate JSON file path wrapper function _backlog_pa | failed | no code generated
 2026-10-07 | refactor | Extract the duplicated JSON file handling pattern from backl | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-07 | add_test | Add unit tests for backlog.item_coverage() function covering | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
