@@ -1,4 +1,3 @@
-2026-10-05 | refactor | Extract common JSON read/write, path resolution, and atomic  | failed | no plan generated
 2026-10-05 | refactor | Create src/ouroboros/storage_helpers.py to consolidate JSON  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-05 | refactor | Create src/ouroboros/storage_helpers.py to consolidate dupli | failed | out of scope: targets 4 files, cap is 3
 2026-10-05 | refactor | Create a centralized storage_helpers module to extract dupli | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | duplicate | already completed: Add comprehensive unit tests for backlog.mark_done and backl
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | duplicate | already completed: Add comprehensive unit tests for backlog.mark_done and backl
+2026-10-07 | add_test | Add unit tests for backlog.mark_done and backlog.mark_failed | failed | out of scope: targets 15 files, cap is 3
