@@ -1,4 +1,3 @@
-2026-10-06 | fix_test | Fix incorrect test expectation for item_coverage function in | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-06 | fix_test | Fix incorrect test expectations in tests/test_backlog.py for | failed | no plan generated
 2026-10-06 | add_feature | Add execution receipt tracking to storage.py to enable audit | failed | no code generated
 2026-10-06 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-07 | refactor | Extract duplicated _state_path logic from moltbook.py and im | failed | no code generated
 2026-10-07 | refactor | Extract duplicated JSON file handling patterns from src/ouro | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-07 | refactor | Extract duplicated JSON file path handling from backlog.py a | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-07 | fix_bug | Remove duplicate JSON file path wrapper function _backlog_pa | failed | no code generated
