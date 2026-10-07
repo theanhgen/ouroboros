@@ -1,4 +1,3 @@
-2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | reverted | Test regression detected: 0 failures before, 1 after
 2026-10-06 | fix_test | Fix incorrect test expectation for item_coverage function in | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-06 | refactor | Consolidate duplicated file handling patterns into a shared  | failed | no plan generated
 2026-10-06 | refactor | Extract duplicate file handling patterns into a shared stora | failed | out of scope: targets 5 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-07 | add_feature | Implement evidence gating function that ensures bug-fix impr | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.item_coverage() fun | failed | no code generated
 2026-10-07 | refactor | Extract duplicated JSON file handling utilities into shared  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-07 | refactor | Create shared JSON file handling utilities in _storage_helpe | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
