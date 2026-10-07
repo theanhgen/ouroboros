@@ -1,4 +1,3 @@
-2026-10-06 | refactor | Extract duplicate file handling patterns into a shared stora | failed | out of scope: targets 5 files, cap is 3
 2026-10-06 | refactor | Extract duplicated file handling patterns from backlog.py, m | failed | out of scope: targets 4 files, cap is 3
 2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | reviewer rejected
 2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-07 | refactor | Create shared JSON file handling utilities in _storage_helpe | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-07 | fix_test | Fix backlog.item_coverage() to distinguish between genuine d | failed | no code generated
 2026-10-07 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | no plan generated
+2026-10-07 | refactor | Extract duplicated JSON file handling utilities into a share | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
