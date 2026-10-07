@@ -1,4 +1,3 @@
-2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | no plan generated
 2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-05 | add_test | Add comprehensive unit tests for content_overlap and item_co | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-05 | refactor | Create src/ouroboros/storage_helpers.py to consolidate JSON  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | reverted | Test regression detected: 0 failures before, 1 after
 2026-10-07 | fix_test | Fix the incomplete test_coverage_catches_it in tests/test_ba | failed | reviewer rejected
 2026-10-07 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-07 | refactor | Extract duplicated JSON file handling patterns from src/ouro | failed | no code generated
