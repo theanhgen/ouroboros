@@ -1,4 +1,3 @@
-2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-06 | fix_bug | Fix the item_coverage function in src/ouroboros/backlog.py t | success | tests: 1448 -> 1448
 2026-10-06 | refactor | Extract duplicate JSON file handling patterns from evaluatio | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-06 | fix_bug | Fix the item_coverage function to correctly calculate covera | duplicate | already completed: Fix the item_coverage function in src/ouroboros/backlog.py t
@@ -98,3 +97,4 @@
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.item_coverage() to  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-07 | fix_test | Fix backlog.item_coverage() to distinguish between genuine d | failed | no code generated
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.item_coverage() fun | failed | no code generated
+2026-10-07 | add_feature | Implement a root-cause retry mechanism in the improvement pi | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
