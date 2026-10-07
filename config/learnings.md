@@ -1,4 +1,3 @@
-2026-10-05 | add_test | Add comprehensive unit tests for extract_failure_location an | failed | no plan generated
 2026-10-05 | add_test | Add comprehensive unit tests for format_priority_report func | failed | out of scope: targets 15 files, cap is 3
 2026-10-05 | add_test | Add unit tests for format_priority_report function in src/ou | success | tests: 1448 -> 1448
 2026-10-05 | refactor | Create a centralized storage_helpers module to consolidate d | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | no plan generated
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | no code generated
 2026-10-07 | refactor | Extract duplicated JSON file handling patterns from src/ouro | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-07 | refactor | Extract duplicated JSON file handling patterns from src/ouro | failed | no code generated
