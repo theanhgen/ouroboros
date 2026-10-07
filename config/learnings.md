@@ -1,4 +1,3 @@
-2026-10-06 | add_test | Add unit tests for format_priority_report in src/ouroboros/b | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-06 | fix_test | Fix incorrect test expectation for item_coverage in tests/te | failed | no plan generated
 2026-10-06 | refactor | Create src/ouroboros/storage_helpers.py to consolidate dupli | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-06 | fix_test | Fix incorrect test expectation for item_coverage in tests/te | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-07 | refactor | Remove duplicate JSON file path wrapper functions _backlog_p | failed | no plan generated
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | success | tests: 1463 -> 1469
 2026-10-07 | refactor | Remove duplicate JSON file path wrapper functions _backlog_p | failed | no code generated
+2026-10-07 | refactor | Remove duplicate JSON file path wrapper function _backlog_pa | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
