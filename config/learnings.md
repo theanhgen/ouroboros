@@ -1,4 +1,3 @@
-2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | generation failed: EditMismatch: tests/test_backlog_lifecycle.py: SEARCH block 
 2026-10-06 | refactor | Extract common JSON file handling patterns (path resolution, | failed | no plan generated
 2026-10-06 | refactor | Extract duplicated JSON file handling patterns (path resolut | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-08 | fix_bug | Improve backlog.item_coverage() and content_overlap() to dis | failed | no plan generated
 2026-10-08 | refactor | Consolidate duplicated JSON file handling utilities into sto | failed | out of scope: targets 4 files, cap is 3
 2026-10-08 | fix_bug | Improve backlog.item_coverage() and content_overlap() to dis | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-08 | fix_bug | Improve backlog.item_coverage() and content_overlap() to dis | failed | no plan generated
