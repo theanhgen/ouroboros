@@ -1,4 +1,3 @@
-2026-10-06 | add_test | Add comprehensive edge case tests for item_coverage function | success | tests: 1448 -> 1457
 2026-10-06 | fix_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | no code generated
 2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | no code generated
 2026-10-06 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-08 | fix_bug | Improve backlog.content_overlap() to distinguish genuine dup | reverted | Test regression detected: 0 failures before, 2 after
 2026-10-08 | refactor | Extract common bounded list trimming utilities from metrics. | failed | no code generated
 2026-10-08 | refactor | Consolidate duplicated JSON file handling utilities from bac | failed | out of scope: targets 4 files, cap is 3
+2026-10-08 | refactor | Extract duplicated bounded list trimming logic from src/ouro | failed | no plan generated
