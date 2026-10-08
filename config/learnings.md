@@ -1,4 +1,3 @@
-2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-06 | refactor | Extract common JSON file handling from backlog.py and metric | failed | no plan generated
 2026-10-06 | fix_test | Update tests/test_backlog_lifecycle.py's test_coverage_catch | success | tests: 1457 -> 1457
 2026-10-06 | add_feature | Implement confidence calibration evaluation in the llm.py mo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-08 | fix_bug | In src/ouroboros/backlog.py, modify add_item() to enforce th | success | tests: 1469 -> 1469
 2026-10-08 | fix_bug | Add validation in src/ouroboros/backlog.py to ensure fix_bug | failed | generation failed: EditMismatch: But this is just the first line. Let me be mor
 2026-10-08 | fix_bug | Improve backlog.content_overlap() and backlog.item_coverage( | failed | no code generated
+2026-10-08 | fix_bug | Add validation in backlog.py to ensure fix_bug tasks have a  | failed | no plan generated
