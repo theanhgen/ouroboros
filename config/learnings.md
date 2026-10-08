@@ -1,4 +1,3 @@
-2026-10-07 | refactor | Extract duplicated JSON file handling patterns from src/ouro | failed | no plan generated
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | duplicate | already completed: Add comprehensive unit tests for backlog.mark_done and backl
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | duplicate | already completed: Add comprehensive unit tests for backlog.mark_done and backl
@@ -98,3 +97,4 @@
 2026-10-08 | fix_bug | Add validation in src/ouroboros/backlog.py's add_item() func | failed | no code generated
 2026-10-08 | refactor | Extract duplicated JSON file handling and bounded list trimm | failed | out of scope: targets 4 files, cap is 3
 2026-10-08 | fix_bug | Improve backlog.content_overlap() to better distinguish genu | failed | no code generated
+2026-10-08 | fix_bug | Enhance backlog.py's add_item() to require fix_bug tasks hav | failed | no plan generated
