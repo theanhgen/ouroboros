@@ -1,4 +1,3 @@
-2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | no plan generated
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | reverted | Test regression detected: 0 failures before, 1 after
 2026-10-07 | fix_test | Fix the incomplete test_coverage_catches_it in tests/test_ba | failed | reviewer rejected
 2026-10-07 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-08 | fix_bug | Improve backlog.content_overlap() and backlog.item_coverage( | failed | generation failed: EditMismatch: path/to/file.py: not one of the files provided
+2026-10-08 | refactor | Extract common JSON file handling and bounded list trimming  | failed | out of scope: targets 4 files, cap is 3
