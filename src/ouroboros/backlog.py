@@ -120,6 +120,11 @@ def add_item(
     source: str = "auto",
 ) -> Dict[str, Any]:
     def _add(items: List[Dict[str, Any]]) -> Dict[str, Any]:
+        # Validate source for fix_bug tasks
+        if task_type == 'fix_bug':
+            if not source or not str(source).strip():
+                raise ValueError("Tasks with task_type 'fix_bug' must have a non-empty source field")
+
         # Dedup pending items by description similarity
         for item in items:
             if item.get("description") == description and item.get("status") == "pending":
