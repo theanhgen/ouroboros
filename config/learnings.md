@@ -1,4 +1,3 @@
-2026-10-07 | refactor | Extract common JSON file handling pattern from src/ouroboros | failed | no plan generated
 2026-10-07 | refactor | Extract common JSON file handling pattern from src/ouroboros | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-07 | refactor | Remove duplicate JSON file path wrapper functions _backlog_p | failed | no plan generated
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | success | tests: 1463 -> 1469
@@ -98,3 +97,4 @@
 2026-10-08 | refactor | Improve backlog.content_overlap() to detect semantically shi | failed | no code generated
 2026-10-08 | fix_bug | Fix backlog.content_overlap() to distinguish paraphrased con | failed | no code generated
 2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
+2026-10-08 | add_test | Add comprehensive unit tests for backlog.content_overlap() a | failed | no code generated
