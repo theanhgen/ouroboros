@@ -127,7 +127,9 @@ def add_item(
 
         # Dedup pending items by description similarity
         for item in items:
-            if item.get("description") == description and item.get("status") == "pending":
+            if item.get("status") == "pending" and content_overlap(
+                item.get("description", ""), description
+            ) > 0.8:
                 return item
 
         entry = {
