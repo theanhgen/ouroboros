@@ -1,4 +1,3 @@
-2026-10-07 | fix_test | Fix the incomplete test_coverage_catches_it in tests/test_ba | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | no plan generated
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | reverted | Test regression detected: 0 failures before, 1 after
@@ -98,3 +97,4 @@
 2026-10-08 | fix_bug | Enhance validation in src/ouroboros/backlog.py's add_item()  | reverted | Test regression detected: 0 failures before, 9 after
 2026-10-08 | fix_test | Fix backlog content_overlap() and backlog.item_coverage() to | failed | reviewer rejected
 2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
+2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
