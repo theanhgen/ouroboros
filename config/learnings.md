@@ -1,4 +1,3 @@
-2026-10-06 | refactor | Extract duplicated JSON file handling patterns (path resolut | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | no code generated
 2026-10-06 | fix_bug | Refactor validate_improvement function to use centralized st | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-06 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -97,4 +96,5 @@
 2026-10-08 | refactor | Consolidate duplicated JSON file handling utilities into sto | failed | out of scope: targets 4 files, cap is 3
 2026-10-08 | fix_bug | Improve backlog.item_coverage() and content_overlap() to dis | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-08 | fix_bug | Improve backlog.item_coverage() and content_overlap() to dis | failed | no plan generated
+2026-10-08 | add_feature | Implement test_failure_triage step in the improvement pipeli | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-08 | add_feature | Implement test_failure_triage step in the improvement pipeli | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
