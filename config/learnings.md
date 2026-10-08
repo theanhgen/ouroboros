@@ -1,4 +1,3 @@
-2026-10-06 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | out of scope: targets 4 files, cap is 3
 2026-10-06 | add_test | Add comprehensive edge case tests for item_coverage function | failed | no plan generated
 2026-10-06 | add_test | Add unit tests for backlog.mark_done and backlog.mark_failed | failed | reviewer rejected
 2026-10-06 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-08 | add_feature | Add confidence-outcome correspondence metrics to the test ru | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-08 | refactor | Consolidate duplicated JSON file handling utilities from eva | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-08 | fix_bug | Modify backlog.item_coverage() and content_overlap() to dist | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-08 | refactor | Consolidate duplicated JSON file handling utilities from eva | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
