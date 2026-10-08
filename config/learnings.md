@@ -1,4 +1,3 @@
-2026-10-07 | refactor | Extract common JSON file handling utilities from src/ourobor | failed | no code generated
 2026-10-07 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | success | tests: 1457 -> 1463
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-08 | refactor | Extract common JSON file handling utilities into src/ourobor | failed | out of scope: targets 4 files, cap is 3
 2026-10-08 | fix_bug | Improve backlog.content_overlap() and backlog.item_coverage( | failed | no code generated
 2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | reviewer rejected
+2026-10-08 | fix_bug | Extend validation in backlog.py's add_item() to require fix_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
