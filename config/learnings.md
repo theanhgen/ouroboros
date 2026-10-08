@@ -1,5 +1,4 @@
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | duplicate | already completed: Add comprehensive unit tests for backlog.mark_done and backl
-2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | duplicate | already completed: Add comprehensive unit tests for backlog.mark_done and backl
 2026-10-07 | add_test | Add unit tests for backlog.mark_done and backlog.mark_failed | failed | out of scope: targets 15 files, cap is 3
 2026-10-07 | fix_test | Fix the incomplete test_coverage_catches_it in tests/test_ba | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.mark_done and backl | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-08 | fix_bug | Improve backlog.content_overlap() to better distinguish genu | failed | no code generated
 2026-10-08 | fix_bug | Enhance backlog.py's add_item() to require fix_bug tasks hav | failed | no plan generated
 2026-10-08 | add_test | Add unit tests for src/ouroboros/backlog.content_overlap and | failed | no plan generated
+2026-10-08 | fix_bug | Enhance validation in src/ouroboros/backlog.py's add_item()  | reverted | Test regression detected: 0 failures before, 9 after
