@@ -1,4 +1,3 @@
-2026-10-06 | fix_test | Update test_coverage_catches_it in tests/test_backlog_lifecy | failed | no plan generated
 2026-10-06 | refactor | Extract duplicated file handling patterns from backlog.py, m | failed | out of scope: targets 4 files, cap is 3
 2026-10-06 | fix_test | Update test_coverage_catches_it to assert the exact item_cov | failed | no plan generated
 2026-10-06 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-08 | add_feature | Implement confidence calibration evaluation in the test runn | failed | no plan generated
 2026-10-08 | fix_bug | Improve backlog.item_coverage() to distinguish genuine dupli | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-08 | fix_bug | Fix backlog.item_coverage() to distinguish genuine duplicate | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-08 | fix_bug | Modify backlog.item_coverage() to distinguish genuine duplic | failed | no code generated
