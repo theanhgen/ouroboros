@@ -1,4 +1,3 @@
-2026-10-07 | fix_bug | Enforce that fix_bug tasks only run when there are actual fa | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-07 | fix_bug | Fix backlog.item_coverage() to distinguish between genuine d | failed | no code generated
 2026-10-08 | fix_bug | Fix backlog.item_coverage() to distinguish genuine duplicate | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-08 | refactor | Extract JSON file handling utilities from backlog.py and met | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-09 | refactor | Extract bounded list trimming utility from backlog.py and me | failed | no code generated
 2026-10-09 | refactor | Extract common JSON file handling and path resolution utilit | failed | out of scope: targets 4 files, cap is 3
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
+2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
