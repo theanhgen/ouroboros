@@ -1,4 +1,3 @@
-2026-10-08 | fix_bug | Fix backlog.item_coverage() to distinguish genuine duplicate | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-08 | refactor | Extract JSON file handling utilities from backlog.py and met | failed | no plan generated
 2026-10-08 | refactor | Extract duplicated JSON file handling utilities from evaluat | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-08 | fix_bug | Improve content_overlap algorithm to better distinguish dupl | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-09 | add_feature | Add confidence calibration and outcome correspondence loggin | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py, src
