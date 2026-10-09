@@ -1,4 +1,3 @@
-2026-10-08 | fix_bug | Improve backlog.content_overlap() and backlog.item_coverage( | failed | no code generated
 2026-10-08 | fix_bug | Add validation in backlog.py to ensure fix_bug tasks have a  | failed | no plan generated
 2026-10-08 | fix_bug | Improve backlog.content_overlap() and backlog.item_coverage( | failed | no code generated
 2026-10-08 | refactor | Extract common JSON file handling utilities into src/ourobor | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-09 | improve_docs | Add comprehensive docstrings to backlog.content_overlap() an | failed | no code generated
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | no code generated
 2026-10-09 | fix_bug | Implement synonym-aware scoring for backlog.content_overlap( | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-09 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | reviewer rejected
