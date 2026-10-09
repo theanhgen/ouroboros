@@ -1,4 +1,3 @@
-2026-10-07 | fix_test | Fix backlog.item_coverage() to distinguish between genuine d | failed | no code generated
 2026-10-07 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | no plan generated
 2026-10-07 | refactor | Extract duplicated JSON file handling utilities into a share | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.item_coverage() to  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement a hybrid scoring  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | reviewer rejected
+2026-10-09 | refactor | Extract common JSON file handling and path resolution utilit | failed | out of scope: targets 4 files, cap is 3
