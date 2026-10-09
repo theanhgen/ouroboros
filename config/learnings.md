@@ -1,4 +1,3 @@
-2026-10-08 | fix_bug | Improve content_overlap algorithm to better distinguish dupl | failed | no code generated
 2026-10-08 | fix_bug | Fix backlog.item_coverage() to distinguish between genuine d | failed | no code generated
 2026-10-08 | add_feature | Implement confidence calibration evaluation in the test runn | failed | no plan generated
 2026-10-08 | fix_bug | Improve backlog.item_coverage() to distinguish genuine dupli | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-09 | add_feature | Add confidence calibration and outcome correspondence loggin | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py, src
 2026-10-09 | fix_bug | Fix `backlog.content_overlap()` and `backlog.item_coverage() | failed | no plan generated
 2026-10-09 | fix_bug | Implement hybrid scoring algorithm for backlog.content_overl | failed | no code generated
+2026-10-09 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
