@@ -1,4 +1,3 @@
-2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | reviewer rejected
 2026-10-08 | fix_bug | Extend validation in backlog.py's add_item() to require fix_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-08 | fix_bug | Improve backlog.content_overlap() to better distinguish genu | reverted | Test regression detected: 0 failures before, 2 after
 2026-10-08 | fix_bug | Enhance validation in src/ouroboros/backlog.py's add_item()  | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-10 | refactor | Extract the 'resolve path → load JSON → write atomically' pa | failed | no code generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
