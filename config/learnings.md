@@ -1,4 +1,3 @@
-2026-10-07 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | no code generated
 2026-10-07 | add_test | Add comprehensive unit tests for backlog.item_coverage() fun | failed | no plan generated
 2026-10-07 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | reviewer rejected
 2026-10-07 | add_test | Add unit tests for backlog.item_coverage() to cover empty in | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement hybrid scoring al | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Enhance validation in improvement.py's validate_improvement( | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement a hybrid scoring  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement hybrid scoring al | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
