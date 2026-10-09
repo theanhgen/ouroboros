@@ -1,4 +1,3 @@
-2026-10-07 | refactor | Extract duplicated _state_path logic from moltbook.py and im | failed | no code generated
 2026-10-07 | refactor | Extract duplicated JSON file handling patterns from src/ouro | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-07 | refactor | Extract duplicated JSON file path handling from backlog.py a | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-07 | fix_bug | Remove duplicate JSON file path wrapper function _backlog_pa | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-09 | fix_bug | Implement hybrid scoring algorithm for backlog.content_overl | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-09 | refactor | Extract common JSON file handling and bounded list trimming  | failed | out of scope: targets 4 files, cap is 3
+2026-10-09 | refactor | Extract common JSON file handling and bounded list trimming  | failed | no code generated
