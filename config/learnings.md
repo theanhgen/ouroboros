@@ -1,4 +1,3 @@
-2026-10-08 | add_feature | Implement test_failure_triage step in the improvement pipeli | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-08 | fix_bug | Improve backlog.content_overlap() to distinguish genuine dup | reverted | Test regression detected: 0 failures before, 2 after
 2026-10-08 | refactor | Extract common bounded list trimming utilities from metrics. | failed | no code generated
 2026-10-08 | refactor | Consolidate duplicated JSON file handling utilities from bac | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-09 | fix_bug | Implement improved content_overlap() and item_coverage() fun | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-09 | fix_bug | Replace naive Jaccard similarity in backlog.content_overlap( | failed | no code generated
 2026-10-09 | improve_docs | Add comprehensive docstrings to backlog.content_overlap() an | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
