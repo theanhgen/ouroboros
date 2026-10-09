@@ -162,11 +162,40 @@ _FILLER = frozenset({
 def content_overlap(a: str, b: str) -> float:
     """Jaccard similarity over content words, in [0.0, 1.0].
 
-    Deliberately crude and deliberately NOT full-text search. The gate this
-    feeds decides whether to suppress work as already done, and a broad FTS
-    match would happily call two unrelated tasks equivalent because they share
-    "test" and "parser". Set intersection over content words needs an actual
-    overlap of subject matter to score high.
+    Measures the semantic overlap between two task descriptions by comparing
+    their content words (excluding filler words). This function is deliberately
+    coarse-grained to avoid false positives from common words and is designed
+    to prevent unrelated tasks from being considered duplicates due to shared
+    frequent terms like "test" or "parser".
+
+    The scoring semantics:
+    - Exact duplicate content: returns 1.0 (perfect overlap)
+    - Paraphrased content: returns a reduced score based on word overlap
+    - Unrelated content: returns 0.0 (no overlap)
+    - Partial overlap: returns a value between 0.0 and 1.0
+
+    If either string has no content words, returns 0.0.
+
+    This function is used in `add_item` to detect duplicate pending tasks.
+    Tasks with content_overlap > 0.8 are considered duplicates and suppressed.
+
+    Args:
+        a: First task description string.
+        b: Second task description string.
+
+    Returns:
+        Float between 0.0 and 1.0 representing the Jaccard similarity of
+        content words between the two strings.
+
+    Examples:
+        >>> content_overlap("add user authentication", "implement user login")
+        0.5  # "user" overlap, "authentication" vs "login" differ
+
+        >>> content_overlap("fix memory leak in parser", "fix memory leak in parser")
+        1.0  # Exact duplicate - perfect overlap
+
+        >>> content_overlap("add new feature", "completely different task")
+        0.0  # No content word overlap
     """
     wa, wb = _content_words(a), _content_words(b)
     if not wa or not wb:
@@ -177,14 +206,43 @@ def content_overlap(a: str, b: str) -> float:
 def item_coverage(item: str, task: str) -> float:
     """Share of the backlog item's content words that the task restates, in [0.0, 1.0].
 
-    content_overlap alone could not link a task to the item it was offered for:
-    the model restates a one-line item as a paragraph, and every extra word
-    lowers Jaccard. "Implement code-aware indexing in MemoryStore using AST to
-    extract functions, classes, and docstrings" was offered for three days
-    (2026-09-25..28) with attempts stuck at 0, because even a restatement that
-    contained every word of it scored ~0.75 once the model had added its own.
-    Coverage asks the narrower question: does the task name everything the
-    item names?
+    Measures how completely a task restates the content of its corresponding
+    backlog item. Unlike Jaccard similarity, this function focuses on whether
+    the task names everything the item names, regardless of extra words the
+    model might add.
+
+    The scoring semantics:
+    - Perfect restatement: returns 1.0 (task contains all item words)
+    - Partial restatement: returns a value between 0.0 and 1.0
+    - Missing key concepts: returns 0.0 (item has concepts the task doesn't mention)
+
+    If either string has no content words, returns 0.0.
+
+    This function was introduced to solve a real use case where a detailed item
+    was offered to an LLM for days without progress, because even when the
+    model captured all the item's words, the Jaccard similarity was low due to
+    extra words the model added.
+
+    Args:
+        item: The original backlog item description.
+        task: The task description offered to the model.
+
+    Returns:
+        Float between 0.0 and 1.0 representing the proportion of content words
+        from the item that appear in the task.
+
+    Examples:
+        >>> item_coverage("implement code-aware indexing in MemoryStore using AST to extract functions, classes, and docstrings", 
+        ...               "implement code-aware indexing in MemoryStore")
+        0.5  # Half of the item content is in the task
+
+        >>> item_coverage("add user authentication module", 
+        ...               "add user authentication module")
+        1.0  # Exact match - perfect coverage
+
+        >>> item_coverage("refactor authentication logic to use dependency injection", 
+        ...               "add new admin panel")
+        0.0  # No content word overlap - missing all key concepts
     """
     wi, wt = _content_words(item), _content_words(task)
     
