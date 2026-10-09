@@ -1,4 +1,3 @@
-2026-10-08 | refactor | Extract duplicated bounded list trimming logic from src/ouro | failed | no plan generated
 2026-10-08 | fix_bug | Add validation in backlog.py so that any backlog item with t | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-08 | fix_bug | In src/ouroboros/backlog.py, modify add_item() to enforce th | success | tests: 1469 -> 1469
 2026-10-08 | fix_bug | Add validation in src/ouroboros/backlog.py to ensure fix_bug | failed | generation failed: EditMismatch: But this is just the first line. Let me be mor
@@ -98,3 +97,4 @@
 2026-10-09 | fix_bug | Replace naive Jaccard similarity in backlog.content_overlap( | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-09 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
