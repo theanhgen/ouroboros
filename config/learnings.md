@@ -1,4 +1,3 @@
-2026-10-08 | fix_bug | Modify backlog.item_coverage() to distinguish genuine duplic | failed | no code generated
 2026-10-08 | fix_bug | Fix backlog.item_coverage() and content_overlap() to disting | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-08 | fix_bug | Improve backlog.item_coverage() to distinguish genuine dupli | failed | reviewer rejected
 2026-10-08 | add_feature | Add confidence-outcome correspondence metrics to the test ru | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-09 | fix_bug | Implement hybrid scoring algorithm for backlog.content_overl | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | out of scope: targets 4 files, cap is 3
+2026-10-09 | fix_bug | Implement a hybrid scoring algorithm in backlog.content_over | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
