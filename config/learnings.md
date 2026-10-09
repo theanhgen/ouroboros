@@ -1,4 +1,3 @@
-2026-10-08 | fix_bug | Improve backlog.item_coverage() and content_overlap() to dis | failed | no plan generated
 2026-10-08 | refactor | Consolidate duplicated JSON file handling utilities into sto | failed | out of scope: targets 4 files, cap is 3
 2026-10-08 | fix_bug | Improve backlog.item_coverage() and content_overlap() to dis | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-08 | fix_bug | Improve backlog.item_coverage() and content_overlap() to dis | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-09 | improve_docs | Add comprehensive docstrings to backlog.content_overlap and  | success | tests: 1469 -> 1469
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-09 | refactor | Extract the duplicated 'resolve path → load JSON → write ato | failed | no code generated
+2026-10-09 | fix_bug | Replace naive Jaccard similarity in backlog.content_overlap( | failed | no code generated
