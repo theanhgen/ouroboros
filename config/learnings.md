@@ -1,4 +1,3 @@
-2026-10-08 | fix_bug | Fix backlog.add_item() to require failing test identifiers f | failed | no code generated
 2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | duplicate | already completed: Fix backlog.content_overlap() and backlog.item_coverage() to
 2026-10-08 | add_test | Add comprehensive unit tests for backlog.content_overlap() a | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-10 | fix_bug | Modify backlog.content_overlap() and backlog.item_coverage() | failed | reviewer rejected
 2026-10-10 | refactor | Create a centralized storage_helpers module with resolve_sta | failed | no code generated
 2026-10-10 | refactor | Extract common storage pattern into storage_helpers.py and r | failed | no plan generated
+2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
