@@ -1,4 +1,3 @@
-2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement hybrid scoring al | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Enhance validation in improvement.py's validate_improvement( | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement a hybrid scoring  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-10 | refactor | Extract common atomic JSON write patterns from test_atomic_j | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-10 | fix_bug | Modify src/ouroboros/backlog.py content_overlap() to return  | failed | out of scope: targets 14 files, cap is 3
+2026-10-10 | refactor | Extract common atomic JSON write and path resolution pattern | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
