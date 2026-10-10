@@ -1,4 +1,3 @@
-2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-09 | refactor | Extract bounded list trimming utility from backlog.py and me | failed | no code generated
 2026-10-09 | refactor | Extract common JSON file handling and path resolution utilit | failed | out of scope: targets 4 files, cap is 3
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-11 | fix_bug | Implement hybrid similarity scoring in backlog.content_overl | failed | no plan generated
 2026-10-11 | refactor | Extract duplicated path resolution and JSON handling pattern | failed | out of scope: targets 5 files, cap is 3
 2026-10-11 | refactor | Extract duplicate validation logic from attention.py functio | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
