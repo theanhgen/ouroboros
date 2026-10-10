@@ -1,4 +1,3 @@
-2026-10-09 | refactor | Extract common JSON file handling and bounded list trimming  | failed | no code generated
 2026-10-09 | refactor | Extract common JSON file handling and path resolution utilit | failed | no plan generated
 2026-10-09 | fix_bug | Enhance validation in improvement.py's validate_improvement( | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-09 | refactor | Extract common JSON file handling and path resolution utilit | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-10 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-10 | add_test | Add test to verify synonym-aware duplicate detection in back | failed | no plan generated
