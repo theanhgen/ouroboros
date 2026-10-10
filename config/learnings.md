@@ -1,4 +1,3 @@
-2026-10-08 | fix_test | Fix backlog content_overlap() and backlog.item_coverage() to | failed | reviewer rejected
 2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-08 | fix_bug | Improve backlog.content_overlap() and backlog.item_coverage( | failed | generation failed: EditMismatch: path/to/file.py: not one of the files provided
@@ -98,3 +97,4 @@
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-10 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() to implement synonym-aware sco | failed | no code generated
+2026-10-10 | fix_bug | Fix backlog.content_overlap() to implement synonym-aware sco | failed | Cannot validate: baseline test run produced no results (0 passed, 0 failed, 0 sk
