@@ -1,4 +1,3 @@
-2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-08 | fix_bug | Add validation in src/ouroboros/backlog.py's add_item() func | failed | no code generated
 2026-10-08 | refactor | Extract duplicated JSON file handling and bounded list trimm | failed | out of scope: targets 4 files, cap is 3
 2026-10-08 | fix_bug | Improve backlog.content_overlap() to better distinguish genu | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-10 | refactor | Extract duplicated 'resolve path → load JSON → write atomica | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-10 | add_test | Add comprehensive unit tests for backlog.content_overlap() a | failed | no code generated
 2026-10-10 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | no code generated
+2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | no plan generated
