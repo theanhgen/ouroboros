@@ -1,4 +1,3 @@
-2026-10-08 | refactor | Extract common JSON file handling and bounded list trimming  | failed | out of scope: targets 4 files, cap is 3
 2026-10-08 | fix_bug | Enhance validation in src/ouroboros/backlog.py's add_item()  | reverted | Test regression detected: 0 failures before, 9 after
 2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | duplicate | already completed: Fix backlog.content_overlap() and backlog.item_coverage() to
 2026-10-08 | fix_bug | Fix backlog.add_item() to require failing test identifiers f | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-10 | fix_bug | Enhance backlog content_overlap() to use synonym-aware scori | failed | no code generated
 2026-10-10 | fix_bug | Implement synonym-aware scoring for backlog.content_overlap( | failed | no plan generated
+2026-10-10 | fix_bug | Modify backlog.content_overlap() and backlog.item_coverage() | failed | reviewer rejected
