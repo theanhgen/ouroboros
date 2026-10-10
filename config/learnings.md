@@ -1,4 +1,3 @@
-2026-10-08 | refactor | Extract duplicated JSON file handling and bounded list trimm | failed | out of scope: targets 4 files, cap is 3
 2026-10-08 | fix_bug | Improve backlog.content_overlap() to better distinguish genu | failed | no code generated
 2026-10-08 | fix_bug | Enhance backlog.py's add_item() to require fix_bug tasks hav | failed | no plan generated
 2026-10-08 | add_test | Add unit tests for src/ouroboros/backlog.content_overlap and | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-10 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | no code generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
+2026-10-10 | fix_bug | Fix backlog.content_overlap() to implement synonym-aware sco | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
