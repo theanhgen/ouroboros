@@ -1,4 +1,3 @@
-2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement hybrid scoring al | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Enhance backlog.content_overlap() and backlog.item_coverage( | failed | no code generated
 2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement hybrid scoring al | failed | no code generated
 2026-10-09 | refactor | Extract common JSON file handling and path resolution utilit | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-10 | fix_bug | Fix backlog duplicate detection by adjusting content_overlap | failed | no plan generated
 2026-10-10 | add_feature | Add synonym-aware duplicate detection in src/ouroboros/backl | failed | no code generated
 2026-10-10 | fix_bug | Fix backlog content_overlap() and item_coverage() to impleme | reverted | Test regression detected: 0 failures before, 2 after
+2026-10-10 | fix_bug | Fix backlog duplicate detection by implementing hybrid simil | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
