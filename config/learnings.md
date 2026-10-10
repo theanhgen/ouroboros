@@ -1,4 +1,3 @@
-2026-10-08 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-08 | fix_bug | Implement hybrid scoring algorithm for backlog.content_overl | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-08 | refactor | Improve backlog.content_overlap() to detect semantically shi | failed | no code generated
 2026-10-08 | fix_bug | Fix backlog.content_overlap() to distinguish paraphrased con | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-10 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | reviewer rejected
+2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
