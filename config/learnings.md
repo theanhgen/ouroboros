@@ -1,4 +1,3 @@
-2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement a hybrid scoring  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement hybrid scoring al | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Enhance backlog.content_overlap() and backlog.item_coverage( | failed | no code generated
 2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement hybrid scoring al | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-10 | refactor | Extract common atomic JSON write and path resolution pattern | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-10 | fix_bug | Fix backlog duplicate detection by adjusting content_overlap | failed | no plan generated
 2026-10-10 | add_feature | Add synonym-aware duplicate detection in src/ouroboros/backl | failed | no code generated
+2026-10-10 | fix_bug | Fix backlog content_overlap() and item_coverage() to impleme | reverted | Test regression detected: 0 failures before, 2 after
