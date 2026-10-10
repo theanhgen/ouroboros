@@ -1,4 +1,3 @@
-2026-10-09 | fix_bug | Fix backlog.content_overlap() to properly distinguish paraph | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-09 | refactor | Extract common JSON file handling and bounded list trimming  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-09 | fix_bug | Fix backlog.content_overlap() to implement hybrid scoring al | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-10 | refactor | Create a centralized storage_helpers.py module with resolve_ | failed | no plan generated
 2026-10-10 | refactor | Extract the duplicated JSON I/O and path resolution pattern  | failed | no plan generated
 2026-10-10 | refactor | Extract common atomic JSON write patterns from test_atomic_j | failed | no plan generated
+2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
