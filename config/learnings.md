@@ -1,4 +1,3 @@
-2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-10 | fix_bug | Fix backlog.content_overlap() to implement synonym-aware sco | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | no code generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-11 | fix_bug | Normalize content words in backlog.content_overlap() and bac | failed | no code generated
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-11 | refactor | Extract common JSON path resolution and atomic write pattern | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-11 | fix_bug | Improve duplicate detection in backlog.add_item by enhancing | failed | no plan generated
