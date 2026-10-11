@@ -1,4 +1,3 @@
-2026-10-10 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | reviewer rejected
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-10 | add_feature | Add knowledge base entry retrieval method with fallback to h | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-11 | add_test | Add a unit test in tests/test_backlog.py to validate that ba | failed | no plan generated
 2026-10-11 | add_test | Add a unit test to verify that content_overlap() correctly n | failed | no code generated
 2026-10-11 | refactor | Fix duplicate detection in backlog.add_item by correcting co | failed | no plan generated
+2026-10-12 | refactor | Extract common JSON path resolution and atomic write pattern | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
