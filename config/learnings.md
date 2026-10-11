@@ -1,4 +1,3 @@
-2026-10-10 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | no code generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-10 | fix_bug | Enhance backlog content_overlap() to use synonym-aware scori | failed | no code generated
 2026-10-10 | fix_bug | Implement synonym-aware scoring for backlog.content_overlap( | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-11 | fix_bug | Fix duplicate detection in backlog.add_item by correcting co | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-11 | fix_bug | Fix duplicate detection in backlog.add_item by correcting co | success | tests: 1469 -> 1469
 2026-10-11 | refactor | Extract common JSON path resolution and atomic write pattern | failed | out of scope: targets 4 files, cap is 3
+2026-10-11 | add_feature | Add automatic priority assignment to backlog items based on  | failed | no plan generated
