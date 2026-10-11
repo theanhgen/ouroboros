@@ -1,4 +1,3 @@
-2026-10-10 | add_test | Add comprehensive unit tests for backlog.content_overlap() a | failed | no code generated
 2026-10-10 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | no code generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
@@ -98,3 +97,4 @@
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | reverted | Test regression detected: 0 failures before, 1 after
 2026-10-11 | refactor | Extract common path resolution and JSON I/O patterns into a  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-11 | fix_bug | Normalize content words in backlog.content_overlap() and bac | failed | no code generated
