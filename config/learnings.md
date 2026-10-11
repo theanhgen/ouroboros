@@ -1,4 +1,3 @@
-2026-10-09 | fix_bug | Replace naive Jaccard similarity in backlog.content_overlap( | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-11 | add_feature | Implement RunnerOutcome.cluster_failures_by_root_cause to gr | failed | PR creation failed
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | failed | no plan generated
 2026-10-11 | fix_test | Fix test_self_question.py's generate_codebase_questions() to | failed | no code generated
+2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | reverted | Test regression detected: 0 failures before, 1 after
