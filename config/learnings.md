@@ -1,4 +1,3 @@
-2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() sy | failed | no code generated
 2026-10-09 | fix_bug | Implement synonym-aware scoring for backlog.content_overlap( | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | reviewer rejected
 2026-10-09 | improve_docs | Add comprehensive docstrings to backlog.content_overlap() an | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-11 | refactor | Extract duplicated path resolution and JSON I/O patterns int | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-11 | refactor | Improve backlog.content_overlap() and backlog.item_coverage( | failed | no plan generated
+2026-10-11 | fix_test | Fix test_self_question.py's generate_codebase_questions() to | failed | no plan generated
