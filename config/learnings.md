@@ -1,4 +1,3 @@
-2026-10-09 | fix_bug | Implement hybrid scoring algorithm for backlog.content_overl | failed | reviewer rejected
 2026-10-09 | improve_docs | Add comprehensive docstrings to backlog.content_overlap and  | success | tests: 1469 -> 1469
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-09 | refactor | Extract the duplicated 'resolve path → load JSON → write ato | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-11 | refactor | Create storage_helpers.py with three utilities: resolve_stat | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | failed | reviewer rejected
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | failed | no plan generated
+2026-10-11 | refactor | Extract duplicated path resolution and JSON I/O patterns int | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
