@@ -1,4 +1,3 @@
-2026-10-10 | refactor | Extract common storage pattern into storage_helpers.py and r | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-10 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-11 | refactor | Extract common JSON path resolution and atomic write pattern | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | add_feature | Add automatic priority assignment to backlog items by analyz | failed | no code generated
 2026-10-11 | add_test | Add a unit test in tests/test_backlog.py to validate that ba | failed | no plan generated
+2026-10-11 | add_test | Add a unit test to verify that content_overlap() correctly n | failed | no code generated
