@@ -1,4 +1,3 @@
-2026-10-10 | fix_bug | Enhance backlog content_overlap() to use synonym-aware scori | failed | no code generated
 2026-10-10 | fix_bug | Implement synonym-aware scoring for backlog.content_overlap( | failed | no plan generated
 2026-10-10 | fix_bug | Modify backlog.content_overlap() and backlog.item_coverage() | failed | reviewer rejected
 2026-10-10 | refactor | Create a centralized storage_helpers module with resolve_sta | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-11 | refactor | Extract common JSON path resolution and atomic write pattern | failed | out of scope: targets 4 files, cap is 3
 2026-10-11 | add_feature | Add automatic priority assignment to backlog items based on  | failed | no plan generated
 2026-10-11 | refactor | Create src/ouroboros/storage_helper.py with helper functions | failed | reviewer rejected
+2026-10-11 | add_feature | Add automatic priority assignment to backlog items based on  | failed | reviewer rejected
