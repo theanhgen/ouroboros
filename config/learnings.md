@@ -1,4 +1,3 @@
-2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | add_feature | Add confidence calibration and outcome correspondence loggin | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py, src
 2026-10-09 | fix_bug | Fix `backlog.content_overlap()` and `backlog.item_coverage() | failed | no plan generated
 2026-10-09 | fix_bug | Implement hybrid scoring algorithm for backlog.content_overl | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to correctly identify semantic | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to correctly identify semantic | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | refactor | Extract common path resolution and JSON handling patterns fr | failed | no plan generated
+2026-10-11 | refactor | Extract common storage patterns from backlog.py, metrics.py, | failed | out of scope: targets 4 files, cap is 3
