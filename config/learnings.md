@@ -1,4 +1,3 @@
-2026-10-10 | fix_bug | Modify backlog.content_overlap() and backlog.item_coverage() | failed | reviewer rejected
 2026-10-10 | refactor | Create a centralized storage_helpers module with resolve_sta | failed | no code generated
 2026-10-10 | refactor | Extract common storage pattern into storage_helpers.py and r | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-11 | refactor | Create src/ouroboros/storage_helper.py with helper functions | failed | reviewer rejected
 2026-10-11 | add_feature | Add automatic priority assignment to backlog items based on  | failed | reviewer rejected
 2026-10-11 | refactor | Extract common JSON path resolution and atomic write pattern | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-11 | add_feature | Add automatic priority assignment to backlog items by analyz | failed | no code generated
