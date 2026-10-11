@@ -159,6 +159,24 @@ _FILLER = frozenset({
 })
 
 
+def _normalize_text_for_comparison(text: str) -> str:
+    """Normalize text for comparison without filtering content words.
+    
+    This function normalizes text by:
+    - Converting to lowercase
+    - Stripping punctuation (keeping alphanumerics, underscores, hyphens)
+    - Collapsing whitespace
+    
+    It does NOT filter filler words or apply length filtering, which ensures
+    that identical content with different punctuation/whitespace still produces
+    a similarity of 1.0.
+    """
+    text = (text or "").lower()
+    normalized = "".join(ch if ch.isalnum() or ch in "_-" else " " for ch in text)
+    normalized = " ".join(normalized.split())
+    return normalized
+
+
 def _normalize_content_words(text: str) -> set:
     """Return a set of normalized content words from text.
     
@@ -168,12 +186,8 @@ def _normalize_content_words(text: str) -> set:
     - Collapsing whitespace
     - Filtering filler words (length > 2)
     """
-    # Convert to lowercase
-    text = (text or "").lower()
-    # Replace non-alphanumeric and not '_' or '-' with space
-    normalized = "".join(ch if ch.isalnum() or ch in "_-" else " " for ch in text)
-    # Collapse whitespace
-    normalized = " ".join(normalized.split())
+    # First normalize the text without filtering
+    normalized = _normalize_text_for_comparison(text)
     # Split and filter filler words and length > 2
     words = normalized.split()
     return {w for w in words if len(w) > 2 and w not in _FILLER}
