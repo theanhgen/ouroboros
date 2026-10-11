@@ -1,4 +1,3 @@
-2026-10-09 | fix_bug | Implement a hybrid scoring algorithm in backlog.content_over | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-09 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-09 | add_feature | Implement test failure triage to cluster failing tests by ro | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-09 | fix_bug | Replace naive Jaccard similarity in backlog.content_overlap  | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to correctly identify semantic | failed | no plan generated
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
+2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
