@@ -1,4 +1,3 @@
-2026-10-10 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-10 | refactor | Extract common 'resolve path → load JSON → write atomically' | failed | no plan generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() to implement synonym-aware sco | failed | no code generated
 2026-10-10 | fix_bug | Fix backlog.content_overlap() to implement synonym-aware sco | failed | Cannot validate: baseline test run produced no results (0 passed, 0 failed, 0 sk
@@ -98,3 +97,4 @@
 2026-10-11 | fix_bug | Improve duplicate detection in backlog.add_item by enhancing | failed | no plan generated
 2026-10-11 | refactor | Create a centralized storage_helper module that consolidates | failed | out of scope: targets 8 files, cap is 3
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | success | tests: 1469 -> 1469
+2026-10-11 | refactor | Extract common path resolution and JSON I/O patterns into sh | failed | no plan generated
