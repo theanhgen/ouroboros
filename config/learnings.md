@@ -1,4 +1,3 @@
-2026-10-09 | add_feature | Implement test failure triage to cluster failing tests by ro | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-09 | fix_bug | Replace naive Jaccard similarity in backlog.content_overlap  | failed | no code generated
 2026-10-09 | fix_bug | Implement hybrid scoring algorithm for backlog.content_overl | failed | reviewer rejected
 2026-10-09 | improve_docs | Add comprehensive docstrings to backlog.content_overlap and  | success | tests: 1469 -> 1469
@@ -98,3 +97,4 @@
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | refactor | Create storage_helpers.py with three utilities: resolve_stat | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | failed | reviewer rejected
