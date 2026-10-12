@@ -1,5 +1,4 @@
 2026-10-10 | refactor | Extract common atomic JSON write and path resolution pattern | failed | out of scope: targets 5 files, cap is 3
-2026-10-10 | refactor | Extract common atomic JSON write and path resolution pattern | failed | out of scope: targets 5 files, cap is 3
 2026-10-10 | refactor | Extract the duplicated path resolution and atomic JSON write | failed | no plan generated
 2026-10-10 | refactor | Extract common atomic JSON write and path resolution pattern | failed | no code generated
 2026-10-11 | fix_bug | Fix backlog content_overlap() and item_coverage() to impleme | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-12 | refactor | Extract common JSON file path resolution and atomic I/O patt | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
