@@ -1,4 +1,3 @@
-2026-10-10 | fix_bug | Modify src/ouroboros/backlog.py content_overlap() to return  | failed | out of scope: targets 14 files, cap is 3
 2026-10-10 | refactor | Extract common atomic JSON write and path resolution pattern | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-10 | fix_bug | Fix backlog duplicate detection by adjusting content_overlap | failed | no plan generated
 2026-10-10 | add_feature | Add synonym-aware duplicate detection in src/ouroboros/backl | failed | no code generated
@@ -97,4 +96,5 @@
 2026-10-12 | refactor | Create src/ouroboros/storage_helper.py with helpers _resolve | reverted | Test regression detected: 0 failures before, 1 after
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | reviewer rejected
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no plan generated
+2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
