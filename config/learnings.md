@@ -1,4 +1,3 @@
-2026-10-11 | fix_bug | Fix backlog.content_overlap() to correctly identify semantic | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to correctly identify semantic | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | refactor | Extract common path resolution and JSON handling patterns fr | failed | no plan generated
 2026-10-11 | refactor | Extract common storage patterns from backlog.py, metrics.py, | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-12 | refactor | Create src/ouroboros/storage_helper.py with helper functions | failed | no code generated
+2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by normalizing a | failed | no plan generated
