@@ -1,4 +1,3 @@
-2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | refactor | Create storage_helpers.py with three utilities: resolve_stat | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-12 | refactor | Extract common JSON file handling pattern from wiki.py into  | success | tests: 1469 -> 1469
 2026-10-12 | fix_bug | Fix duplicate detection inconsistency in backlog.add_item by | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-12 | refactor | Extract text normalization for duplicate detection into a sh | failed | no code generated
