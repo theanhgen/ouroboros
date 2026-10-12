@@ -1,4 +1,3 @@
-2026-10-10 | fix_bug | Fix backlog duplicate detection by adjusting content_overlap | failed | no plan generated
 2026-10-10 | add_feature | Add synonym-aware duplicate detection in src/ouroboros/backl | failed | no code generated
 2026-10-10 | fix_bug | Fix backlog content_overlap() and item_coverage() to impleme | reverted | Test regression detected: 0 failures before, 2 after
 2026-10-10 | fix_bug | Fix backlog duplicate detection by implementing hybrid simil | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no code generated
+2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no plan generated
