@@ -1,4 +1,3 @@
-2026-10-10 | fix_bug | Fix backlog.content_overlap() to implement hybrid similarity | failed | no code generated
 2026-10-10 | refactor | Extract duplicated JSON I/O and path resolution patterns fro | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-10 | refactor | Extract common atomic JSON write and path resolution pattern | failed | out of scope: targets 5 files, cap is 3
 2026-10-10 | refactor | Extract common atomic JSON write and path resolution pattern | failed | out of scope: targets 5 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-12 | refactor | Extract duplicated JSON file path resolution and atomic I/O  | failed | no code generated
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no plan generated
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
