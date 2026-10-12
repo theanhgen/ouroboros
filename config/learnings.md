@@ -1,4 +1,3 @@
-2026-10-11 | fix_bug | Implement hybrid similarity scoring in backlog.content_overl | failed | no plan generated
 2026-10-11 | refactor | Extract duplicated path resolution and JSON handling pattern | failed | out of scope: targets 5 files, cap is 3
 2026-10-11 | refactor | Extract duplicate validation logic from attention.py functio | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-12 | refactor | Extract duplicated JSON file path resolution and atomic I/O  | failed | no plan generated
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by normalizing a | failed | reviewer rejected
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no plan generated
