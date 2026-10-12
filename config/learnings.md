@@ -1,4 +1,3 @@
-2026-10-10 | fix_bug | Fix backlog content_overlap() and item_coverage() to impleme | reverted | Test regression detected: 0 failures before, 2 after
 2026-10-10 | fix_bug | Fix backlog duplicate detection by implementing hybrid simil | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-10 | fix_bug | Fix backlog content_overlap() to implement hybrid similarity | failed | no code generated
 2026-10-10 | refactor | Extract common atomic JSON write and path resolution pattern | failed | out of scope: targets 6 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no code generated
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no plan generated
 2026-10-12 | add_feature | Add failure triage logging to improvement.py to track why fi | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-12 | add_feature | Implement failure taxonomy and confidence calibration in tes | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
