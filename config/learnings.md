@@ -1,4 +1,3 @@
-2026-10-11 | add_test | Add comprehensive unit tests for `backlog.content_overlap()` | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to correctly identify semantic | failed | no plan generated
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to correctly identify semantic | failed | no plan generated
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no plan generated
 2026-10-12 | fix_bug | Modify add_item in src/ouroboros/backlog.py to treat hyphens | failed | no plan generated
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
