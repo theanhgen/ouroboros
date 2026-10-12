@@ -1,4 +1,3 @@
-2026-10-11 | refactor | Create storage_helpers.py with three utilities: resolve_stat | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | failed | reviewer rejected
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | failed | no plan generated
 2026-10-11 | refactor | Extract duplicated path resolution and JSON I/O patterns int | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-12 | fix_bug | Fix duplicate detection inconsistency in backlog.add_item by | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-12 | refactor | Extract text normalization for duplicate detection into a sh | failed | no code generated
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: EditMismatch: a block has no file path before it
+2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
