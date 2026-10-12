@@ -1,4 +1,3 @@
-2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | failed | no plan generated
 2026-10-11 | refactor | Extract duplicated path resolution and JSON I/O patterns int | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-11 | refactor | Create src/ouroboros/storage_helpers.py with resolve_state_p | failed | no code generated
 2026-10-11 | refactor | Extract duplicated path resolution and JSON I/O patterns int | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: EditMismatch: a block has no file path before it
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-13 | refactor | Extract common path resolution and JSON read/write utilities | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
