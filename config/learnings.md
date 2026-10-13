@@ -1,4 +1,3 @@
-2026-10-11 | fix_bug | Improve duplicate detection in backlog.add_item by enhancing | failed | no plan generated
 2026-10-11 | refactor | Create a centralized storage_helper module that consolidates | failed | out of scope: targets 8 files, cap is 3
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | success | tests: 1469 -> 1469
 2026-10-11 | refactor | Extract common path resolution and JSON I/O patterns into sh | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | no code generated
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no code generated
 2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | out of scope: targets 7 files, cap is 3
+2026-10-13 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | reverted | Test regression detected: 0 failures before, 3 after
