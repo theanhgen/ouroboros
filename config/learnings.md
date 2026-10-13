@@ -1,4 +1,3 @@
-2026-10-11 | fix_bug | Fix duplicate detection in backlog.add_item by correcting co | success | tests: 1469 -> 1469
 2026-10-11 | refactor | Extract common JSON path resolution and atomic write pattern | failed | out of scope: targets 4 files, cap is 3
 2026-10-11 | add_feature | Add automatic priority assignment to backlog items based on  | failed | no plan generated
 2026-10-11 | refactor | Create src/ouroboros/storage_helper.py with helper functions | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | no plan generated
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-13 | fix_bug | Fix bug-fix validation gates in src/ouroboros/improvement.py | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
