@@ -1,4 +1,3 @@
-2026-10-11 | add_feature | Add confidence calibration evaluation to improvement pipelin | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-11 | fix_bug | Improve duplicate detection in backlog.add_item to catch tas | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no plan generated
 2026-10-13 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-13 | fix_bug | Update _normalize_text_for_comparison to treat hyphens and u | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
