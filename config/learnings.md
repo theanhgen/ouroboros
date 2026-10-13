@@ -1,4 +1,3 @@
-2026-10-11 | add_test | Add a unit test in tests/test_backlog.py to validate that ba | failed | no plan generated
 2026-10-11 | add_test | Add a unit test to verify that content_overlap() correctly n | failed | no code generated
 2026-10-11 | refactor | Fix duplicate detection in backlog.add_item by correcting co | failed | no plan generated
 2026-10-12 | refactor | Extract common JSON path resolution and atomic write pattern | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | no plan generated
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | no code generated
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/backlog.py | failed | no code generated
+2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
