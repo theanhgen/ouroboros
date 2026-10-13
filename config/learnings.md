@@ -1,4 +1,3 @@
-2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | reverted | Test regression detected: 0 failures before, 1 after
 2026-10-11 | refactor | Extract common path resolution and JSON I/O patterns into a  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-11 | fix_bug | Normalize content words in backlog.content_overlap() and bac | failed | no code generated
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-13 | fix_test | Fix duplicate detection in backlog.py by updating _normalize | failed | no plan generated
 2026-10-13 | refactor | Extract essential JSON I/O utilities into storage_helper.py  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-13 | add_test | Add a comprehensive test file tests/test_knowledge_base.py t | failed | no plan generated
