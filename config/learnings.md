@@ -1,4 +1,3 @@
-2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | success | tests: 1469 -> 1469
 2026-10-11 | refactor | Extract common path resolution and JSON I/O patterns into sh | failed | no plan generated
 2026-10-11 | refactor | Create src/ouroboros/storage_helper.py with three helpers: _ | failed | no plan generated
 2026-10-11 | fix_bug | Fix duplicate detection in backlog.add_item by improving con | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | out of scope: targets 7 files, cap is 3
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-13 | fix_test | Fix duplicate detection in backlog.py by updating _normalize | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-13 | fix_test | Fix duplicate detection in backlog.py by updating _normalize | failed | reviewer rejected
