@@ -1,4 +1,3 @@
-2026-10-12 | refactor | Fix duplicate detection in backlog.add_item by correcting co | failed | no code generated
 2026-10-12 | add_test | Add unit tests in tests/test_backlog.py to validate that bac | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-12 | add_test | Add a unit test in tests/test_codebase.py to validate that t | failed | generation failed: EditMismatch: tests/test_codebase.py: SEARCH block not found
 2026-10-12 | refactor | Extract duplicated data‑file path resolution and JSON I/O pa | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-13 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | no code generated
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-13 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | no code generated
+2026-10-13 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | reverted | Test regression detected: 0 failures before, 3 after
