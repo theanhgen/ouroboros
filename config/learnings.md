@@ -1,4 +1,3 @@
-2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-11 | fix_bug | Fix backlog.content_overlap() and backlog.item_coverage() to | failed | no plan generated
 2026-10-11 | add_feature | Implement RunnerOutcome.cluster_failures_by_root_cause to gr | failed | PR creation failed
 2026-10-11 | fix_bug | Fix backlog.content_overlap() to normalize content words bef | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-13 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-13 | fix_bug | Fix duplicate detection inconsistency in backlog.add_item by | failed | no code generated
 2026-10-13 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
+2026-10-13 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
