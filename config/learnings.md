@@ -1,4 +1,3 @@
-2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-12 | refactor | Create src/ouroboros/storage_helper.py with helper functions | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-14 | refactor | Refactor src/ouroboros/evaluation.py, src/ouroboros/backlog. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | failed | no code generated
+2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
