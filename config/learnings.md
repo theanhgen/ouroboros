@@ -1,4 +1,3 @@
-2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | no plan generated
 2026-10-13 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.add_item by normalizing h | failed | no code generated
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no code generated
 2026-10-15 | add_feature | Add early-stage gates to abort improvement cycles that stall | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-15 | refactor | Extract duplicated repository-relative path resolution from  | success | tests: 1469 -> 1469
