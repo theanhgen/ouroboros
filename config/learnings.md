@@ -1,4 +1,3 @@
-2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by normalizing a | failed | no plan generated
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-12 | refactor | Extract common JSON file handling pattern into src/ouroboros | failed | out of scope: targets 4 files, cap is 3
 2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-14 | refactor | Create a "verifiable interfaces" layer that exposes key inte | failed | out of scope: targets forbidden file(s): src/ouroboros/policies.py, src/ou
 2026-10-14 | refactor | Extract duplicated repository-relative path resolution and a | failed | no code generated
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | failed | no plan generated
+2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | reverted | Test regression detected: 0 failures before, 3 after
