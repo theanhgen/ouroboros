@@ -1,4 +1,3 @@
-2026-10-12 | add_feature | Implement failure taxonomy in test_runner.py to categorize f | failed | no code generated
 2026-10-12 | refactor | Extract duplicated JSON file path resolution and atomic I/O  | failed | no code generated
 2026-10-12 | refactor | Create src/ouroboros/storage_helper.py with helpers _resolve | reverted | Test regression detected: 0 failures before, 1 after
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-14 | refactor | Extract duplicated repository-relative path resolution and a | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-14 | refactor | Extract common repository-relative path resolution and atomi | failed | out of scope: targets 4 files, cap is 3
