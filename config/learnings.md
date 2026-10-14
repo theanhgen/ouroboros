@@ -1,4 +1,3 @@
-2026-10-13 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-13 | fix_bug | Fix duplicate detection inconsistency in backlog.add_item by | failed | no code generated
 2026-10-13 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-13 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-14 | refactor | Extract duplicated repository-relative path resolution and J | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
