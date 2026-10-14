@@ -12,7 +12,7 @@ from statistics import mean
 
 from .model_defaults import DEFAULT_OPENAI_MODEL
 from .storage import load_json_file, save_json_file, update_json_file
-from .state_persistence import _state_path
+from .storage_helper import _resolve_repo_path
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ def _save_backlog_items(repo_root: Path, items: List[Dict[str, Any]]) -> None:
 
 
 def _backlog_path(repo_root: Path) -> Path:
-    return _state_path(repo_root, BACKLOG_FILE)
+    return _resolve_repo_path(repo_root, BACKLOG_FILE)
 
 
 def _extract_items(data: Any, ensure: bool = False) -> List[Dict[str, Any]]:
