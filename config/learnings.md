@@ -1,4 +1,3 @@
-2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | no plan generated
 2026-10-13 | fix_bug | Add failure taxonomy and root cause analysis to improvement. | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | no plan generated
 2026-10-13 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
@@ -98,3 +97,4 @@
 2026-10-14 | fix_bug | In src/ouroboros/backlog.py, modify `_normalize_text_for_com | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
+2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no code generated
