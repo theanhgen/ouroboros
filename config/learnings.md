@@ -1,5 +1,4 @@
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
-2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no code generated
 2026-10-12 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | failed | no plan generated
 2026-10-12 | add_feature | Add failure triage logging to improvement.py to track why fi | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-14 | fix_test | Enhance test failure triage in src/test_runner.py to provide | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-14 | add_test | Add comprehensive test coverage for knowledge_base.py functi | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-14 | fix_bug | Enhance test failure triage for fix_bug tasks by adding fail | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-14 | refactor | Replace duplicated repository‑relative path resolution and a | failed | no plan generated
