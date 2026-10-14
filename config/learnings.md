@@ -1,4 +1,3 @@
-2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.add_item by updating _nor | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-13 | refactor | Extract common path resolution and JSON read/write utilities | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-13 | refactor | Extract common JSON file handling pattern into src/ouroboros | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-14 | refactor | Consolidate duplicated JSON file handling patterns across st | failed | out of scope: targets 4 files, cap is 3
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | failed | no code generated
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | failed | generation failed: EditMismatch: Let me implement the fix:: not one of the file
+2026-10-14 | refactor | Consolidate JSON file handling utilities in storage_helper.p | failed | reviewer rejected
