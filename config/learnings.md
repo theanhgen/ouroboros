@@ -1,4 +1,3 @@
-2026-10-12 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-12 | refactor | Extract common JSON file handling pattern from wiki.py into  | success | tests: 1469 -> 1469
 2026-10-12 | fix_bug | Fix duplicate detection inconsistency in backlog.add_item by | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-12 | refactor | Extract text normalization for duplicate detection into a sh | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-14 | refactor | Extract duplicated repository-relative path resolution and a | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | failed | no plan generated
+2026-10-14 | refactor | Extract duplicated repository-relative path resolution and a | failed | no plan generated
