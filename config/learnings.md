@@ -1,4 +1,3 @@
-2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | no plan generated
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-14 | refactor | Extract duplicated repository-relative path resolution and a | failed | out of scope: targets 4 files, cap is 3
 2026-10-14 | add_test | Add comprehensive test coverage for knowledge_base.py functi | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-15 | refactor | Extract common JSON file handling and path resolution patter | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | failed | no plan generated
 2026-10-15 | refactor | Consolidate duplicate‑detection normalization by extracting  | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-15 | refactor | Consolidate duplicate‑detection normalization in backlog.py  | reverted | Test regression detected: 0 failures before, 5 after
