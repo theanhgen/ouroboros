@@ -1,4 +1,3 @@
-2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | no code generated
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no code generated
 2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | out of scope: targets 7 files, cap is 3
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | reverted | Test regression detected: 0 failures before, 3 after
@@ -98,3 +97,4 @@
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-15 | refactor | Extract backlog JSON load/save logic to a generic utility in | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-15 | improve_docs | Add comprehensive documentation for evaluation.py's JSON han | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
