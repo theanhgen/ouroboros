@@ -1,4 +1,3 @@
-2026-10-14 | refactor | Extract common repository-relative path resolution and atomi | failed | out of scope: targets 4 files, cap is 3
 2026-10-14 | fix_bug | Fix the bug fix validation pipeline by enhancing test failur | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-14 | fix_test | Enhance test failure triage in src/test_runner.py to provide | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-14 | add_test | Add comprehensive test coverage for knowledge_base.py functi | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-15 | refactor | Extract common JSON file handling and path resolution patter | failed | no plan generated
 2026-10-15 | add_test | Add unit tests for backlog duplicate detection normalization | failed | reviewer rejected
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | failed | no code generated
+2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | reviewer rejected
