@@ -1,5 +1,4 @@
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | reverted | Test regression detected: 0 failures before, 3 after
-2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-14 | refactor | Extract common repository-relative path resolution and atomi | failed | out of scope: targets 4 files, cap is 3
 2026-10-14 | fix_bug | Fix the bug fix validation pipeline by enhancing test failur | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-14 | fix_test | Enhance test failure triage in src/test_runner.py to provide | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-15 | refactor | Extract common JSON file handling and atomic writing pattern | failed | no plan generated
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-15 | refactor | Extract common JSON file handling and path resolution patter | failed | no plan generated
+2026-10-15 | add_test | Add unit tests for backlog duplicate detection normalization | failed | reviewer rejected
