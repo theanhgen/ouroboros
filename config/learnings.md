@@ -1,4 +1,3 @@
-2026-10-13 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | no code generated
 2026-10-13 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | out of scope: targets 7 files, cap is 3
 2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | out of scope: targets 5 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-15 | refactor | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no code generated
+2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | reviewer rejected
