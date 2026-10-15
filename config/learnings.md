@@ -1,4 +1,3 @@
-2026-10-13 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | no code generated
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-13 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | no code generated
 2026-10-13 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | reverted | Test regression detected: 0 failures before, 3 after
@@ -98,3 +97,4 @@
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-15 | refactor | Extract common JSON file handling and path resolution patter | failed | no code generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
+2026-10-15 | refactor | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
