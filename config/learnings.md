@@ -1,4 +1,3 @@
-2026-10-13 | fix_test | Fix duplicate detection in backlog.py by updating _normalize | failed | reviewer rejected
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no code generated
 2026-10-15 | refactor | Extract repository-relative path resolution and atomic JSON  | failed | out of scope: targets 5 files, cap is 3
+2026-10-15 | refactor | Implement centralized utilities in storage_helper.py: 1) _re | failed | no plan generated
