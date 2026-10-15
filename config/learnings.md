@@ -1,4 +1,3 @@
-2026-10-14 | add_test | Add comprehensive test coverage for knowledge_base.py functi | failed | no plan generated
 2026-10-14 | refactor | Refactor src/ouroboros/backlog.py and src/ouroboros/metrics. | failed | no code generated
 2026-10-14 | refactor | Refactor src/ouroboros/evaluation.py, src/ouroboros/backlog. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | reverted | Test regression detected: 0 failures before, 3 after
@@ -98,3 +97,4 @@
 2026-10-15 | refactor | Extract duplicated path resolution and JSON file handling pa | failed | no code generated
 2026-10-15 | add_test | Add unit tests for duplicate detection normalization in back | failed | generation failed: EditMismatch: tests/test_backlog.py: SEARCH block not found:
 2026-10-16 | refactor | Extract duplicated JSON file handling and path resolution pa | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-16 | refactor | Consolidate duplicate‑detection normalization in backlog.py  | reverted | Test regression detected: 0 failures before, 3 after
