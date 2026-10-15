@@ -1,4 +1,3 @@
-2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by ensuring _norma | failed | no plan generated
 2026-10-14 | add_test | Add comprehensive test coverage for knowledge_base.py functi | failed | no plan generated
 2026-10-14 | add_test | Add comprehensive test coverage for knowledge_base.py functi | failed | no plan generated
 2026-10-14 | refactor | Refactor src/ouroboros/backlog.py and src/ouroboros/metrics. | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-15 | add_test | Add unit tests for the duplicate detection normalization in  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-15 | refactor | Extract duplicated path resolution and JSON file handling pa | failed | no code generated
+2026-10-15 | add_test | Add unit tests for duplicate detection normalization in back | failed | generation failed: EditMismatch: tests/test_backlog.py: SEARCH block not found:
