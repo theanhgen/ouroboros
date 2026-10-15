@@ -71,3 +71,13 @@ def write_json_file(repo_root: Path, filename: str, data: Any) -> Path:
     content = json.dumps(data, ensure_ascii=False, indent=2)
     _atomic_write_content(path, content)
     return path
+
+def trim_list(lst: list[Any], max_size: int) -> list[Any]:
+    """Trim a list to a maximum size while preserving order.
+
+    Returns a new list containing the first `max_size` elements.
+    If `lst` is shorter than or equal to `max_size`, it is returned unchanged.
+    """
+    if max_size < 0:
+        raise ValueError("max_size must be non-negative")
+    return lst[:max_size]
