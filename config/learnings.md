@@ -1,4 +1,3 @@
-2026-10-13 | refactor | Extract common repository‑relative path resolution and atomi | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-13 | fix_test | Fix duplicate detection in backlog.py by updating _normalize | failed | no plan generated
 2026-10-13 | refactor | Extract essential JSON I/O utilities into storage_helper.py  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-15 | refactor | Extract repository-relative path resolution from backlog.py  | failed | no code generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-15 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | no plan generated
+2026-10-15 | add_feature | Add a bounded list trimmer utility to storage_helper.py that | success | tests: 1469 -> 1469
