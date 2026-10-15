@@ -1,4 +1,3 @@
-2026-10-13 | fix_bug | Update _normalize_text_for_comparison to treat hyphens and u | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-13 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-13 | refactor | Extract common repository‑relative path resolution and atomi | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-15 | refactor | Consolidate duplicated JSON file handling patterns in storag | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-15 | add_feature | Add centralized JSON file handling utilities in storage_help | failed | out of scope: targets 6 files, cap is 3
+2026-10-15 | refactor | Extract repository-relative path resolution from backlog.py  | failed | no code generated
