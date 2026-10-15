@@ -1,4 +1,3 @@
-2026-10-13 | add_test | Add a comprehensive test file tests/test_knowledge_base.py t | failed | no plan generated
 2026-10-13 | fix_test | Fix duplicate detection in backlog.py by updating _normalize | failed | reviewer rejected
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | no code generated
 2026-10-13 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-15 | refactor | Extract repository-relative path resolution from backlog.py  | failed | no plan generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
