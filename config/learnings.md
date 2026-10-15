@@ -1,4 +1,3 @@
-2026-10-13 | fix_test | Fix duplicate detection in backlog.py by updating _normalize | failed | reviewer rejected
 2026-10-13 | refactor | Extract common repository-relative path resolution and atomi | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-13 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | no code generated
 2026-10-13 | add_test | Add comprehensive test coverage for src/ouroboros/knowledge_ | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-15 | add_feature | Add a reusable bounded JSON list trimmer utility to storage_ | success | tests: 1469 -> 1469
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no code generated
