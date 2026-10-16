@@ -1,4 +1,3 @@
-2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-15 | refactor | Extract repository-relative path resolution from backlog.py  | failed | no plan generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-16 | refactor | Consolidate JSON file handling patterns across src/ouroboros | failed | no plan generated
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | reviewer rejected
 2026-10-16 | refactor | Replace duplicated JSON file handling in src/ouroboros/backl | failed | no code generated
+2026-10-16 | add_test | Add comprehensive tests for the cluster_failures_by_root_cau | failed | out of scope: targets 15 files, cap is 3
