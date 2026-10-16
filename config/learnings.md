@@ -1,4 +1,3 @@
-2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-14 | refactor | Extract duplicated repository-relative path resolution and a | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | failed | no plan generated
 2026-10-14 | refactor | Extract duplicated repository-relative path resolution and a | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | reviewer rejected
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | reviewer rejected
+2026-10-16 | refactor | Extract common JSON file handling and path resolution patter | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
