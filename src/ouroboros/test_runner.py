@@ -6,7 +6,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from .config import SafetyConfig
 
@@ -54,7 +54,7 @@ class RunnerOutcome:
             f"{self.errors} errors (returncode={self.returncode}){cov}"
         )
 
-    def cluster_failures_by_root_cause(self) -> dict:
+    def cluster_failures_by_root_cause(self) -> Dict[str, Dict]:
         """
         Group failures by fault category (file, error type, line range) with associated tracebacks.
         
@@ -69,7 +69,7 @@ class RunnerOutcome:
                         {
                             "test_name": str,
                             "file": str,
-                            "line": int or None,
+                            "line": Optional[int],
                             "message": str,
                             "traceback": str
                         },
@@ -79,12 +79,18 @@ class RunnerOutcome:
                 },
                 ...
             }
+            The dictionary is sorted by frequency (highest count first) to enable
+            identification of most likely fault categories for smarter retries.
         """
+        # Handle edge case: no failures
+        if not self.failure_details:
+            return {}
+        
         # Step 1: Extract failures from input
         failures = self.failure_details
         
         # Step 2: Initialize result structure
-        clustered = {}
+        clustered: Dict[str, Dict] = {}
         
         # Step 3: Process each failure
         for failure in failures:
@@ -120,8 +126,13 @@ class RunnerOutcome:
             })
             clustered[category_key]["count"] += 1
         
-        # Step 4: Return clustered results
-        return clustered
+        # Step 4: Sort clusters by frequency (descending order) - RANKING CLUSTERS
+        sorted_clustered = dict(
+            sorted(clustered.items(), key=lambda item: item[1]["count"], reverse=True)
+        )
+        
+        # Step 5: Return clustered results
+        return sorted_clustered
 
 
 def _parse_location_from_string(location_string: str, source: str = "") -> tuple[Optional[str], Optional[int]]:
