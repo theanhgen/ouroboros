@@ -1,4 +1,3 @@
-2026-10-15 | add_feature | Add centralized JSON file handling utilities in storage_help | failed | out of scope: targets 6 files, cap is 3
 2026-10-15 | refactor | Extract repository-relative path resolution from backlog.py  | failed | no code generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-15 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-16 | add_test | Add test_failure_triage method to test_runner.py that analyz | failed | no plan generated
 2026-10-16 | refactor | Consolidate JSON file handling in backlog.py and metrics.py  | failed | no code generated
 2026-10-16 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | reviewer rejected
+2026-10-16 | add_test | Add test_failure_triage method to test_runner.py that analyz | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
