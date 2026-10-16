@@ -1,4 +1,3 @@
-2026-10-15 | improve_docs | Add comprehensive documentation for evaluation.py's JSON han | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | reviewer rejected
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-16 | add_test | Add comprehensive tests for the cluster_failures_by_root_cau | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-16 | add_test | Add a unit test for _normalize_text_for_comparison in src/ou | failed | no code generated
 2026-10-16 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
+2026-10-16 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | reviewer rejected
