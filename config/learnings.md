@@ -1,4 +1,3 @@
-2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-14 | refactor | Refactor backlog.py to use storage_helper utilities for repo | failed | no code generated
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | failed | no plan generated
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-16 | add_test | Create a new test file tests/test_backlog_duplicate_normaliz | reverted | New test errors detected: 0 errors before, 1 after
 2026-10-16 | add_feature | Implement cluster_failures_by_root_cause method in RunnerOut | failed | reviewer rejected
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | reviewer rejected
+2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | no plan generated
