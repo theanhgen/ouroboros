@@ -1,4 +1,3 @@
-2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | failed | generation failed: EditMismatch: Let me implement the fix:: not one of the file
 2026-10-14 | refactor | Consolidate JSON file handling utilities in storage_helper.p | failed | reviewer rejected
 2026-10-14 | refactor | Consolidate JSON file handling patterns in storage_helper.py | failed | no code generated
 2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-16 | refactor | Extract common JSON file handling and path resolution patter | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | no plan generated
 2026-10-16 | fix_bug | Modify _normalize_text_for_comparison in src/ouroboros/backl | failed | reviewer rejected
+2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | no plan generated
