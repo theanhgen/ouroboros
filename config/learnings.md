@@ -1,4 +1,3 @@
-2026-10-15 | add_feature | Add early-stage gates to abort improvement cycles that stall | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-15 | refactor | Extract duplicated repository-relative path resolution from  | success | tests: 1469 -> 1469
 2026-10-15 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | reverted | Test regression detected: 0 failures before, 5 after
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-16 | fix_bug | Update _normalize_text_for_comparison to convert hyphens and | failed | reviewer rejected
 2026-10-16 | add_test | Add test_failure_triage method to test_runner.py that analyz | failed | no code generated
 2026-10-16 | refactor | Consolidate JSON file handling patterns in src/ouroboros/bac | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-16 | refactor | Replace duplicated JSON file handling and bounded trimming l | failed | no plan generated
