@@ -1,4 +1,3 @@
-2026-10-15 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | reverted | Test regression detected: 0 failures before, 5 after
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-15 | refactor | Consolidate duplicated JSON file handling patterns in storag | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-15 | add_feature | Add centralized JSON file handling utilities in storage_help | failed | out of scope: targets 6 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-16 | refactor | Consolidate JSON file handling patterns in src/ouroboros/bac | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-16 | refactor | Replace duplicated JSON file handling and bounded trimming l | failed | no plan generated
 2026-10-16 | add_test | Add test_failure_triage method to test_runner.py that analyz | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-16 | add_test | Add test_failure_triage method to test_runner.py that analyz | failed | no plan generated
