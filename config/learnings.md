@@ -1,4 +1,3 @@
-2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py by updating _norma | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-14 | refactor | Create a "verifiable interfaces" layer that exposes key inte | failed | out of scope: targets forbidden file(s): src/ouroboros/policies.py, src/ou
 2026-10-14 | refactor | Extract duplicated repository-relative path resolution and a | failed | no code generated
 2026-10-14 | fix_bug | Fix duplicate detection bug in backlog.py where hyphenated a | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py by implementing a cons | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | no code generated
 2026-10-16 | refactor | Implement cluster_failures_by_root_cause method in test_runn | failed | no plan generated
+2026-10-16 | refactor | Add cluster_failures_by_root_cause method to RunnerOutcome i | failed | no code generated
