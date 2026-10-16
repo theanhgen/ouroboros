@@ -1,4 +1,3 @@
-2026-10-14 | fix_bug | In src/ouroboros/backlog.py, modify `_normalize_text_for_com | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-14 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-16 | refactor | Expose verifiable interfaces for key intent points by modify | failed | out of scope: targets forbidden file(s): src/ouroboros/policies.py
 2026-10-16 | fix_test | Implement cluster_failures_by_root_cause method in RunnerOut | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-16 | add_feature | Add test_failure_triage method to test_runner.py that analyz | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-16 | refactor | Replace duplicated JSON file handling and bounded trimming l | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
