@@ -1,4 +1,3 @@
-2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | failed | no code generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | reviewer rejected
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | reverted | Test regression detected: 0 failures before, 3 after
@@ -98,3 +97,4 @@
 2026-10-17 | refactor | Consolidate backlog JSON handling in backlog.py to use the c | failed | reviewer rejected
 2026-10-17 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
+2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
