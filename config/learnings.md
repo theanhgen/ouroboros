@@ -1,4 +1,3 @@
-2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | no plan generated
 2026-10-16 | add_feature | Add cluster_failures_by_root_cause method to RunnerOutcome c | failed | reviewer rejected
 2026-10-16 | fix_bug | Fix duplicate detection in backlog to treat hyphenated and u | failed | no code generated
 2026-10-16 | add_feature | Add cluster_failures_by_root_cause method to RunnerOutcome c | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-17 | refactor | Extract the common "resolve path → load JSON → apply bounded | failed | no plan generated
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | out of scope: targets 14 files, cap is 3
 2026-10-17 | refactor | Extract common JSON file handling pattern into storage_helpe | failed | no plan generated
+2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
