@@ -1,4 +1,3 @@
-2026-10-15 | refactor | Consolidate duplicate‑detection normalization in backlog.py  | reverted | Test regression detected: 0 failures before, 5 after
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | no code generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | no plan generated
 2026-10-15 | refactor | Extract common JSON file handling and atomic writing pattern | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-17 | refactor | Extract common path resolution, atomic write, and bounded tr | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
+2026-10-17 | fix_bug | Fix _normalize_text_for_comparison to properly normalize hyp | failed | reviewer rejected
