@@ -1,4 +1,3 @@
-2026-10-15 | add_test | Add unit tests for duplicate detection normalization in back | failed | generation failed: EditMismatch: tests/test_backlog.py: SEARCH block not found:
 2026-10-16 | refactor | Extract duplicated JSON file handling and path resolution pa | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-16 | refactor | Consolidate duplicate‑detection normalization in backlog.py  | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-16 | refactor | Implement the `cluster_failures_by_root_cause` method in `sr | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-17 | add_test | Add test for _build_failed_attempts_context to verify it cor | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-17 | refactor | Consolidate JSON file handling utilities in storage_helper.p | failed | no plan generated
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
+2026-10-17 | refactor | Expand storage_helper.py to consolidate JSON file handling p | failed | no plan generated
