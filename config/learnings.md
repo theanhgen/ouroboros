@@ -1,4 +1,3 @@
-2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | no plan generated
 2026-10-16 | refactor | Implement the cluster_failures_by_root_cause method in src/o | success | tests: 1469 -> 1469
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-17 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | reviewer rejected
 2026-10-17 | refactor | Extract the bounded list trimming logic from backlog.py into | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-17 | fix_bug | Fix validation logic in attention.py validate_post function  | failed | reviewer rejected
