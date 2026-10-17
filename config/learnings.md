@@ -1,4 +1,3 @@
-2026-10-15 | refactor | Extract common JSON file handling and path resolution patter | failed | no code generated
 2026-10-15 | refactor | Extract common JSON file handling and atomic writing pattern | failed | no plan generated
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-15 | refactor | Extract common JSON file handling and path resolution patter | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-17 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-17 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-17 | refactor | Consolidate duplicated JSON file handling patterns in backlo | failed | no plan generated
+2026-10-17 | refactor | Consolidate duplicated JSON file handling patterns across th | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
