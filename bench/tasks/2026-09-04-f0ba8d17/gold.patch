@@ -1,0 +1,82 @@
+diff --git a/src/ouroboros/llm.py b/src/ouroboros/llm.py
+index d3541028..e2218172 100644
+--- a/src/ouroboros/llm.py
++++ b/src/ouroboros/llm.py
+@@ -550,6 +550,25 @@ def generate_question_post(
+         return None
+ 
+ 
++def _format_comments(comments: list) -> str:
++    """Render comments for a prompt, tolerating a malformed author.
++
++    `c.get("author", {})` only falls back when the key is absent, so an
++    explicit JSON null -- or a bare string author -- raised AttributeError
++    and killed the analysis of an otherwise usable comment set. An author
++    that carries no name renders as "unknown" instead.
++    """
++    lines = []
++    for c in comments:
++        author = c.get("author")
++        if isinstance(author, dict):
++            author = author.get("name")
++        if not isinstance(author, str) or not author:
++            author = "unknown"
++        lines.append(f"Comment by {author}: {c.get('content')}")
++    return "\n\n".join(lines)
++
++
+ def analyze_code_suggestions(
+     client: Any,
+     problem: str,
+@@ -558,8 +577,8 @@ def analyze_code_suggestions(
+     model: str = DEFAULT_OPENAI_MODEL,
+ ) -> Optional[dict]:
+     code_block = "\n\n".join(f"### {path}\n```python\n{content}\n```" for path, content in code_context.items())
+-    comments_text = "\n\n".join(f"Comment by {c.get('author', {}).get('name')}: {c.get('content')}" for c in comments)
+     try:
++        comments_text = _format_comments(comments)
+         resp = create_completion(
+             client,
+             model=model,
+@@ -609,8 +628,8 @@ def analyze_comments_for_upgrades(
+     comments: list,
+     model: str = DEFAULT_OPENAI_MODEL,
+ ) -> Optional[dict]:
+-    comments_text = "\n\n".join([f"Comment by {c.get('author', {}).get('name')}: {c.get('content')}" for c in comments])
+     try:
++        comments_text = _format_comments(comments)
+         resp = create_completion(
+             client,
+             model=model,
+diff --git a/src/ouroboros/moltbook.py b/src/ouroboros/moltbook.py
+index aa863b1b..4ca01793 100644
+--- a/src/ouroboros/moltbook.py
++++ b/src/ouroboros/moltbook.py
+@@ -169,11 +169,26 @@ def get_post_comments(api_key: str, post_id: str) -> Dict[str, Any]:
+     return _request("GET", f"/posts/{post_id}/comments", api_key)
+ 
+ 
++def _author_name(record: Dict[str, Any]) -> Optional[str]:
++    """Author name of a feed record, or None when the author is malformed.
++
++    `record.get("author", {})` only falls back when the key is absent: an
++    explicit JSON null hands back None, and a bare string author is not a
++    mapping either. Both used to raise AttributeError here and abort the
++    whole poll over one bad record.
++    """
++    author = record.get("author")
++    if not isinstance(author, dict):
++        return None
++    name = author.get("name")
++    return name if isinstance(name, str) else None
++
++
+ def get_my_posts(api_key: str, agent_name: str, limit: int = 10) -> List[Dict[str, Any]]:
+     """Fetch posts authored by this agent."""
+     feed = get_feed(api_key, sort="new", limit=50)
+     posts = feed.get("posts", [])
+-    return [p for p in posts if p.get("author", {}).get("name") == agent_name][:limit]
++    return [p for p in posts if _author_name(p) == agent_name][:limit]
+ 
+ 
+ @dataclass

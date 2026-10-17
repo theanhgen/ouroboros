@@ -1,0 +1,60 @@
+diff --git a/tests/test_improvement.py b/tests/test_improvement.py
+index 3ff9a50c..afcc8c0e 100644
+--- a/tests/test_improvement.py
++++ b/tests/test_improvement.py
+@@ -43,6 +43,20 @@ def test_is_path_allowed():
+     assert _is_path_allowed("setup.py", config) is False
+ 
+ 
++def test_is_path_allowed_forbidden_path_and_prefix():
++    config = SafetyConfig(
++        forbidden_modification_paths=(
++            "src/ouroboros/secret.py",
++            "src/ouroboros/forbidden_dir/",
++        )
++    )
++
++    assert _is_path_allowed("src/ouroboros/llm.py", config) is True
++    assert _is_path_allowed("src/ouroboros/secret.py", config) is False
++    assert _is_path_allowed("src/ouroboros/forbidden_dir/nested.py", config) is False
++    assert _is_path_allowed("src/ouroboros/forbidden_dir_not/nested.py", config) is True
++
++
+ def test_validate_changes_ok():
+     config = SafetyConfig()
+     changes = [
+diff --git a/tests/test_policies.py b/tests/test_policies.py
+index 6dd1d1ff..988a89ec 100644
+--- a/tests/test_policies.py
++++ b/tests/test_policies.py
+@@ -32,6 +32,30 @@ def test_validate_modification_scope_forbidden():
+     assert "Forbidden" in violations[0]
+ 
+ 
++def test_validate_modification_scope_forbidden_path_and_prefix():
++    config = SafetyConfig(
++        forbidden_modification_paths=(
++            "src/ouroboros/secret.py",
++            "src/ouroboros/forbidden_dir/",
++        )
++    )
++
++    violations = validate_modification_scope(["src/ouroboros/secret.py"], config)
++    assert len(violations) == 1
++    assert "Forbidden" in violations[0]
++
++    violations = validate_modification_scope(
++        ["src/ouroboros/forbidden_dir/nested.py"], config
++    )
++    assert len(violations) == 1
++    assert "Forbidden" in violations[0]
++
++    violations = validate_modification_scope(
++        ["src/ouroboros/forbidden_dir_not/nested.py"], config
++    )
++    assert violations == []
++
++
+ def test_validate_modification_scope_out_of_scope():
+     violations = validate_modification_scope(["README.md"])
+     assert len(violations) == 1
