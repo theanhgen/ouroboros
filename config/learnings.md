@@ -1,5 +1,4 @@
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | reverted | Test regression detected: 0 failures before, 3 after
-2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | failed | generation failed: EditMismatch: Let me fix the `_normalize_text_for_comparison
 2026-10-15 | refactor | Extract common JSON file handling and atomic writing pattern | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | reviewer rejected
+2026-10-17 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | reviewer rejected
