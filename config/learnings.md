@@ -1,5 +1,4 @@
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | reviewer rejected
-2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | reviewer rejected
 2026-10-16 | refactor | Extract common JSON file handling and path resolution patter | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | reviewer rejected
 2026-10-16 | add_test | Add a parametrized unit test in tests/test_backlog.py for _n | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-17 | fix_bug | Fix validation logic in attention.py validate_post function  | failed | reviewer rejected
 2026-10-17 | fix_bug | Add content length validation to validate_post in attention. | failed | no code generated
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
+2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | reviewer rejected
