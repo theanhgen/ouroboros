@@ -1,4 +1,3 @@
-2026-10-15 | refactor | Extract common JSON file handling and path resolution patter | failed | no plan generated
 2026-10-15 | add_test | Add unit tests for backlog duplicate detection normalization | failed | reviewer rejected
 2026-10-15 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | failed | no code generated
 2026-10-15 | fix_bug | Fix duplicate detection in backlog.py where hyphenated and u | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-17 | refactor | Consolidate duplicated JSON file handling patterns across th | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-17 | add_test | Add comprehensive tests for _build_failed_attempts_context a | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-17 | refactor | Consolidate backlog JSON handling in backlog.py to use the c | failed | reviewer rejected
+2026-10-17 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
