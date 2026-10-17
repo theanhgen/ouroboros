@@ -1,4 +1,3 @@
-2026-10-16 | refactor | Extract common JSON file handling and path resolution patter | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py to treat hyphenated an | failed | reviewer rejected
 2026-10-16 | add_test | Add a parametrized unit test in tests/test_backlog.py for _n | failed | no plan generated
 2026-10-16 | fix_bug | Modify _normalize_text_for_comparison in src/ouroboros/backl | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | reviewer rejected
 2026-10-17 | refactor | Consolidate duplicated JSON file handling patterns into a ne | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-17 | refactor | Consolidate JSON file handling patterns from backlog.py, met | failed | out of scope: targets 4 files, cap is 3
