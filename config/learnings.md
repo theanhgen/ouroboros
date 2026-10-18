@@ -1,4 +1,3 @@
-2026-10-16 | refactor | Consolidate duplicated JSON file handling patterns across th | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-16 | refactor | Consolidate JSON file handling in src/ouroboros/moltbook.py  | failed | no code generated
 2026-10-16 | refactor | Consolidate duplicated JSON file handling patterns across th | failed | no code generated
 2026-10-16 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-18 | refactor | Extract the duplicated JSON file handling pattern into stora | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-18 | fix_bug | Fix `_normalize_text_for_comparison` in `src/ouroboros/backl | failed | no plan generated
+2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
