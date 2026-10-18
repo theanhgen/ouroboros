@@ -1,4 +1,3 @@
-2026-10-16 | refactor | Consolidate JSON file handling patterns across src/ouroboros | failed | no plan generated
 2026-10-16 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | reviewer rejected
 2026-10-16 | refactor | Replace duplicated JSON file handling in src/ouroboros/backl | failed | no code generated
 2026-10-16 | add_test | Add comprehensive tests for the cluster_failures_by_root_cau | failed | out of scope: targets 15 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-18 | add_test | Add failing test for _normalize_text_for_comparison that ver | failed | no plan generated
 2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | reviewer rejected
 2026-10-18 | add_test | Add a test for src/ouroboros/backlog._normalize_content_word | failed | no code generated
+2026-10-18 | refactor | Extract the duplicated JSON file handling pattern into stora | failed | out of scope: targets 4 files, cap is 3
