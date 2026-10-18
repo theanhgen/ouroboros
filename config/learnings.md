@@ -1,4 +1,3 @@
-2026-10-16 | refactor | Replace duplicated JSON file handling and bounded trimming l | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-16 | fix_bug | Update _normalize_text_for_comparison to convert hyphens and | failed | reviewer rejected
 2026-10-16 | add_test | Add test_failure_triage method to test_runner.py that analyz | failed | no code generated
 2026-10-16 | refactor | Consolidate JSON file handling patterns in src/ouroboros/bac | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-18 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no code generated
 2026-10-18 | refactor | Extract common JSON file handling pattern into src/ouroboros | failed | out of scope: targets 4 files, cap is 3
 2026-10-18 | refactor | Add hyphen/underscore normalization to _normalize_text_for_c | failed | reviewer rejected
+2026-10-18 | fix_bug | Modify _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
