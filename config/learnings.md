@@ -1,4 +1,3 @@
-2026-10-17 | fix_bug | Tighten the bug-fix evidence gate in the improvement pipelin | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-18 | refactor | Extract the common JSON file handling pattern into a new uti | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-18 | fix_bug | In backlog.py, modify _normalize_content_words to replace hy | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-19 | refactor | Extract common JSON file handling and bounded list trimming  | failed | no plan generated
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
