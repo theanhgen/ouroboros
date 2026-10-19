@@ -1,4 +1,3 @@
-2026-10-18 | refactor | Add hyphen/underscore normalization to _normalize_text_for_c | failed | reviewer rejected
 2026-10-18 | fix_bug | Modify _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-18 | refactor | Extract the common JSON file handling pattern into src/ourob | failed | out of scope: targets 4 files, cap is 3
 2026-10-18 | fix_bug | Update _normalize_text_for_comparison and _normalize_content | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-19 | refactor | Consolidate duplicated JSON file handling across multiple mo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-19 | refactor | Consolidate JSON file handling in evaluation.py and backlog. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-19 | refactor | Create shared JSON file handling utilities in storage_helper | failed | no code generated
+2026-10-19 | add_test | Add a focused unit test in tests/test_backlog.py to verify t | failed | no plan generated
