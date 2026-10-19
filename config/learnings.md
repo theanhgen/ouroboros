@@ -1,4 +1,3 @@
-2026-10-17 | refactor | Extract common JSON file handling utilities into storage_hel | failed | no code generated
 2026-10-17 | refactor | Consolidate JSON file handling patterns into storage_helper. | failed | no code generated
 2026-10-17 | refactor | Consolidate JSON file handling and trimming utilities in sto | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-17 | add_test | Add test for _build_failed_attempts_context to verify it cor | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-19 | refactor | Extract common JSON file handling and bounded list trimming  | failed | out of scope: targets 5 files, cap is 3
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-19 | add_feature | Add _triage_failures() method to src/ouroboros/test_runner.p | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-19 | refactor | Extract the common JSON file handling pattern from backlog.p | reverted | Test regression detected: 0 failures before, 2 after
