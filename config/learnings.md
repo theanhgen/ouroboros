@@ -1,4 +1,3 @@
-2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison to properly normalize hyp | failed | reviewer rejected
 2026-10-17 | refactor | Extract common JSON file handling utilities into storage_hel | failed | no code generated
 2026-10-17 | refactor | Consolidate JSON file handling patterns into storage_helper. | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | generation failed: EditMismatch: a block has no file path before it
 2026-10-19 | add_feature | Implement _triage_failures() method in src/ouroboros/test_ru | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-19 | refactor | Extract common JSON file handling and bounded list trimming  | failed | out of scope: targets 5 files, cap is 3
+2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
