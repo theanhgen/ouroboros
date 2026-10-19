@@ -1,4 +1,3 @@
-2026-10-17 | refactor | Consolidate duplicated JSON file handling patterns into stor | failed | no plan generated
 2026-10-17 | refactor | Extract common JSON file handling and bounded trimming utili | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-19 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-19 | add_test | Add integration test to src/ouroboros/policies.py that valid | failed | out of scope: targets forbidden file(s): src/ouroboros/policies.py
