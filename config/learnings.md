@@ -1,4 +1,3 @@
-2026-10-17 | fix_bug | Add content length validation to validate_post in attention. | failed | no code generated
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-17 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | reviewer rejected
 2026-10-17 | refactor | Consolidate duplicated JSON file handling patterns into a ne | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-19 | refactor | Extract common JSON file handling and bounded list trimming  | failed | no code generated
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
+2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
