@@ -1,4 +1,3 @@
-2026-10-18 | fix_bug | Implement a validation gate in the improvement pipeline that | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-18 | add_test | Add failing test for _normalize_text_for_comparison that ver | failed | no plan generated
 2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | reviewer rejected
 2026-10-18 | add_test | Add a test for src/ouroboros/backlog._normalize_content_word | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-19 | add_test | Add unit test to verify _normalize_text_for_comparison norma | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in backlog.py to replace  | failed | no plan generated
 2026-10-20 | fix_test | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
+2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | reverted | Test regression detected: 0 failures before, 3 after
