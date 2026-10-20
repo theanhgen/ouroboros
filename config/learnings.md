@@ -1,4 +1,3 @@
-2026-10-18 | refactor | Extract duplicated JSON file handling pattern into storage_h | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-18 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-18 | refactor | Extract duplicated JSON file handling pattern into storage_h | failed | out of scope: targets 4 files, cap is 3
 2026-10-18 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | reviewer rejected
 2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: EditMismatch: path/to/src/ouroboros/backlog.py: not one of t
 2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating _normalize_te | reverted | Test regression detected: 0 failures before, 3 after
