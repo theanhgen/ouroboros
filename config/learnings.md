@@ -1,4 +1,3 @@
-2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
@@ -98,3 +97,4 @@
 2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating _normalize_te | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating _normalize_te | failed | no plan generated
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no code generated
+2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating _normalize_te | failed | no code generated
