@@ -1,4 +1,3 @@
-2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-18 | refactor | Extract duplicated JSON file handling pattern into a central | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-18 | refactor | Refactor backlog filtering functions to consolidate filter p | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no code generated
 2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating _normalize_te | failed | no code generated
 2026-10-20 | add_test | Add unit tests for _normalize_text_for_comparison and conten | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating _normalize_te | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
