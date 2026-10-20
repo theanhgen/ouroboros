@@ -1,4 +1,3 @@
-2026-10-19 | add_feature | Add _triage_failures() method to src/ouroboros/test_runner.p | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-19 | refactor | Extract the common JSON file handling pattern from backlog.p | reverted | Test regression detected: 0 failures before, 2 after
 2026-10-19 | add_feature | Implement _triage_failures() method in src/ouroboros/test_ru | failed | out of scope: targets 14 files, cap is 3
 2026-10-19 | add_feature | Implement a small utility function _triage_failures in src/o | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: APIConnectionError: Connection error.
+2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
