@@ -1,4 +1,3 @@
-2026-10-19 | add_feature | Implement _triage_failures() method in test_runner.py that a | failed | no plan generated
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | generation failed: EditMismatch: a block has no file path before it
 2026-10-19 | add_feature | Implement _triage_failures() method in src/ouroboros/test_ru | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-20 | refactor | Extract common JSON file handling patterns into src/ouroboro | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
