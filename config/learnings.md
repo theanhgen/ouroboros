@@ -1,4 +1,3 @@
-2026-10-18 | refactor | Extract duplicated JSON file handling pattern into storage_h | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-18 | refactor | Refactor backlog filtering functions to consolidate filter p | failed | no code generated
 2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no plan generated
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no code generated
 2026-10-20 | refactor | Create storage_helper.py with centralized utilities to elimi | failed | out of scope: targets 4 files, cap is 3
+2026-10-20 | add_feature | Add confidence calibration tracking to the LLM pipeline by l | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
