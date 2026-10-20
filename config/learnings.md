@@ -1,4 +1,3 @@
-2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-18 | add_test | Add a failing test for src/ouroboros/backlog._normalize_text | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-18 | add_test | Add a test for `src/ouroboros/backlog._normalize_text_for_co | failed | no plan generated
 2026-10-18 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
@@ -98,3 +97,4 @@
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | generation failed: EditMismatch: path/to/file.py: not one of the files provided
 2026-10-20 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-20 | fix_bug | Update _normalize_content_words in src/ouroboros/backlog.py  | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-20 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
