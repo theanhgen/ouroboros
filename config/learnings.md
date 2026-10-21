@@ -1,4 +1,3 @@
-2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-20 | fix_bug | Fix duplicate detection by updating _normalize_text_for_comp | failed | no plan generated
 2026-10-20 | add_feature | Add early termination detection and enhanced metrics trackin | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating _normalize_te | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-21 | refactor | Extract JSON file handling utilities from backlog.py into st | failed | no plan generated
 2026-10-21 | refactor | Extract common JSON file handling utilities from evaluation. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-21 | refactor | Extract common JSON file handling utilities from evaluation. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-21 | add_test | Add evidence-gated test validation to prevent code generatio | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
