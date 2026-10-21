@@ -134,6 +134,41 @@ class RunnerOutcome:
         # Step 5: Return clustered results
         return sorted_clustered
 
+    def test_failure_triage(self) -> Dict[str, Dict]:
+        """
+        Cluster failing tests by root-cause signals and provide ranked fault categories
+        with next experiment recommendations.
+        
+        This method groups failures by fault category (file, error type, line range) 
+        and returns them sorted by frequency to identify the most common fault patterns
+        for smarter retry strategies.
+        
+        Returns:
+            A dictionary mapping categories to their failure information:
+            {
+                "file:error_type:line_range": {
+                    "file": "normalized_file_path",
+                    "error_type": "normalized_error_type",
+                    "line_range": "start-end" or "single_line",
+                    "failures": [
+                        {
+                            "test_name": str,
+                            "file": str,
+                            "line": Optional[int],
+                            "message": str,
+                            "traceback": str
+                        },
+                        ...
+                    ],
+                    "count": int
+                },
+                ...
+            }
+            Categories are sorted by frequency (highest count first) to enable
+            identification of most likely fault categories for smarter retries.
+        """
+        return self.cluster_failures_by_root_cause()
+
 
 def _parse_location_from_string(location_string: str, source: str = "") -> tuple[Optional[str], Optional[int]]:
     """
