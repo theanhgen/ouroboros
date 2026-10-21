@@ -1,4 +1,3 @@
-2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | generation failed: EditMismatch: path/to/file.py: not one of the files provided
 2026-10-20 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-20 | fix_bug | Update _normalize_content_words in src/ouroboros/backlog.py  | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-20 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-21 | refactor | Extract common JSON file handling and bounded list trimming  | failed | out of scope: targets 6 files, cap is 3
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-21 | add_test | Add a unit test that validates bug-fix improvements require  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-21 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
