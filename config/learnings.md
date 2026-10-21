@@ -1,4 +1,3 @@
-2026-10-19 | refactor | Extract JSON file handling and bounded list trimming utiliti | failed | no code generated
 2026-10-19 | refactor | Extract common JSON file handling and bounded list trimming  | failed | no code generated
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-21 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-21 | refactor | Extract common JSON file handling pattern from storage_helpe | failed | no plan generated
 2026-10-21 | add_feature | Extract common JSON file handling patterns into storage_help | failed | no plan generated
+2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
