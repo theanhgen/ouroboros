@@ -1,4 +1,3 @@
-2026-10-19 | refactor | Consolidate duplicated JSON file handling across multiple mo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-19 | refactor | Consolidate JSON file handling in evaluation.py and backlog. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-19 | refactor | Create shared JSON file handling utilities in storage_helper | failed | no code generated
 2026-10-19 | add_test | Add a focused unit test in tests/test_backlog.py to verify t | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-21 | fix_test | Enhance cluster_failures_by_root_cause() in src/ouroboros/te | failed | generation failed: EditMismatch: src/ouroboros/test_runner.py: SEARCH block not
 2026-10-21 | fix_test | Enhance cluster_failures_by_root_cause() integration in impr | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-21 | add_test | Add a unit test that validates early gate checks in bug-fix  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-21 | fix_bug | Fix backlog duplicate detection to normalize hyphens, unders | failed | no code generated
