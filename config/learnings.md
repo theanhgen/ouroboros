@@ -1,4 +1,3 @@
-2026-10-19 | refactor | Extract duplicated JSON file handling pattern from evaluatio | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-21 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
+2026-10-21 | fix_test | Implement test_failure_triage in src/ouroboros/test_runner.p | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
