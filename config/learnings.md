@@ -1,4 +1,3 @@
-2026-10-19 | fix_test | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
 2026-10-19 | refactor | Refactor duplicate detection in backlog.py: create a new fun | failed | no plan generated
 2026-10-19 | fix_test | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
 2026-10-19 | fix_test | Fix _normalize_text_for_comparison to replace hyphens, under | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-21 | fix_bug | Fix backlog duplicate detection: update _normalize_text_for_ | failed | no plan generated
 2026-10-21 | fix_bug | Update backlog duplicate detection to normalize hyphens, und | failed | no plan generated
 2026-10-21 | add_test | Add a unit test that validates early gate checks in bug-fix  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
