@@ -1,4 +1,3 @@
-2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in backlog.py to replace  | failed | no plan generated
 2026-10-20 | fix_test | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-20 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
@@ -98,3 +97,4 @@
 2026-10-21 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-21 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
+2026-10-21 | fix_bug | Fix backlog duplicate detection to normalize hyphens, unders | failed | no plan generated
