@@ -1,4 +1,3 @@
-2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
 2026-10-19 | fix_test | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
 2026-10-19 | refactor | Extract common JSON file handling and bounded list trimming  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-21 | add_test | Add test_failure_triage to src/ouroboros/test_runner.py that | success | tests: 1469 -> 1469
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-21 | refactor | Implement cluster_failures_by_root_cause() in src/ouroboros/ | failed | no plan generated
+2026-10-21 | refactor | Extract common JSON file handling patterns into storage_help | failed | no code generated
