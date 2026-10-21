@@ -1,4 +1,3 @@
-2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-19 | refactor | Extract duplicated JSON file handling pattern from evaluatio | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no code generated
 2026-10-19 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-21 | refactor | Enhance _retry_with_root_cause in src/ouroboros/improvement. | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-21 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
+2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
