@@ -1,4 +1,3 @@
-2026-10-20 | add_feature | Add early termination detection and enhanced metrics trackin | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating _normalize_te | failed | no code generated
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-20 | refactor | Refactor JSON and file handling duplication across three cor | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-21 | refactor | Extract common JSON file handling utilities from evaluation. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-21 | add_test | Add evidence-gated test validation to prevent code generatio | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-22 | fix_bug | Update backlog duplicate detection to normalize hyphens, und | reverted | Test regression detected: 0 failures before, 2 after
+2026-10-22 | fix_bug | Update backlog duplicate detection to normalize hyphens, und | failed | generation failed: EditMismatch: src/tests/test_backlog_lifecycle.py: not one o
