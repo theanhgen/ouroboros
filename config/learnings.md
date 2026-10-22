@@ -1,4 +1,3 @@
-2026-10-21 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 2 after
 2026-10-21 | fix_bug | Update backlog duplicate detection to normalize hyphens, und | failed | no code generated
 2026-10-21 | fix_test | Implement cluster_failures_by_root_cause() in src/ouroboros/ | failed | no code generated
 2026-10-21 | fix_test | Implement cluster_failures_by_root_cause() in src/ouroboros/ | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-23 | refactor | Extract common JSON file handling utilities into src/ourobor | failed | out of scope: targets 4 files, cap is 3
 2026-10-23 | refactor | Extract common JSON file handling utilities from backlog.py, | failed | out of scope: targets 4 files, cap is 3
 2026-10-23 | fix_test | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
+2026-10-23 | add_feature | Add diagnostic logging to track where fix_bug attempts fail  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
