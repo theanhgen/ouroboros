@@ -1,4 +1,3 @@
-2026-10-20 | refactor | Extract centralized file handling utilities into storage_hel | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | reviewer rejected
 2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: EditMismatch: path/to/src/ouroboros/backlog.py: not one of t
 2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-22 | add_test | Add evidence-gated test validation to prevent code generatio | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-22 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | out of scope: targets 4 files, cap is 3
 2026-10-22 | add_test | Add evidence-gated test validation to prevent code generatio | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
