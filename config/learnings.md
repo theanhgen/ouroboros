@@ -1,4 +1,3 @@
-2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating `_normalize_t | failed | no plan generated
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no plan generated
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no code generated
 2026-10-20 | refactor | Create storage_helper.py with centralized utilities to elimi | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-22 | refactor | Extract common JSON file handling utilities from metrics.py  | failed | no plan generated
 2026-10-22 | refactor | Extract common JSON file handling utilities from storage_hel | failed | no code generated
 2026-10-22 | add_feature | Add a new CLI command 'improve-triage' that generates an agg | failed | no code generated
+2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
