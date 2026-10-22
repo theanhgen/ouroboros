@@ -1,4 +1,3 @@
-2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-21 | add_test | Add test_failure_triage to src/ouroboros/test_runner.py that | success | tests: 1469 -> 1469
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-21 | refactor | Implement cluster_failures_by_root_cause() in src/ouroboros/ | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-22 | refactor | Extract common JSON file handling utilities into src/ourobor | failed | out of scope: targets 4 files, cap is 3
 2026-10-22 | fix_test | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-22 | add_feature | Add execution receipt capture to improvement.py to store ful | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-22 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
