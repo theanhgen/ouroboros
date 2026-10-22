@@ -1,4 +1,3 @@
-2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-21 | refactor | Extract common JSON file handling patterns into src/ouroboro | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-21 | refactor | Replace duplicated JSON file handling patterns in backlog.py | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-22 | refactor | Consolidate JSON file handling utilities into src/ouroboros/ | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-22 | refactor | Extract common JSON file handling utilities from backlog.py, | failed | out of scope: targets 4 files, cap is 3
