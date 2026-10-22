@@ -1,4 +1,3 @@
-2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating _normalize_te | failed | no plan generated
 2026-10-20 | fix_bug | Fix duplicate detection in backlog.py by updating _normalize | failed | no code generated
 2026-10-20 | fix_bug | Fix duplicate detection in backlog by updating _normalize_te | failed | no code generated
 2026-10-20 | add_test | Add unit tests for _normalize_text_for_comparison and conten | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-22 | add_feature | Add 'improve-triage' CLI command that runs the test suite vi | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
+2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
