@@ -1,4 +1,3 @@
-2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-20 | add_test | Add unit tests for _normalize_text_for_comparison and conten | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-20 | add_test | Add unit tests for _normalize_text_for_comparison and conten | failed | no plan generated
 2026-10-20 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-22 | fix_bug | Fix backlog loading robustness by improving error handling i | failed | reviewer rejected
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-22 | fix_bug | Update _normalize_text_for_comparison to replace hyphens, un | failed | no code generated
+2026-10-22 | refactor | Extract common JSON file handling utilities from evaluation. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
