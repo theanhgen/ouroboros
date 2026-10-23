@@ -1,4 +1,3 @@
-2026-10-22 | fix_bug | Update backlog duplicate detection to normalize hyphens, und | failed | generation failed: EditMismatch: src/tests/test_backlog_lifecycle.py: not one o
 2026-10-22 | refactor | Extract common JSON file handling and bounded list trimming  | failed | no plan generated
 2026-10-22 | refactor | Extract common JSON file handling and bounded list trimming  | failed | reviewer rejected
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-23 | refactor | Centralize JSON file handling in backlog.py and metrics.py b | failed | no plan generated
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-23 | add_test | Add diagnostic logging to test_runner.py to track fix_bug fa | failed | no plan generated
+2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
