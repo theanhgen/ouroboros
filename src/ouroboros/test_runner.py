@@ -507,8 +507,9 @@ def _extract_coverage_from_output(output: str) -> Optional[float]:
     match = _COVERAGE_PATTERN.search(output)
     return float(match.group(1)) if match else None
 
-def _run_tests_sandboxed(repo_root: Path, config: SafetyConfig, timeout: int) -> RunnerOutcome:
+def _run_tests_sandboxed(repo_root: Path, config: SafetyConfig, timeout: int, phase: Optional[str] = None) -> RunnerOutcome:
     """Run tests inside a Docker container."""
+    log.info("Running tests in sandbox in phase: %s", phase or "unknown")
     cmd = [
         "docker", "run", "--rm",
         "-v", f"{repo_root}:/app",
@@ -531,11 +532,12 @@ def _run_tests_sandboxed(repo_root: Path, config: SafetyConfig, timeout: int) ->
             coverage_percent=parsed.get("coverage"),
         )
     except Exception as e:
-        log.error("Sandbox execution failed: %s", e)
+        log.error("Sandbox execution failed: %s (phase: %s)", e, phase or "unknown")
         return RunnerOutcome(stdout=f"Sandbox error: {e}", returncode=-1)
 
 
-def _run_pytest(repo_root: Path, timeout: int, with_cov: bool) -> RunnerOutcome:
+def _run_pytest(repo_root: Path, timeout: int, with_cov: bool, phase: Optional[str] = None) -> RunnerOutcome:
+    log.info("Running tests directly in phase: %s (with_cov=%s)", phase or "unknown", with_cov)
     cmd = [sys.executable, "-m", "pytest", "--tb=short", "-q"]
     if with_cov:
         cmd.append("--cov=ouroboros")
@@ -544,8 +546,10 @@ def _run_pytest(repo_root: Path, timeout: int, with_cov: bool) -> RunnerOutcome:
             cmd, cwd=repo_root, capture_output=True, text=True, timeout=timeout,
         )
     except subprocess.TimeoutExpired:
+        log.error("Tests timed out in phase: %s (with_cov=%s)", phase or "unknown", with_cov)
         return RunnerOutcome(stdout="Tests timed out", returncode=-1)
     except FileNotFoundError:
+        log.error("pytest not found in phase: %s (with_cov=%s)", phase or "unknown", with_cov)
         return RunnerOutcome(stdout="pytest not found", returncode=-1)
 
     combined_output = proc.stdout + "\n" + proc.stderr
@@ -562,13 +566,26 @@ def _run_pytest(repo_root: Path, timeout: int, with_cov: bool) -> RunnerOutcome:
     )
 
 
-def run_tests(repo_root: Path, timeout: int = 120) -> RunnerOutcome:
-    """Run pytest with coverage in the repo and return structured results."""
-    config = SafetyConfig()
-    if config.sandbox_enabled:
-        return _run_tests_sandboxed(repo_root, config, timeout)
+def run_tests(repo_root: Path, timeout: int = 120, phase: Optional[str] = None) -> RunnerOutcome:
+    """Run pytest with coverage in the repo and return structured results.
 
-    outcome = _run_pytest(repo_root, timeout, with_cov=True)
+    Args:
+        repo_root: Root directory of the repository to test.
+        timeout: Maximum number of seconds to allow the test run to complete.
+        phase: Optional identifier for the current fix attempt stage (e.g., "plan",
+            "generate", "validate", "apply", or "unknown" if not provided). This
+            aids in tracking which stage a test run belongs to.
+    """
+    import json
+
+    config = SafetyConfig()
+    phase = phase or "unknown"
+    log.info("Running tests in phase: %s", phase)
+
+    if config.sandbox_enabled:
+        return _run_tests_sandboxed(repo_root, config, timeout, phase)
+
+    outcome = _run_pytest(repo_root, timeout, with_cov=True, phase=phase)
 
     # If the coverage plugin is missing, pytest aborts with a usage error
     # (returncode 4, zero tests collected). That previously made the validation
@@ -579,6 +596,20 @@ def run_tests(repo_root: Path, timeout: int = 120) -> RunnerOutcome:
         outcome.total == 0 and "unrecognized arguments" in outcome.stdout
     ):
         log.warning("pytest --cov failed (pytest-cov missing?); retrying without coverage")
-        outcome = _run_pytest(repo_root, timeout, with_cov=False)
+        outcome = _run_pytest(repo_root, timeout, with_cov=False, phase=phase)
+
+    if outcome.failure_details:
+        log.info("Fix attempt failure signals in phase %s:", phase)
+        log.info("Phase %s: %d failures encountered", phase, len(outcome.failure_details))
+        for failure in outcome.failure_details:
+            truncated_traceback = failure.traceback[:200] + "..." if len(failure.traceback) > 200 else failure.traceback
+            data = {
+                "test_name": failure.test_name,
+                "file": failure.file,
+                "line": failure.line,
+                "message": failure.message,
+                "traceback": truncated_traceback
+            }
+            log.info("  %s", json.dumps(data))
 
     return outcome
