@@ -1,4 +1,3 @@
-2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-21 | refactor | Extract JSON file handling utilities from backlog.py into st | failed | no plan generated
 2026-10-21 | refactor | Extract common JSON file handling utilities from evaluation. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-21 | refactor | Extract common JSON file handling utilities from evaluation. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-23 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-23 | refactor | Centralize path resolution and JSON file handling in backlog | failed | no plan generated
 2026-10-23 | refactor | Enhance storage_helper.py to provide centralized JSON file h | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-23 | refactor | Extract duplicated JSON file handling patterns into storage_ | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
