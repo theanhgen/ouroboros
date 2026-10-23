@@ -1,4 +1,3 @@
-2026-10-22 | add_test | Add evidence-gated validation to prevent code generation wit | failed | no code generated
 2026-10-22 | refactor | Extract common JSON file handling utilities from metrics.py  | failed | no plan generated
 2026-10-22 | refactor | Extract common JSON file handling utilities from storage_hel | failed | no code generated
 2026-10-22 | add_feature | Add a new CLI command 'improve-triage' that generates an agg | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-23 | refactor | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-23 | add_test | Add diagnostic logging to test_runner.py to track fix_bug fa | failed | no plan generated
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
+2026-10-23 | improve_docs | Enhance test_runner.py with diagnostic logging in test_failu | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
