@@ -1,4 +1,3 @@
-2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-21 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-21 | fix_bug | Fix backlog duplicate detection to normalize hyphens, unders | failed | no plan generated
 2026-10-21 | refactor | Remove redundant alias method test_failure_triage from Runne | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-23 | add_feature | Add diagnostic logging to test_runner.py to track where fix_ | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
