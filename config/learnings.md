@@ -1,4 +1,3 @@
-2026-10-21 | fix_test | Enhance cluster_failures_by_root_cause() in src/ouroboros/te | failed | generation failed: EditMismatch: src/ouroboros/test_runner.py: SEARCH block not
 2026-10-21 | fix_test | Enhance cluster_failures_by_root_cause() integration in impr | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-21 | add_test | Add a unit test that validates early gate checks in bug-fix  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-21 | fix_bug | Fix backlog duplicate detection to normalize hyphens, unders | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-23 | add_feature | Implement failure signal logging in the attention module to  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-23 | refactor | Create a centralized JSON storage helper in src/ouroboros/st | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-23 | fix_test | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-23 | refactor | Extract common JSON file handling utilities from backlog.py, | failed | no plan generated
