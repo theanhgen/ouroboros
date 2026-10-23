@@ -1,4 +1,3 @@
-2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-21 | refactor | Centralize JSON file handling and bounded list trimming by a | failed | no code generated
 2026-10-21 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-23 | refactor | Create a centralized JSON storage helper in src/ouroboros/st | failed | out of scope: targets 4 files, cap is 3
 2026-10-23 | refactor | Extract common JSON file handling utilities from backlog.py, | failed | out of scope: targets 4 files, cap is 3
+2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
