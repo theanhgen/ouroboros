@@ -1,4 +1,3 @@
-2026-10-21 | fix_bug | Fix backlog duplicate detection: update _normalize_text_for_ | failed | no plan generated
 2026-10-21 | fix_bug | Update backlog duplicate detection to normalize hyphens, und | failed | no plan generated
 2026-10-21 | add_test | Add a unit test that validates early gate checks in bug-fix  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-23 | fix_test | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-23 | add_feature | Implement diagnostic logging in test_runner.py to track wher | success | tests: 1469 -> 1469
+2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
