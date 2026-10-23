@@ -1,5 +1,4 @@
 2026-10-21 | refactor | Extract common JSON file handling utilities from evaluation. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
-2026-10-21 | refactor | Extract common JSON file handling utilities from evaluation. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-21 | add_test | Add evidence-gated test validation to prevent code generatio | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-22 | fix_bug | Update backlog duplicate detection to normalize hyphens, und | reverted | Test regression detected: 0 failures before, 2 after
 2026-10-22 | fix_bug | Update backlog duplicate detection to normalize hyphens, und | failed | generation failed: EditMismatch: src/tests/test_backlog_lifecycle.py: not one o
@@ -98,3 +97,4 @@
 2026-10-23 | refactor | Enhance storage_helper.py to provide centralized JSON file h | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-23 | refactor | Extract duplicated JSON file handling patterns into storage_ | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-23 | refactor | Centralize JSON file handling in backlog.py and metrics.py b | failed | no code generated
+2026-10-23 | refactor | Extract duplicated JSON file handling from backlog.py and me | failed | no plan generated
