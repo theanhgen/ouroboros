@@ -1,4 +1,3 @@
-2026-10-22 | refactor | Extract duplicated path resolution, default fallback, and at | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-22 | add_feature | Add 'improve-triage' CLI command that runs the test suite vi | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-23 | add_feature | Implement deterministic execution receipts in improvement.py | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-23 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
+2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
