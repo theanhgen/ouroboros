@@ -1,4 +1,3 @@
-2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-23 | refactor | Extract JSON file handling utilities from backlog.py and met | failed | no plan generated
+2026-10-23 | refactor | Centralize JSON file handling patterns by extracting common  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
