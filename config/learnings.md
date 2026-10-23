@@ -1,4 +1,3 @@
-2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-21 | fix_bug | Update backlog duplicate detection to normalize hyphens, und | failed | no code generated
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-21 | fix_test | Implement `cluster_failures_by_root_cause` in src/ouroboros/ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-23 | refactor | Refactor src/ouroboros/backlog.py to use the shared JSON uti | failed | no plan generated
 2026-10-23 | fix_test | Fix backlog duplicate detection to properly normalize text w | failed | no plan generated
 2026-10-23 | fix_test | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-23 | fix_test | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
