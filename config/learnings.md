@@ -1,4 +1,3 @@
-2026-10-21 | refactor | Remove redundant alias method test_failure_triage from Runne | failed | no plan generated
 2026-10-21 | refactor | Centralize JSON file handling by adding storage_helper utili | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-21 | refactor | Extract common JSON file handling and bounded list trimming  | failed | out of scope: targets 6 files, cap is 3
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-23 | refactor | Extract duplicated JSON file handling patterns into storage_ | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-23 | refactor | Extract duplicated JSON file handling patterns from evaluati | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
