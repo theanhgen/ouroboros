@@ -1,4 +1,3 @@
-2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-22 | add_test | Add evidence-gated test validation to prevent code generatio | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-22 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | out of scope: targets 4 files, cap is 3
 2026-10-22 | add_test | Add evidence-gated test validation to prevent code generatio | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-23 | refactor | Centralize JSON file handling patterns by extracting common  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-23 | refactor | Centralize JSON file handling utilities from storage_helper. | failed | no code generated
 2026-10-23 | refactor | To propose a concrete refactor for centralizing JSON file ha | failed | no code generated
+2026-10-23 | add_test | Add diagnostic logging to test_failure_triage in test_runner | failed | no plan generated
