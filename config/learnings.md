@@ -1,4 +1,3 @@
-2026-10-21 | fix_test | Implement cluster_failures_by_root_cause() in src/ouroboros/ | failed | no plan generated
 2026-10-21 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | reviewer rejected
 2026-10-21 | refactor | Centralize JSON file handling and bounded list trimming by a | failed | out of scope: targets 7 files, cap is 3
 2026-10-21 | fix_test | Enhance cluster_failures_by_root_cause() in src/ouroboros/te | failed | generation failed: EditMismatch: src/ouroboros/test_runner.py: SEARCH block not
@@ -98,3 +97,4 @@
 2026-10-23 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | reviewer rejected
 2026-10-23 | refactor | Extract shared JSON file handling utilities from evaluation. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-23 | add_feature | Add diagnostic logging to track where fix_bug attempts fail  | failed | out of scope: targets forbidden file(s): src/ouroboros/policies.py
+2026-10-23 | add_feature | Implement failure signal logging in the attention module to  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
