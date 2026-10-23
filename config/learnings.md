@@ -1,4 +1,3 @@
-2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-22 | fix_bug | Fix improvement pipeline bottleneck by implementing evidence | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-22 | refactor | Extract duplicated JSON file handling utilities from evaluat | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-23 | add_test | Add diagnostic logging to test_failure_triage in test_runner | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-23 | add_test | Add diagnostic logging to test_failure_triage in src/ourobor | failed | no code generated
 2026-10-23 | add_feature | Add a FailureBreakdown metric in src/ouroboros/metrics.py th | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
