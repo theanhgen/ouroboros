@@ -1,4 +1,3 @@
-2026-10-23 | refactor | Extract common JSON file handling utilities from backlog.py, | failed | no plan generated
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-23 | fix_test | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-23 | add_feature | Implement diagnostic logging in test_runner.py to track wher | success | tests: 1469 -> 1469
@@ -98,3 +97,4 @@
 2026-10-24 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | reviewer rejected
 2026-10-24 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-24 | fix_bug | Update src/ouroboros/backlog.py _normalize_text_for_comparis | failed | no plan generated
