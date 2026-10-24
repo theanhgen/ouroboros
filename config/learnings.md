@@ -1,4 +1,3 @@
-2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-22 | fix_bug | Fix backlog loading robustness by improving error handling i | failed | reviewer rejected
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-22 | fix_bug | Update _normalize_text_for_comparison to replace hyphens, un | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-24 | fix_test | Add diagnostic logging to test_failure_triage in src/ourobor | failed | reviewer rejected
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
+2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
