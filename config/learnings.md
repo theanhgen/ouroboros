@@ -1,4 +1,3 @@
-2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-22 | refactor | Extract common JSON file handling utilities into storage_hel | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-22 | fix_bug | Implement evidence-gated validation in validate_improvement  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-24 | add_test | Add diagnostic logging to test_failure_triage in src/ourobor | failed | no plan generated
+2026-10-24 | refactor | Extract the JSON load/save pattern from backlog.py into a re | failed | no code generated
