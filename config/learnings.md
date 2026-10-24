@@ -1,4 +1,3 @@
-2026-10-22 | refactor | Consolidate JSON file handling utilities into src/ouroboros/ | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-22 | refactor | Extract common JSON file handling utilities from backlog.py, | failed | out of scope: targets 4 files, cap is 3
 2026-10-22 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-22 | refactor | Extract common JSON file handling utilities into src/ourobor | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-24 | fix_bug | Fix missing module-level json import and helper functions in | failed | no plan generated
 2026-10-24 | add_test | Add diagnostic logging to test_failure_triage in src/ourobor | failed | no code generated
+2026-10-24 | fix_bug | Fix missing module-level json import and helper functions in | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
