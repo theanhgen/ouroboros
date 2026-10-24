@@ -1,4 +1,3 @@
-2026-10-23 | refactor | Extract common JSON file handling utilities into src/ourobor | failed | out of scope: targets 4 files, cap is 3
 2026-10-23 | refactor | Extract common JSON file handling utilities from backlog.py, | failed | out of scope: targets 4 files, cap is 3
 2026-10-23 | fix_test | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-23 | add_feature | Add diagnostic logging to track where fix_bug attempts fail  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-24 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | out of scope: targets 4 files, cap is 3
 2026-10-24 | refactor | Extract JSON file handling utilities from backlog.py, metric | failed | out of scope: targets 4 files, cap is 3
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
+2026-10-24 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
