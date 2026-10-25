@@ -164,7 +164,8 @@ def _normalize_text_for_comparison(text: str) -> str:
     
     This function normalizes text by:
     - Converting to lowercase
-    - Stripping punctuation (keeping alphanumerics, underscores, hyphens)
+    - Stripping punctuation (keeping alphanumerics, underscores, hyphens, and
+      technical symbols (@, &, #, +))
     - Collapsing whitespace
     
     It does NOT filter filler words or apply length filtering, which ensures
@@ -172,7 +173,7 @@ def _normalize_text_for_comparison(text: str) -> str:
     a similarity of 1.0.
     """
     text = (text or "").lower()
-    normalized = "".join(ch if ch.isalnum() or ch in "_-" else " " for ch in text)
+    normalized = "".join(ch if ch.isalnum() or ch in "_-@&#+" else " " for ch in text)
     normalized = " ".join(normalized.split())
     return normalized
 
