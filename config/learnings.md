@@ -1,4 +1,3 @@
-2026-10-23 | add_test | Add diagnostic logging to test_failure_triage in src/ourobor | failed | no code generated
 2026-10-23 | add_feature | Add a FailureBreakdown metric in src/ouroboros/metrics.py th | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-23 | add_feature | Add FailureBreakdown metric to src/ouroboros/metrics.py that | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 4 files, cap is 3
+2026-10-25 | refactor | Enhance the _extract_error_type function in test_runner.py t | failed | no code generated
