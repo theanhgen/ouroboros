@@ -1,4 +1,3 @@
-2026-10-23 | refactor | Centralize JSON file handling in backlog.py and metrics.py b | failed | no plan generated
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-23 | add_test | Add diagnostic logging to test_runner.py to track fix_bug fa | failed | no plan generated
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-25 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-25 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
+2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
