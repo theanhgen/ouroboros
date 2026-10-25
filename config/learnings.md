@@ -1,4 +1,3 @@
-2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-24 | add_test | Add diagnostic logging to test_failure_triage in src/ourobor | failed | reviewer rejected
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
@@ -98,3 +97,4 @@
 2026-10-25 | refactor | Extract duplicate JSON storage patterns from backlog.py, met | failed | out of scope: targets 4 files, cap is 3
 2026-10-25 | fix_test | Enhance the _extract_error_type function in test_runner.py t | success | tests: 1469 -> 1469
 2026-10-26 | refactor | Extract duplicate JSON file I/O utilities into src/ouroboros | failed | no plan generated
+2026-10-26 | refactor | Extract duplicate JSON storage patterns from backlog.py into | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
