@@ -1,4 +1,3 @@
-2026-10-23 | refactor | Extract JSON file handling utilities from backlog.py and met | failed | no plan generated
 2026-10-23 | refactor | Centralize JSON file handling patterns by extracting common  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-23 | refactor | Centralize JSON file handling utilities from storage_helper. | failed | no code generated
 2026-10-23 | refactor | To propose a concrete refactor for centralizing JSON file ha | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 4 files, cap is 3
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 4 files, cap is 3
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
+2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
