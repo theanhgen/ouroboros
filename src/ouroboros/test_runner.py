@@ -298,33 +298,49 @@ def _extract_error_type(message: str) -> str:
     if not message:
         return "Unknown"
     
-    # Standard Python error types
-    error_types = [
-        "AssertionError", "ValueError", "TypeError", "ImportError", "KeyError",
-        "AttributeError", "SyntaxError", "NameError", "IndexError", "TimeoutError",
-        "ConnectionError", "OSError", "PermissionError", "FileNotFoundError",
-        "NotImplementedError", "RuntimeError", "StopIteration", "StopAsyncIteration",
-        "MemoryError", "OverflowError", "ZeroDivisionError", "RecursionError",
-        "NotADirectoryError", "IsADirectoryError", "BlockingIOError", "ChildProcessError",
-        "BrokenPipeError", "ConnectionAbortedError", "ConnectionRefusedError",
-        "ConnectionResetError", "FileExistsError", "InterruptedError", "ProcessLookupError"
-    ]
+    # Regex to capture standard error types at the start or after colon
+    # e.g., "AssertionError: ...", "TypeError: ...", "ImportError: ..."
+    error_match = re.search(r'\b([A-Za-z]+Error)\b\s*:', message)
+    if error_match:
+        return error_match.group(1)
     
-    # First check for standard error types
-    for error_type in error_types:
-        if error_type in message:
-            return error_type
+    # Special handling for "Failed requiring" which is an assertion failure pattern
+    if "Failed requiring" in message:
+        return "AssertionError"
+        
+    lower_msg = message.lower()
+    
+    # Check for specific failure patterns to improve categorization
+    if "assertion error" in lower_msg:
+        return "AssertionError"
+    if "type error" in lower_msg:
+        return "TypeError"
+    if "value error" in lower_msg:
+        return "ValueError"
+    if "import error" in lower_msg:
+        return "ImportError"
+    if "key error" in lower_msg:
+        return "KeyError"
+    if "attribute error" in lower_msg:
+        return "AttributeError"
+    if "name error" in lower_msg:
+        return "NameError"
+    if "syntax error" in lower_msg:
+        return "SyntaxError"
+        
+    # Check for assert keyword as an indication of AssertionError
+    if "assert" in lower_msg:
+        return "AssertionError"
     
     # Handle warnings
-    if "Warning" in message:
-        # Extract specific warning type
-        warning_match = re.search(r'\b(\w+Warning)\b', message)
+    if "warning" in lower_msg:
+        warning_match = re.search(r'\b(\w+warning)\b', lower_msg)
         if warning_match:
-            return warning_match.group(1)
+            return warning_match.group(1).title()
         return "Warning"
     
-    # Handle "error:" pattern
-    if "error:" in message.lower():
+    # Handle "error:" pattern (e.g., "error: Something went wrong")
+    if "error:" in lower_msg:
         error_desc = re.search(r'error:\s*(.+)', message, re.IGNORECASE)
         if error_desc:
             words = error_desc.group(1).strip().split()
@@ -332,21 +348,24 @@ def _extract_error_type(message: str) -> str:
                 return words[0].title()
         return "Error"
     
-    # Extract from "File "...", line N" pattern
-    file_line_match = re.search(r'File\s+"[^"]+",\s*line\s+\d+', message)
-    if file_line_match:
-        # Try to get error message after file:line
-        after_file_line = re.search(r'File\s+"[^"]+",\s*line\s+\d+[:\s]+(.+)', message)
-        if after_file_line:
-            error_desc = after_file_line.group(1).strip()
-            if error_desc:
-                # Get first word of error description
-                first_word = error_desc.split()[0]
-                return first_word.title() if first_word else "Error"
-        return "Error"
+    # Standard Python error types (case-insensitive check for non-standard patterns)
+    error_types = [
+        "assertionerror", "valueerror", "typeerror", "importerror", "keyerror",
+        "attributeerror", "syntaxerror", "nameerror", "indexerror", "timeouterror",
+        "connectionerror", "oserror", "permissionerror", "filenotfounderror",
+        "notimplementederror", "runtimeerror", "stopiteration", "stopasynciteration",
+        "memoryerror", "overflowerror", "zerodivisionerror", "recursionerror",
+        "notadirectoryerror", "isadirectoryerror", "blockingioerror", "childprocesserror",
+        "brokenpipeerror", "connectionabortederror", "connectionrefusederror",
+        "connectionreseterror", "fileexisterror", "interruptederror", "processlookuperror"
+    ]
     
-    # Extract first meaningful word from message as error type
-    skip_words = {"Error", "Exception", "Warning", "Traceback", "File", "test", "Test"}
+    for error_type in error_types:
+        if error_type in lower_msg:
+            return error_type.title()
+    
+    # Extract first meaningful word from message as error type (fallback)
+    skip_words = {"Error", "Exception", "Warning", "Traceback", "File", "test", "Test", "failed", "requiring"}
     words = message.split()
     for word in words:
         word = re.sub(r'[^\w]', '', word)
