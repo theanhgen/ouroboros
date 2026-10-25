@@ -1,4 +1,3 @@
-2026-10-23 | refactor | To propose a concrete refactor for centralizing JSON file ha | failed | no code generated
 2026-10-23 | add_test | Add diagnostic logging to test_failure_triage in test_runner | failed | no plan generated
 2026-10-23 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-23 | add_test | Add diagnostic logging to test_failure_triage in test_runner | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-25 | fix_test | Update the test case test_modify_runner_config_creates_paren | failed | no code generated
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
