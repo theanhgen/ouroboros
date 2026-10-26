@@ -130,3 +130,49 @@ def trim_json_list(repo_root: Path, filename: str, max_size: int, list_key: Opti
         trimmed = trim_list(data, max_size)
         if trimmed != data:
             write_json_file(repo_root, filename, trimmed)
+
+def extract_items(data: Any, key: str = "items", ensure: bool = False) -> list:
+    """Extract items from data, which may be a legacy bare list or a dict with an 'items' key.
+
+    When ensure=True, the function mutates data to guarantee an 'items' key
+    containing a list before returning it. Otherwise missing or invalid items
+    result in an empty list without side effects.
+    """
+    # Handle legacy bare list format
+    if isinstance(data, list):
+        return data
+    
+    # Handle modern dict format
+    if not isinstance(data, dict):
+        return []
+    
+    items = data.get(key)
+    if isinstance(items, list):
+        return items
+    
+    # Missing or invalid items list
+    if ensure:
+        data[key] = []
+        return data[key]
+    
+    return []
+
+def extract_snapshots(data: Any, key: str = "snapshots") -> Optional[list]:
+    """Extract snapshots from data, handling legacy bare list and dict formats.
+    
+    Args:
+        data: The data to extract snapshots from
+        key: The key to look for in dict format (default: "snapshots")
+        
+    Returns:
+        list or None: The extracted snapshots, None if invalid
+    """
+    if isinstance(data, list):
+        return data
+    
+    if isinstance(data, dict):
+        snapshots = data.get(key)
+        if isinstance(snapshots, list):
+            return snapshots
+    
+    return None

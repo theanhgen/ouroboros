@@ -12,7 +12,7 @@ from statistics import mean
 
 from .model_defaults import DEFAULT_OPENAI_MODEL
 from .storage import load_json_file, save_json_file, update_json_file
-from .storage_helper import _resolve_repo_path
+from .storage_helper import _resolve_repo_path, extract_items
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def _load_backlog_items(repo_root: Path) -> List[Dict[str, Any]]:
         error_msg="Corrupt backlog file, returning empty",
         logger=log,
     )
-    return _extract_items(data)
+    return extract_items(data)
 
 
 def _save_backlog_items(repo_root: Path, items: List[Dict[str, Any]]) -> None:
@@ -46,34 +46,6 @@ def _backlog_path(repo_root: Path) -> Path:
     return _resolve_repo_path(repo_root, BACKLOG_FILE)
 
 
-def _extract_items(data: Any, ensure: bool = False) -> List[Dict[str, Any]]:
-    """Extract the items list from data, which may be a legacy bare list or a dict
-    with an 'items' key.
-
-    When ensure=True, the function mutates data to guarantee a 'items' key
-    containing a list before returning it. Otherwise missing or invalid items
-    result in an empty list without side effects.
-    """
-    # Handle legacy bare list format - simple and direct
-    if isinstance(data, list):
-        return data
-
-    # Handle modern dict format
-    if not isinstance(data, dict):
-        return []
-
-    items = data.get("items")
-    if isinstance(items, list):
-        return items
-
-    # Missing or invalid items list - ensure() determines behavior
-    if ensure:
-        # Ensure data has a valid 'items' list
-        data["items"] = []
-        return data["items"]
-
-    # ensure=False and items missing/invalid
-    return []
 
 
 def load_backlog(repo_root: Path) -> List[Dict[str, Any]]:
@@ -97,7 +69,7 @@ def _update_backlog(repo_root: Path, mutate) -> Any:
     
     def _apply(data: Any) -> Any:
         nonlocal captured_result
-        items = _extract_items(data, ensure=True)
+        items = extract_items(data, ensure=True)
         captured_result = mutate(items)
 
         # Preserve any existing keys (e.g., metadata) while updating items.
