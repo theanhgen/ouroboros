@@ -1,4 +1,3 @@
-2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-24 | add_test | Add comprehensive unit tests for _normalize_text_for_compari | failed | no code generated
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no code generated
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-26 | refactor | Extract duplicate JSON storage patterns into src/ouroboros/s | failed | out of scope: targets 4 files, cap is 3
 2026-10-26 | refactor | Refactor src/ouroboros/backlog.py to use the centralized JSO | failed | no code generated
 2026-10-26 | refactor | Refactor src/ouroboros/backlog.py to use the centralized sto | failed | no code generated
+2026-10-26 | refactor | Refactor _extract_items function in backlog.py to reduce cod | success | tests: 1469 -> 1469
