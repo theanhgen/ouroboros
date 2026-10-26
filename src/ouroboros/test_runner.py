@@ -298,58 +298,130 @@ def _extract_error_type(message: str) -> str:
     if not message:
         return "Unknown"
     
-    # Regex to capture standard error types at the start or after colon
-    # e.g., "AssertionError: ...", "TypeError: ...", "ImportError: ..."
+    # Convert to lowercase for case-insensitive matching
+    lower_msg = message.lower()
+    
+    # Enhanced "Failed requiring" handling - common pytest pattern
+    failed_requiring_patterns = [
+        r'failed requiring',
+        r'failed requiring that',
+        r'failed requiring to',
+        r'failed requiring the',
+        r'failed to require',
+        r'failed while requiring'
+    ]
+    for pattern in failed_requiring_patterns:
+        if re.search(pattern, lower_msg):
+            return "AssertionError"
+    
+    # Pattern 1: Look for standard error types at the beginning or after colon
+    # e.g., "AssertionError: ...", "TypeError: ..."
     error_match = re.search(r'\b([A-Za-z]+Error)\b\s*:', message)
     if error_match:
         return error_match.group(1)
     
-    # Special handling for "Failed requiring" which is an assertion failure pattern
-    if "Failed requiring" in message:
-        return "AssertionError"
-        
-    lower_msg = message.lower()
+    # Pattern 2: Handle warnings more comprehensively
+    # Many warnings follow pattern like "Warning: ..." or specific warning types
+    warning_match = re.search(r'\b(\w+Warning)\b\s*:', message)
+    if warning_match:
+        return warning_match.group(1)
     
-    # Check for specific failure patterns to improve categorization
-    if "assertion error" in lower_msg:
-        return "AssertionError"
-    if "type error" in lower_msg:
-        return "TypeError"
-    if "value error" in lower_msg:
-        return "ValueError"
-    if "import error" in lower_msg:
-        return "ImportError"
-    if "key error" in lower_msg:
-        return "KeyError"
-    if "attribute error" in lower_msg:
-        return "AttributeError"
-    if "name error" in lower_msg:
-        return "NameError"
-    if "syntax error" in lower_msg:
-        return "SyntaxError"
-        
-    # Check for assert keyword as an indication of AssertionError
-    if "assert" in lower_msg:
-        return "AssertionError"
-    
-    # Handle warnings
-    if "warning" in lower_msg:
-        warning_match = re.search(r'\b(\w+warning)\b', lower_msg)
-        if warning_match:
-            return warning_match.group(1).title()
-        return "Warning"
-    
-    # Handle "error:" pattern (e.g., "error: Something went wrong")
+    # Pattern 3: Handle "error:" patterns (e.g., "error: Something went wrong")
     if "error:" in lower_msg:
+        # Extract error description after "error:"
         error_desc = re.search(r'error:\s*(.+)', message, re.IGNORECASE)
         if error_desc:
             words = error_desc.group(1).strip().split()
             if words:
-                return words[0].title()
+                # Return the first meaningful word, filtering common stop words
+                stop_words = {"the", "and", "or", "in", "on", "at", "to", "for", "with", "by", "of", "from"}
+                for word in words:
+                    word_clean = re.sub(r'[^\w]', '', word)
+                    if word_clean and word_clean.lower() not in stop_words and len(word_clean) > 2:
+                        return word_clean.title()
         return "Error"
     
-    # Standard Python error types (case-insensitive check for non-standard patterns)
-    error_types = [
+    # Pattern 4: Handle common test failure patterns
+    # These patterns are specific to test failures and need special categorization
+    
+    # Assertion-related patterns
+    assertion_patterns = [
+        "assertion", "assert", "expected", "actual", "mismatch",
+        "not equal", "not in", "not contain", "should be", "should not be",
+        "must be", "must not be", "should equal", "should not equal"
+    ]
+    for pattern in assertion_patterns:
+        if pattern in lower_msg:
+            return "AssertionError"
+    
+    # Type-related patterns
+    type_patterns = [
+        "type", "type mismatch", "wrong type", "expected type", "got type"
+    ]
+    for pattern in type_patterns:
+        if pattern in lower_msg:
+            return "TypeError"
+    
+    # Value-related patterns
+    value_patterns = [
+        "value", "invalid value", "wrong value", "expected value", "got value"
+    ]
+    for pattern in value_patterns:
+        if pattern in lower_msg:
+            return "ValueError"
+    
+    # Import-related patterns
+    import_patterns = [
+        "import", "cannot import", "no module named", "import error", "import failed"
+    ]
+    for pattern in import_patterns:
+        if pattern in lower_msg:
+            return "ImportError"
+    
+    # Key-related patterns
+    key_patterns = [
+        "key", "key error", "missing key", "invalid key", "no such key"
+    ]
+    for pattern in key_patterns:
+        if pattern in lower_msg:
+            return "KeyError"
+    
+    # Attribute-related patterns
+    attr_patterns = [
+        "attribute", "attribute error", "no attribute", "missing attribute", "invalid attribute"
+    ]
+    for pattern in attr_patterns:
+        if pattern in lower_msg:
+            return "AttributeError"
+    
+    # Name-related patterns
+    name_patterns = [
+        "name", "name error", "undefined name", "name not defined"
+    ]
+    for pattern in name_patterns:
+        if pattern in lower_msg:
+            return "NameError"
+    
+    # Syntax-related patterns
+    syntax_patterns = [
+        "syntax", "syntax error", "invalid syntax", "parse error"
+    ]
+    for pattern in syntax_patterns:
+        if pattern in lower_msg:
+            return "SyntaxError"
+    
+    # Pattern 5: Handle specific warning types
+    warning_types = [
+        "deprecationwarning", "userwarning", "resourcewarning", "syntaxwarning",
+        "futurewarning", "importwarning", "runtimewarning", "bufferwarning"
+    ]
+    for warning in warning_types:
+        if warning in lower_msg:
+            return warning.title()
+    
+    # Pattern 6: Handle standard Python error types (case-insensitive check)
+    # This handles cases where error types appear without "Error" suffix or in different format
+    standard_errors = [
         "assertionerror", "valueerror", "typeerror", "importerror", "keyerror",
         "attributeerror", "syntaxerror", "nameerror", "indexerror", "timeouterror",
         "connectionerror", "oserror", "permissionerror", "filenotfounderror",
@@ -360,11 +432,32 @@ def _extract_error_type(message: str) -> str:
         "connectionreseterror", "fileexisterror", "interruptederror", "processlookuperror"
     ]
     
-    for error_type in error_types:
+    for error_type in standard_errors:
         if error_type in lower_msg:
             return error_type.title()
     
-    # Extract first meaningful word from message as error type (fallback)
+    # Pattern 7: Handle test framework specific patterns
+    # These patterns are specific to pytest, unittest, etc.
+    
+    # Pytest-specific patterns
+    pytest_patterns = {
+        "xfail": "ExpectedFailure",
+        "xpass": "UnexpectedSuccess",
+        "skip": "SkipTest",
+        "skipif": "SkipTest",
+        "mark": "MarkError",
+        "parametrize": "ParameterError",
+        "pytest.raises": "PytestRaisesError",
+        "pytest.approx": "PytestApproxError",
+        "pytest.importorskip": "PytestImportOrSkipError",
+    }
+    
+    for pattern, error_type in pytest_patterns.items():
+        if pattern in lower_msg:
+            return error_type
+    
+    # Pattern 8: Fallback mechanism
+    # Extract first meaningful word from message as error type
     skip_words = {"Error", "Exception", "Warning", "Traceback", "File", "test", "Test", "failed", "requiring"}
     words = message.split()
     for word in words:
