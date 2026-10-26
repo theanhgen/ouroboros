@@ -1,4 +1,3 @@
-2026-10-24 | add_feature | Add diagnostic logging to test_failure_triage in src/ourobor | failed | no plan generated
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-24 | fix_bug | Fix missing module-level json import and helper functions in | failed | no plan generated
 2026-10-24 | add_test | Add diagnostic logging to test_failure_triage in src/ourobor | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-26 | refactor | Extract common JSON storage patterns into shared storage_hel | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-26 | refactor | Extract common JSON file I/O utilities into src/ouroboros/st | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-26 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
+2026-10-26 | refactor | Extract the backlog-specific JSON storage pattern into a reu | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
