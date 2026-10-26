@@ -1,4 +1,3 @@
-2026-10-25 | add_test | Add comprehensive unit tests for _normalize_text_for_compari | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-25 | add_feature | Implement a test_failure_triage feature that clusters failin | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-26 | fix_test | Enhance _extract_error_type function in test_runner.py to pa | failed | no code generated
 2026-10-26 | fix_test | Enhance _extract_error_type function in test_runner.py to pa | failed | no code generated
 2026-10-26 | add_feature | Extend src/ouroboros/storage_helper.py with a bounded list t | failed | no plan generated
+2026-10-26 | refactor | Update evaluation.py to use storage_helper.py utilities for  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
