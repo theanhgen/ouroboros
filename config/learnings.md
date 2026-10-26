@@ -1,4 +1,3 @@
-2026-10-24 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-24 | fix_bug | Update src/ouroboros/backlog.py _normalize_text_for_comparis | failed | no plan generated
 2026-10-24 | refactor | Extract duplicated JSON file handling patterns into shared u | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-26 | refactor | Extract the common JSON storage pattern from backlog.py to s | failed | no plan generated
 2026-10-26 | refactor | Refactor common JSON storage logic into src/ouroboros/storag | failed | no plan generated
 2026-10-26 | refactor | Consolidate duplicate JSON storage logic across modules by c | failed | no plan generated
+2026-10-26 | fix_test | Refactor backlog.py to use the centralized storage_helper.lo | reverted | New test errors detected: 0 errors before, 2 after
