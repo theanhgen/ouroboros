@@ -1,4 +1,3 @@
-2026-10-24 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-24 | add_feature | Add comprehensive execution receipt logging to capture tool  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-24 | refactor | Extract duplicated JSON file handling patterns from evaluati | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-24 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
@@ -98,3 +97,4 @@
 2026-10-26 | refactor | Refactor src/ouroboros/backlog.py to use src/ouroboros/stora | failed | no code generated
 2026-10-26 | refactor | Extract common JSON file I/O pattern from evaluation.py into | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-26 | refactor | Enhance _extract_error_type in src/ouroboros/test_runner.py  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-26 | fix_test | Enhance _extract_error_type function in test_runner.py to ex | success | tests: 1469 -> 1469
