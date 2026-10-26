@@ -54,20 +54,25 @@ def _extract_items(data: Any, ensure: bool = False) -> List[Dict[str, Any]]:
     containing a list before returning it. Otherwise missing or invalid items
     result in an empty list without side effects.
     """
-    # Extracted from load_backlog and _update_backlog internal logic.
+    # Handle legacy bare list format - simple and direct
     if isinstance(data, list):
         return data
-    if isinstance(data, dict):
-        items = data.get("items")
-        if isinstance(items, list):
-            return items
-        if ensure:
-            # Ensure data has a valid 'items' list
-            data["items"] = []
-            return data["items"]
-        # ensure=False and items missing/invalid
+
+    # Handle modern dict format
+    if not isinstance(data, dict):
         return []
-    # Any other type
+
+    items = data.get("items")
+    if isinstance(items, list):
+        return items
+
+    # Missing or invalid items list - ensure() determines behavior
+    if ensure:
+        # Ensure data has a valid 'items' list
+        data["items"] = []
+        return data["items"]
+
+    # ensure=False and items missing/invalid
     return []
 
 
