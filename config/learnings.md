@@ -1,4 +1,3 @@
-2026-10-24 | refactor | Extract duplicated JSON file handling utilities from backlog | failed | no code generated
 2026-10-24 | fix_test | Fix missing module-level json import and add helper function | failed | no code generated
 2026-10-24 | refactor | Extract duplicated JSON file handling patterns from backlog. | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-24 | add_test | Add diagnostic logging to test_failure_triage in src/ourobor | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-26 | refactor | Extract duplicate JSON storage patterns from backlog.py, met | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-26 | refactor | Refactor src/ouroboros/backlog.py to use the centralized JSO | reverted | New test errors detected: 0 errors before, 2 after
 2026-10-26 | refactor | Refactor src/ouroboros/backlog.py to use src/ouroboros/stora | failed | no code generated
+2026-10-26 | refactor | Extract duplicate JSON storage patterns from backlog.py to u | failed | no code generated
