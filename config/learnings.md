@@ -1,4 +1,3 @@
-2026-10-24 | add_test | Add comprehensive unit tests for _extract_pipeline_stage and | failed | no plan generated
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | reviewer rejected
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-24 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-26 | refactor | Extract the common JSON storage pattern from backlog.py: cre | failed | no plan generated
 2026-10-26 | refactor | Refactor src/ouroboros/backlog.py to use the centralized sto | reverted | New test errors detected: 0 errors before, 2 after
 2026-10-26 | add_feature | Create a compact _resolve_repo_path utility in src/ouroboros | failed | no plan generated
+2026-10-26 | fix_test | Enhance _extract_error_type function in test_runner.py to be | failed | no plan generated
