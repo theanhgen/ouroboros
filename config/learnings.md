@@ -1,4 +1,3 @@
-2026-10-25 | add_feature | Implement a test_failure_triage feature that clusters failin | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-25 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | reviewer rejected
 2026-10-25 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-26 | add_feature | Extend src/ouroboros/storage_helper.py with a bounded list t | failed | no plan generated
 2026-10-26 | refactor | Update evaluation.py to use storage_helper.py utilities for  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-26 | fix_test | Enhance _extract_error_type function in test_runner.py to pa | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-27 | refactor | Extend storage_helper.load_json_file to accept error_msg and | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
