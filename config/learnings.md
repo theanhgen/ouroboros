@@ -1,4 +1,3 @@
-2026-10-24 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-24 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-24 | refactor | Extract duplicated JSON file handling patterns from evaluati | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-24 | add_feature | Add diagnostic logging to test_failure_triage in src/ourobor | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-26 | fix_test | Enhance _extract_error_type function in test_runner.py to ex | success | tests: 1469 -> 1469
 2026-10-26 | add_feature | Create src/ouroboros/storage_helper.py with load_json_file() | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-26 | fix_bug | Enhance the bug fix workflow to ensure fixes are evaluated a | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py, src
+2026-10-26 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 4 files, cap is 3
