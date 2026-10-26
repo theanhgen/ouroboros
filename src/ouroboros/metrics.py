@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from .storage import load_json_file, save_json_file, update_json_file
 from .state_persistence import _state_path
+from .storage_helper import extract_snapshots
 
 log = logging.getLogger(__name__)
 
@@ -19,22 +20,6 @@ def _metrics_path(repo_root: Path) -> Path:
     return _state_path(repo_root, METRICS_FILE)
 
 
-def _coerce_snapshots(data: Any) -> Optional[List[Dict[str, Any]]]:
-    """Return the snapshot list in a loaded document, or None if it holds none.
-
-    None and [] are different answers and the difference matters on the write
-    path: [] means "a readable file with no snapshots yet", None means "this
-    document is not a metrics file", and only the first is safe to append to
-    and write back.
-    """
-    if isinstance(data, dict):
-        snapshots = data.get("snapshots")
-    elif isinstance(data, list):
-        # The original on-disk shape was a bare list. Still readable.
-        snapshots = data
-    else:
-        snapshots = None
-    return snapshots if isinstance(snapshots, list) else None
 
 
 def _quarantine_corrupt(path: Path) -> Path:
@@ -64,7 +49,7 @@ def _quarantine_corrupt(path: Path) -> Path:
 
 def load_metrics(repo_root: Path) -> List[Dict[str, Any]]:
     data = load_json_file(_metrics_path(repo_root), default=[])
-    snapshots = _coerce_snapshots(data)
+    snapshots = extract_snapshots(data)
     return snapshots if snapshots is not None else []
 
 
@@ -209,7 +194,7 @@ def _append_snapshot(repo_root: Path, snapshot: Dict[str, Any]) -> None:
     path = _metrics_path(repo_root)
 
     def append(data: Any) -> Dict[str, Any]:
-        snapshots = _coerce_snapshots(data)
+        snapshots = extract_snapshots(data)
         if snapshots is None:
             # Parsed, but not a metrics document. Same treatment as a parse
             # failure: whatever it is, it is not ours to overwrite.
