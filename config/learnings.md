@@ -1,4 +1,3 @@
-2026-10-25 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-25 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-27 | refactor | Extract a bounded list utility from storage_helper.py to sim | failed | no plan generated
 2026-10-27 | refactor | Extract common JSON storage patterns from backlog.py and met | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-27 | refactor | Extract common JSON storage pattern from backlog.py into reu | failed | no code generated
+2026-10-27 | refactor | Refactor backlog.py's _backlog_path, load_backlog, and save_ | failed | no code generated
