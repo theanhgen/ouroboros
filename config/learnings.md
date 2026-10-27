@@ -1,4 +1,3 @@
-2026-10-25 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | no plan generated
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-25 | refactor | Extract common JSON storage patterns into shared utility mod | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-25 | fix_bug | Fix _normalize_text_for_comparison in src/ouroboros/backlog. | success | tests: 1469 -> 1469
@@ -98,3 +97,4 @@
 2026-10-27 | refactor | Extract common JSON storage pattern from backlog.py into reu | failed | no code generated
 2026-10-27 | refactor | Refactor backlog.py's _backlog_path, load_backlog, and save_ | failed | no code generated
 2026-10-27 | refactor | Extract common JSON storage patterns into reusable utilities | failed | no plan generated
+2026-10-27 | improve_docs | Add structured success-type tagging to metrics storage to tr | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
