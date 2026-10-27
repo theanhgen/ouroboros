@@ -1,4 +1,3 @@
-2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 7 files, cap is 3
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 4 files, cap is 3
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 4 files, cap is 3
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-27 | refactor | Refactor backlog.py's _backlog_path, load_backlog, and save_ | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no plan generated
 2026-10-27 | refactor | Refactor backlog.py to use storage_helper utilities for JSON | failed | no plan generated
+2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no plan generated
