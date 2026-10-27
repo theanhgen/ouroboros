@@ -1,4 +1,3 @@
-2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 5 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-27 | fix_bug | Fix bug in item_coverage function in backlog.py where it inc | failed | no code generated
 2026-10-27 | fix_bug | Fix the item_coverage function in backlog.py line 105 to com | failed | no code generated
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no code generated
+2026-10-27 | fix_bug | Fix item_coverage function in backlog.py to correctly compar | failed | no code generated
