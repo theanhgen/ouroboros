@@ -1,4 +1,3 @@
-2026-10-25 | refactor | Extract common JSON storage patterns across backlog.py, metr | failed | out of scope: targets 4 files, cap is 3
 2026-10-25 | refactor | Extract duplicate JSON storage patterns from backlog.py, met | failed | out of scope: targets 4 files, cap is 3
 2026-10-25 | fix_test | Enhance the _extract_error_type function in test_runner.py t | success | tests: 1469 -> 1469
 2026-10-26 | refactor | Extract duplicate JSON file I/O utilities into src/ouroboros | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to compare | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to compare | failed | no code generated
 2026-10-27 | refactor | Extract duplicated 'path + JSON load/save + atomic write' pa | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-27 | fix_bug | Fix item_coverage function in backlog.py to correctly compar | failed | no code generated
