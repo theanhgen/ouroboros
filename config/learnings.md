@@ -1,4 +1,3 @@
-2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-25 | fix_test | Update the test case test_modify_runner_config_creates_paren | failed | no code generated
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no plan generated
 2026-10-27 | refactor | Extract a reusable bounded list utility from storage_helper. | failed | no code generated
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
+2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no plan generated
