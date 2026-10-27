@@ -1,5 +1,4 @@
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
-2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-25 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | duplicate | already completed: Fix _normalize_text_for_comparison in src/ouroboros/backlog.
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | no plan generated
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 7 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-27 | refactor | Consolidate duplicate JSON storage logic in backlog.py by ex | failed | no code generated
 2026-10-27 | refactor | Extract bounded list utility from storage_helper.py to simpl | failed | no plan generated
 2026-10-27 | fix_test | Enhance _extract_error_type function in test_runner.py to pa | failed | no plan generated
+2026-10-27 | add_feature | Extract common JSON storage patterns from evaluation.py, met | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
