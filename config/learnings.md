@@ -1,4 +1,3 @@
-2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
 2026-10-25 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 4 files, cap is 3
 2026-10-25 | refactor | Enhance the _extract_error_type function in test_runner.py t | failed | no code generated
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly compa | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no code generated
 2026-10-27 | refactor | Refactor backlog.py to use storage_helper utilities for JSON | failed | no plan generated
+2026-10-27 | fix_bug | Fix item_coverage function in backlog.py to correctly compar | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
