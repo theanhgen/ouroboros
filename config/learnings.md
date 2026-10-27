@@ -1,4 +1,3 @@
-2026-10-26 | refactor | Extract common JSON storage patterns into shared storage_hel | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-26 | refactor | Extract common JSON file I/O utilities into src/ouroboros/st | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-26 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-26 | refactor | Extract the backlog-specific JSON storage pattern into a reu | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | no plan generated
+2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to compare | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
