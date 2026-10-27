@@ -1,4 +1,3 @@
-2026-10-26 | refactor | Extract duplicate JSON storage patterns from backlog.py to u | failed | no code generated
 2026-10-26 | refactor | Refactor src/ouroboros/backlog.py to use src/ouroboros/stora | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-26 | fix_test | Fix _extract_error_type function in test_runner.py to extrac | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-26 | refactor | Refactor src/ouroboros/backlog.py to use src/ouroboros/stora | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | no plan generated
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-27 | fix_bug | Fix item_coverage function in src/ouroboros/backlog.py line  | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
+2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | no plan generated
