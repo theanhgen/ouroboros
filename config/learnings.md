@@ -1,4 +1,3 @@
-2026-10-26 | add_test | Create src/ouroboros/storage_helper.py with load_json_file(r | failed | no code generated
 2026-10-26 | refactor | Extract common JSON storage patterns into shared storage_hel | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-26 | refactor | Extract common JSON file I/O utilities into src/ouroboros/st | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-26 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
@@ -98,3 +97,4 @@
 2026-10-27 | add_test | Add test_failure_triage that clusters failing tests by root  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | no plan generated
