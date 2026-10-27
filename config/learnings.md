@@ -1,4 +1,3 @@
-2026-10-26 | refactor | Extract duplicate JSON file I/O utilities into src/ouroboros | failed | no plan generated
 2026-10-26 | refactor | Extract duplicate JSON storage patterns from backlog.py into | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-26 | add_test | Create src/ouroboros/storage_helper.py with load_json_file(r | failed | no code generated
 2026-10-26 | refactor | Extract common JSON storage patterns into shared storage_hel | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py to correctly compar | failed | no code generated
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly compa | failed | no plan generated
 2026-10-27 | add_test | Add test_failure_triage that clusters failing tests by root  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
