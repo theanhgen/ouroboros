@@ -1,4 +1,3 @@
-2026-10-25 | fix_bug | Fix backlog duplicate detection by updating _normalize_text_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no code generated
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | reverted | Test regression detected: 0 failures before, 3 after
 2026-10-25 | fix_bug | Update _normalize_text_for_comparison in src/ouroboros/backl | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-27 | refactor | Extract redundant file handling logic from backlog.py by ref | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-27 | refactor | Extract redundant file handling logic from backlog.py by ref | reverted | New test errors detected: 0 errors before, 2 after
 2026-10-27 | fix_test | Enhance _extract_error_type function in test_runner.py to pa | failed | no plan generated
+2026-10-27 | refactor | Consolidate duplicate JSON storage logic in backlog.py by ex | failed | no code generated
