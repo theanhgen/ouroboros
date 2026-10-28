@@ -215,7 +215,7 @@ def content_overlap(a: str, b: str) -> float:
     return len(wa & wb) / len(wa | wb)
 
 
-def item_coverage(item_text: str, task_text: str) -> float:
+def item_coverage(source: str, target: str) -> float:
     """Share of the backlog item's content words that the task restates, in [0.0, 1.0].
 
     Measures how completely a task restates the content of its corresponding
@@ -236,8 +236,8 @@ def item_coverage(item_text: str, task_text: str) -> float:
     extra words the model added.
 
     Args:
-        item_text: The original backlog item description.
-        task_text: The task description offered to the model.
+        source: The original backlog item description.
+        target: The task description offered to the model.
 
     Returns:
         Float between 0.0 and 1.0 representing the proportion of content words
@@ -256,13 +256,13 @@ def item_coverage(item_text: str, task_text: str) -> float:
         ...               "add new admin panel")
         0.0  # No content word overlap - missing all key concepts
     """
-    wi, wt = _content_words(item_text), _content_words(task_text)  # Fixed: was _content_words(item) for both
+    wi, wt = _content_words(source), _content_words(target)  # Fixed: was _content_words(item) for both
     
-    # Handle edge cases: no content words in either item_text or task_text
+    # Handle edge cases: no content words in either source or target
     if not wi or not wt:
         return 0.0
     
-    # Calculate intersection size (words in both item_text and task_text)
+    # Calculate intersection size (words in both source and target)
     intersection_size = len(wi & wt)
     
     # Calculate coverage: intersection size / item size
