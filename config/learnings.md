@@ -1,4 +1,3 @@
-2026-10-26 | refactor | Update evaluation.py to use storage_helper.py utilities for  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-26 | fix_test | Enhance _extract_error_type function in test_runner.py to pa | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-27 | refactor | Extend storage_helper.load_json_file to accept error_msg and | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-27 | refactor | Extract common JSON storage patterns from backlog.py, metric | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-10-28 | refactor | Extract JSON loading/saving pattern from backlog.py into reu | failed | no plan generated
 2026-10-28 | refactor | Refactor backlog.py to use storage_helper.py's centralized J | failed | no code generated
 2026-10-28 | refactor | Extract JSON load/save + atomic write pattern from backlog.p | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-28 | refactor | Rename function parameters in item_coverage to avoid shadowi | success | tests: 1471 -> 1471
