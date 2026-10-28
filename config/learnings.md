@@ -1,4 +1,3 @@
-2026-10-26 | fix_bug | Enhance the bug fix workflow to ensure fixes are evaluated a | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py, src
 2026-10-26 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | out of scope: targets 4 files, cap is 3
 2026-10-26 | add_feature | Create src/ouroboros/storage_helper.py with load_json_file() | failed | no plan generated
 2026-10-26 | add_test | Add comprehensive confidence calibration tests to verify tha | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | duplicate | already completed: Fix item_coverage function in backlog.py to correctly compar
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | duplicate | already completed: Fix item_coverage function in backlog.py to correctly compar
 2026-10-28 | add_test | Add test_failure_triage that clusters failing tests by root  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | duplicate | already completed: Fix item_coverage function in backlog.py to correctly compar
