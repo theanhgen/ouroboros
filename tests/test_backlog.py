@@ -18,6 +18,7 @@ from ouroboros.backlog import (
     get_pending,
     format_backlog_for_llm,
     format_priority_report,
+    item_coverage,
     OrganizeResult,
 )
 from pytest import fixture
@@ -317,6 +318,20 @@ class TestBacklog:
         mark_failed(self.tmp_dir, entry["id"])
         assert load_backlog(self.tmp_dir)[0]["attempts"] == 4
         assert load_backlog(self.tmp_dir)[0]["status"] == "abandoned"
+
+    def test_item_coverage(self):
+        # Identical strings → full coverage
+        assert item_coverage('hello', 'hello') == 1.0
+
+        # Completely dissimilar strings → no coverage
+        assert item_coverage('hello', 'world') == 0.0
+
+        # Partial match (one of two words matches) → 0.5 coverage
+        assert item_coverage('hello world', 'hello') == pytest.approx(0.5)
+        assert item_coverage('hello world', 'world') == pytest.approx(0.5)
+
+        # Guard against false positive for mismatched inputs
+        assert item_coverage('abc', 'def') != 1.0
 
 # -- centralised JSON IO -----
 
