@@ -1,4 +1,3 @@
-2026-10-26 | refactor | Extract common JSON storage patterns into src/ouroboros/stor | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-26 | refactor | Extract the common JSON storage pattern from backlog.py: cre | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-26 | refactor | Extract the common JSON storage pattern from backlog.py: cre | failed | no plan generated
 2026-10-26 | refactor | Refactor src/ouroboros/backlog.py to use the centralized sto | reverted | New test errors detected: 0 errors before, 2 after
@@ -98,3 +97,4 @@
 2026-10-28 | investigation_complete | The item_coverage function in src/ouroboros/backlog.py at li | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 218 to correct | failed | no plan generated
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py to compare backlog  | failed | no code generated
+2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 218 to compare | failed | no plan generated
