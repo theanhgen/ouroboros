@@ -256,18 +256,18 @@ def item_coverage(source: str, target: str) -> float:
         ...               "add new admin panel")
         0.0  # No content word overlap - missing all key concepts
     """
-    wi, wt = _content_words(source), _content_words(target)  # Fixed: was _content_words(item) for both
+    source_words = _content_words(source)
+    target_words = _content_words(target)
     
     # Handle edge cases: no content words in either source or target
-    if not wi or not wt:
+    if not source_words or not target_words:
         return 0.0
     
-    # Calculate intersection size (words in both source and target)
-    intersection_size = len(wi & wt)
+    # Calculate intersection size (words that appear in both source and target)
+    intersection_size = len(source_words & target_words)
     
-    # Calculate coverage: intersection size / item size
-    # This implements: len(target_words_in_source) / len(target_words)
-    coverage = intersection_size / len(wi)
+    # Calculate coverage: proportion of the item's words that appear in the task
+    coverage = intersection_size / len(source_words)
     
     return coverage
 
