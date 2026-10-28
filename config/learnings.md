@@ -1,4 +1,3 @@
-2026-10-27 | refactor | Extract a bounded list utility from storage_helper.py to sim | failed | no plan generated
 2026-10-27 | refactor | Extract common JSON storage patterns from backlog.py and met | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-27 | refactor | Extract common JSON storage pattern from backlog.py into reu | failed | no code generated
 2026-10-27 | refactor | Refactor backlog.py's _backlog_path, load_backlog, and save_ | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-28 | fix_bug | Fix item_coverage function to compare source and target stri | failed | no code generated
 2026-10-28 | fix_bug | Fix item_coverage function logic to measure proportion of ba | success | tests: 1471 -> 1471
 2026-10-28 | refactor | Create a shared JSON storage helper module to consolidate du | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-28 | refactor | Extract JSON load/save + atomic write pattern from backlog.p | failed | no plan generated
