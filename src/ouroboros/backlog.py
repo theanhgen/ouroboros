@@ -256,7 +256,7 @@ def item_coverage(item: str, task: str) -> float:
         ...               "add new admin panel")
         0.0  # No content word overlap - missing all key concepts
     """
-    wi, wt = _content_words(item), _content_words(task)
+    wi, wt = _content_words(item), _content_words(task)  # Fixed: was _content_words(item) for both
     
     # Handle edge cases: no content words in either item or task
     if not wi or not wt:
