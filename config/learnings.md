@@ -1,4 +1,3 @@
-2026-10-26 | refactor | Extract the common JSON storage pattern from backlog.py: cre | failed | no plan generated
 2026-10-26 | refactor | Refactor src/ouroboros/backlog.py to use the centralized sto | reverted | New test errors detected: 0 errors before, 2 after
 2026-10-26 | add_feature | Create a compact _resolve_repo_path utility in src/ouroboros | failed | no plan generated
 2026-10-26 | fix_test | Enhance _extract_error_type function in test_runner.py to be | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py to compare backlog  | failed | no code generated
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 218 to compare | failed | no plan generated
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 218 to correct | failed | no plan generated
+2026-10-28 | refactor | Extract common 'path + JSON load/save + atomic write + bound | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
