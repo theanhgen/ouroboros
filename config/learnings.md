@@ -1,4 +1,3 @@
-2026-10-27 | refactor | Extract common JSON storage patterns from backlog.py, metric | failed | out of scope: targets 4 files, cap is 3
 2026-10-27 | fix_test | Enhance _extract_error_type function in test_runner.py to pa | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-27 | refactor | Consolidate duplicate JSON storage logic by extending src/ou | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-27 | refactor | Extract a bounded list utility from storage_helper.py to sim | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-28 | refactor | Rename function parameters in item_coverage to avoid shadowi | success | tests: 1471 -> 1471
 2026-10-28 | refactor | Remove unused empty parameters from item_coverage function t | success | tests: 1471 -> 1471
 2026-10-28 | fix_bug | Add a pre-generation validation step to require failing test | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-10-28 | fix_bug | Fix item_coverage function to compare source and target stri | failed | no code generated
