@@ -1,6 +1,6 @@
 """Tests for test_runner module."""
 
-from ouroboros.test_runner import RunnerOutcome, _parse_pytest_output, _extract_coverage_from_output
+from ouroboros.test_runner import RunnerOutcome, FailureDetail, _parse_pytest_output, _extract_coverage_from_output
 
 def test_test_result_success():
     r = RunnerOutcome(passed=5, failed=0, errors=0, returncode=0)
