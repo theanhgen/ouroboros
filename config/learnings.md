@@ -1,4 +1,3 @@
-2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | no code generated
 2026-10-27 | fix_bug | Fix the item_coverage function in backlog.py to correctly co | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | no plan generated
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
@@ -98,3 +97,4 @@
 2026-10-29 | add_test | Add comprehensive test for bug-fix pipeline evidence chain:  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no code generated
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from evaluation.py, | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-29 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no code generated
