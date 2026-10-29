@@ -1,4 +1,3 @@
-2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | no plan generated
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | no code generated
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to correct | failed | no code generated
 2026-10-28 | refactor | Extract common 'path + JSON load/save + atomic write' patter | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no plan generated
 2026-10-29 | add_feature | Implement test_failure_triage to cluster failing tests by ro | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from backlog.py, me | failed | out of scope: targets 4 files, cap is 3
+2026-10-29 | add_test | Add test_failure_triage.py to cluster failing tests by root- | failed | no code generated
