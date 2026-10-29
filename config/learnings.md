@@ -1,4 +1,3 @@
-2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly compa | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-27 | fix_bug | Fix bug in item_coverage function in backlog.py where it inc | failed | no code generated
 2026-10-27 | fix_bug | Fix the item_coverage function in backlog.py line 105 to com | failed | no code generated
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-29 | refactor | Extract JSON storage patterns from backlog.py into reusable  | failed | no plan generated
 2026-10-29 | fix_bug | Fix the `step` function signature in src/ouroboros/attention | failed | reviewer rejected
 2026-10-29 | fix_bug | Fix the `step` function signature in src/ouroboros/attention | failed | no plan generated
+2026-10-29 | fix_bug | Fix the `step` function signature in src/ouroboros/attention | failed | no code generated
