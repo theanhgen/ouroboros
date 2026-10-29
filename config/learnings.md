@@ -1,4 +1,3 @@
-2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no code generated
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py to correctly compar | failed | no code generated
 2026-10-27 | fix_bug | Fix the item_coverage function in backlog.py to correctly co | failed | no plan generated
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py line 105 to compare | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
@@ -98,3 +97,4 @@
 2026-10-29 | fix_bug | Fix the `step` function signature in src/ouroboros/attention | failed | no code generated
 2026-10-29 | refactor | Extract JSON storage patterns from backlog.py into reusable  | failed | no code generated
 2026-10-29 | refactor | Extract JSON storage and atomic write patterns from backlog. | failed | out of scope: targets 4 files, cap is 3
+2026-10-29 | refactor | Extract duplicated JSON storage patterns from evaluation.py, | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
