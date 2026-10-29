@@ -1,4 +1,3 @@
-2026-10-27 | refactor | Refactor backlog.py to use storage_helper utilities for JSON | failed | no plan generated
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py to correctly compar | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-27 | fix_bug | Fix item_coverage function in backlog.py to correctly compar | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly compa | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-29 | fix_bug | Fix the incomplete signature of the step function in src/our | failed | no code generated
 2026-10-29 | refactor | Extract JSON storage and atomic write patterns from metrics. | failed | no plan generated
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from evaluation.py, | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-29 | refactor | Extract JSON storage patterns from backlog.py into reusable  | failed | no plan generated
