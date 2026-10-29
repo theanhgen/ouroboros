@@ -681,9 +681,12 @@ def step(
     creds: Any,
     client: Any,
     notify: Callable[..., None],
+    model: Optional[str] = None,
+    now: Optional[int] = None,
 ) -> Optional[str]:
     """One pass: maybe post, record how recent posts did, answer comments."""
-    now = int(time.time())
+    if now is None:
+        now = int(time.time())
     if verification_blocked(state, now):
         log.warning(
             "[verify] %s failed challenges in a row; not posting",
@@ -691,7 +694,11 @@ def step(
         )
         return "verification_blocked"
 
-    client, model = writer(cfg, client)
+    # Determine the client and model to use (respect overflow gateway)
+    new_client, model_from_writer = writer(cfg, client)
+    if model is None:
+        model = model_from_writer
+    client = new_client
     result = None
     if cfg.enable_incident_posts:
         result = step_post(cfg, state, creds, client, model, now, notify)
