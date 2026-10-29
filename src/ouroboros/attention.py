@@ -633,7 +633,7 @@ def step_replies(
         if p.get("id") and now - int(p["ts"]) <= REPLY_WINDOW_SECONDS
     ]
     for post in reversed(recent):
-        if sent >= budget or verification_blocked(state):
+        if sent >= budget or verification_blocked(state, now):
             break
         try:
             data = moltbook._request(
@@ -669,7 +669,7 @@ def step_replies(
             if publish(creds.api_key, result, client, model, state):
                 sent += 1
                 log.info("[reply] Replied on %s to %s", post["id"], _author(comment))
-            if verification_blocked(state):
+            if verification_blocked(state, now):
                 break
     state["handled_comment_ids"] = handled[-MAX_HANDLED_COMMENTS:]
     return sent
