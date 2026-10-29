@@ -1,5 +1,4 @@
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no plan generated
-2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no plan generated
 2026-10-27 | refactor | Extract a reusable bounded list utility from storage_helper. | failed | no code generated
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-27 | fix_bug | Fix bug in item_coverage function where it incorrectly uses  | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-29 | refactor | Extract JSON storage and atomic write patterns from backlog. | failed | out of scope: targets 4 files, cap is 3
 2026-10-29 | refactor | Extract JSON storage and atomic write patterns from metrics. | failed | no plan generated
 2026-10-29 | fix_bug | Fix the `step` function in `src/ouroboros/attention.py`. It  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-29 | fix_bug | Fix the `step` function in `src/ouroboros/attention.py` whic | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
