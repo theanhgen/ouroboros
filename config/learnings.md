@@ -1,4 +1,3 @@
-2026-10-28 | fix_test | Fix item_coverage function in backlog.py line 105 to correct | duplicate | already completed: Fix item_coverage function in backlog.py to correctly compar
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py to correctly compar | duplicate | already completed: Fix item_coverage function in backlog.py to correctly compar
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 218 to correct | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-10-28 | add_test | Add a unit test for the item_coverage function in tests/test | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-30 | refactor | Extract JSON storage path resolution and atomic write helper | failed | no plan generated
 2026-10-30 | refactor | Extract JSON storage utilities from storage_helper.py into a | failed | no plan generated
 2026-10-30 | refactor | Extract duplicated JSON storage patterns into reusable helpe | failed | no plan generated
+2026-10-30 | refactor | Extract duplicated JSON storage patterns from backlog.py, me | failed | out of scope: targets 4 files, cap is 3
