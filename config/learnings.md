@@ -1,4 +1,3 @@
-2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 218 to compare | failed | no code generated
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 218 to correct | success | tests: 1470 -> 1471
 2026-10-28 | refactor | Extract the JSON load/save + atomic write pattern from backl | failed | no code generated
 2026-10-28 | fix_bug | Fix item_coverage function in backlog.py line 218 to compare | duplicate | already completed: Fix item_coverage function in backlog.py line 218 to correct
@@ -98,3 +97,4 @@
 2026-10-30 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no plan generated
 2026-10-30 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no plan generated
 2026-10-30 | add_test | Add comprehensive unit tests for RunnerOutcome.cluster_failu | failed | reviewer rejected
+2026-10-30 | refactor | Add JSON storage helpers to src/ouroboros/storage_helper.py: | failed | no plan generated
