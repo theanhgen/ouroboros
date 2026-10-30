@@ -1,4 +1,3 @@
-2026-10-28 | investigation_complete | The backlog.py item_coverage function has already been fixed | failed | generation failed: EditMismatch: <file>docs/wiki/Investigation_Status.md</file>
 2026-10-28 | refactor | Extract JSON path resolution, atomic write, and default valu | failed | out of scope: targets 4 files, cap is 3
 2026-10-28 | refactor | Extract JSON loading/saving and atomic write patterns from d | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-28 | fix_bug | Fix item_coverage function to use separate parameters for it | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-10-30 | add_feature | Implement evidence-first validation for bug-fix tasks by add | failed | out of scope: targets forbidden file(s): src/ouroboros/policies.py, src/ou
 2026-10-30 | fix_test | Fix syntax errors in tests/test_test_runner.py that prevent  | failed | no plan generated
 2026-10-30 | fix_test | Fix syntax errors in tests/test_test_runner.py that prevent  | failed | no code generated
+2026-10-30 | add_test | Add comprehensive unit tests for internal test_runner helper | failed | no code generated
