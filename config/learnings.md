@@ -1,4 +1,3 @@
-2026-10-28 | refactor | Refactor backlog.py to use storage_helper utilities for JSON | failed | reviewer rejected
 2026-10-28 | refactor | Consolidate duplicated JSON I/O patterns into storage_helper | failed | no code generated
 2026-10-28 | fix_bug | Add a pre-generation validation step to require failing test | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-28 | refactor | Extract duplicated JSON storage patterns into reusable helpe | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-30 | add_test | Add unit tests for src/ouroboros/memory.MemoryStore and src/ | failed | reviewer rejected
 2026-10-30 | add_test | Add unit tests for RunnerOutcome.cluster_failures_by_root_ca | failed | no plan generated
 2026-10-30 | fix_bug | Debug and fix the test_failure_triage logic in RunnerOutcome | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-30 | add_test | Add comprehensive unit tests for _extract_error_type helper  | failed | no plan generated
