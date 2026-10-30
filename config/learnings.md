@@ -1,4 +1,3 @@
-2026-10-28 | fix_bug | Fix item_coverage function logic to measure proportion of ba | success | tests: 1471 -> 1471
 2026-10-28 | refactor | Create a shared JSON storage helper module to consolidate du | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-28 | refactor | Extract JSON load/save + atomic write pattern from backlog.p | failed | no plan generated
 2026-10-28 | refactor | Refactor backlog.py to use storage_helper utilities for JSON | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-10-30 | fix_test | Fix syntax errors in tests/test_test_runner.py that prevent  | failed | no plan generated
 2026-10-30 | fix_test | Fix syntax errors in tests/test_test_runner.py that prevent  | failed | no plan generated
 2026-10-30 | fix_test | Fix syntax errors in tests/test_test_runner.py that prevent  | failed | no plan generated
+2026-10-30 | add_test | Add unit tests for src/ouroboros/memory.MemoryStore and src/ | failed | reviewer rejected
