@@ -1,4 +1,3 @@
-2026-10-28 | refactor | Rename function parameters in item_coverage to avoid shadowi | success | tests: 1471 -> 1471
 2026-10-28 | refactor | Remove unused empty parameters from item_coverage function t | success | tests: 1471 -> 1471
 2026-10-28 | fix_bug | Add a pre-generation validation step to require failing test | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-28 | fix_bug | Fix item_coverage function to compare source and target stri | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-30 | add_test | Add unit tests for _extract_error_type helper method in test | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-30 | fix_test | Fix syntax errors in tests/test_test_runner.py that prevent  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-30 | add_test | Add comprehensive unit tests for internal test_runner helper | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-30 | add_test | Add unit tests for internal test_runner helper methods (_ext | failed | no code generated
