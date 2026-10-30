@@ -1,4 +1,3 @@
-2026-10-28 | refactor | Extract duplicated JSON storage patterns into reusable helpe | failed | no code generated
 2026-10-28 | refactor | Extract JSON I/O pattern from backlog.py into storage_helper | failed | no plan generated
 2026-10-28 | refactor | Extract JSON load/save + atomic write patterns from backlog. | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-28 | add_test | Add comprehensive tests for JSON storage pattern consistency | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-30 | add_test | Add comprehensive unit tests for _extract_error_type helper  | failed | no plan generated
 2026-10-30 | refactor | Extract duplicated JSON storage patterns from multiple modul | failed | no code generated
 2026-10-30 | refactor | Extract duplicated JSON storage patterns into a shared stora | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-10-30 | fix_bug | Fix test_failure_triage logic in RunnerOutcome to properly e | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
