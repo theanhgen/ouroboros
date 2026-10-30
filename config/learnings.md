@@ -1,4 +1,3 @@
-2026-10-28 | fix_bug | Fix item_coverage function to use separate parameters for it | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-28 | refactor | Extract the JSON load/save + bounded trim pattern from stora | failed | no code generated
 2026-10-28 | refactor | Extract JSON loading/saving pattern from backlog.py into reu | failed | no plan generated
 2026-10-28 | refactor | Refactor backlog.py to use storage_helper.py's centralized J | failed | no code generated
@@ -98,3 +97,4 @@
 2026-10-30 | add_test | Add comprehensive unit tests for internal test_runner helper | failed | no code generated
 2026-10-30 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no plan generated
 2026-10-30 | refactor | Extract JSON storage path resolution and load/save helpers i | failed | no code generated
+2026-10-30 | refactor | Extract duplicated JSON storage logic from backlog.py into r | failed | no plan generated
