@@ -1,4 +1,3 @@
-2026-10-28 | refactor | Refactor backlog.py to use storage_helper.py's centralized J | failed | no code generated
 2026-10-28 | refactor | Extract JSON load/save + atomic write pattern from backlog.p | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-28 | refactor | Rename function parameters in item_coverage to avoid shadowi | success | tests: 1471 -> 1471
 2026-10-28 | refactor | Remove unused empty parameters from item_coverage function t | success | tests: 1471 -> 1471
@@ -98,3 +97,4 @@
 2026-10-30 | refactor | Extract duplicated JSON storage logic from backlog.py into r | failed | no plan generated
 2026-10-30 | refactor | Extract duplicated JSON storage patterns from backlog.py int | failed | reviewer rejected
 2026-10-30 | add_test | Add unit tests for _extract_error_type helper method in test | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-30 | fix_test | Fix syntax errors in tests/test_test_runner.py that prevent  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
