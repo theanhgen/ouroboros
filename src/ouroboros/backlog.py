@@ -26,7 +26,7 @@ def _load_backlog_items(repo_root: Path) -> List[Dict[str, Any]]:
     and error handling. Returns the items list from the file.
     """
     data = load_json_file(
-        _backlog_path(repo_root),
+        _resolve_repo_path(repo_root, BACKLOG_FILE),
         default={"items": []},
         error_msg="Corrupt backlog file, returning empty",
         logger=log,
@@ -39,11 +39,9 @@ def _save_backlog_items(repo_root: Path, items: List[Dict[str, Any]]) -> None:
     
     Writes the items to the file with atomic write logic.
     """
-    save_json_file(_backlog_path(repo_root), {"items": items})
+    save_json_file(_resolve_repo_path(repo_root, BACKLOG_FILE), {"items": items})
 
 
-def _backlog_path(repo_root: Path) -> Path:
-    return _resolve_repo_path(repo_root, BACKLOG_FILE)
 
 
 
@@ -83,7 +81,7 @@ def _update_backlog(repo_root: Path, mutate) -> Any:
         return new_data
     
     update_json_file(
-        _backlog_path(repo_root), _apply, default={"items": []}
+        _resolve_repo_path(repo_root, BACKLOG_FILE), _apply, default={"items": []}
     )
     
     return captured_result
