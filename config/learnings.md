@@ -1,4 +1,3 @@
-2026-10-30 | add_test | Add comprehensive test coverage for RunnerOutcome.cluster_fa | failed | no plan generated
 2026-10-30 | refactor | Extract bounded list trimming logic from knowledge_base.py i | failed | no plan generated
 2026-10-30 | refactor | Extract JSON storage path resolution pattern from backlog.py | failed | no plan generated
 2026-10-30 | fix_bug | Instrument the improvement pipeline to diagnose why fix_bug  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no code generated
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
+2026-10-31 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
