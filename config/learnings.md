@@ -1,4 +1,3 @@
-2026-10-29 | refactor | Extract duplicated JSON storage patterns from backlog.py, me | failed | out of scope: targets 4 files, cap is 3
 2026-10-29 | add_test | Add test_failure_triage.py to cluster failing tests by root- | failed | no code generated
 2026-10-29 | add_test | Add comprehensive test coverage for the failure triage featu | failed | reviewer rejected
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-31 | refactor | Consolidate duplicated JSON persistence logic by adding gene | failed | no plan generated
 2026-10-31 | refactor | Add generic JSON storage helpers to src/ouroboros/storage_he | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-31 | refactor | Extract duplicated JSON persistence logic into storage_helpe | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | reviewer rejected
