@@ -1,4 +1,3 @@
-2026-10-29 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no plan generated
 2026-10-30 | add_test | Add missing unittest import to tests/test_test_runner.py to  | failed | no plan generated
 2026-10-30 | fix_test | Add missing import for FailureDetail in tests/test_test_runn | success | tests: 1471 -> 1471
 2026-10-30 | fix_test | Add missing unittest import to tests/test_test_runner.py to  | failed | generation failed: EditMismatch: path/to/file.py: not one of the files provided
@@ -98,3 +97,4 @@
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | reviewer rejected
 2026-10-31 | refactor | Consolidate duplicated JSON persistence logic by updating ba | failed | no code generated
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no plan generated
+2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
