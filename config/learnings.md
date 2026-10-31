@@ -1,4 +1,3 @@
-2026-10-29 | refactor | Extract duplicated JSON storage patterns from evaluation.py, | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no code generated
 2026-10-29 | refactor | Extract duplicated JSON storage patterns into reusable helpe | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no plan generated
 2026-10-31 | refactor | Extract duplicated JSON persistence logic by adding generic  | failed | no plan generated
 2026-10-31 | add_feature | Add evidence-first verification gate in improvement runner:  | failed | no plan generated
+2026-10-31 | add_test | Add unit tests for the _extract_error_type helper in src/our | failed | no code generated
