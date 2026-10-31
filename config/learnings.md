@@ -1,4 +1,3 @@
-2026-10-29 | fix_bug | Fix the incomplete signature of the step function in src/our | failed | no code generated
 2026-10-29 | refactor | Extract JSON storage and atomic write patterns from metrics. | failed | no plan generated
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from evaluation.py, | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-29 | refactor | Extract JSON storage patterns from backlog.py into reusable  | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-31 | refactor | Extract duplicated JSON storage patterns into a shared stora | failed | no code generated
 2026-10-31 | add_test | Add comprehensive unit tests for _extract_error_type helper  | failed | no code generated
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | reviewer rejected
+2026-10-31 | refactor | Extract duplicated JSON storage patterns from src/ouroboros/ | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
