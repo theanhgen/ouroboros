@@ -1,4 +1,3 @@
-2026-10-29 | fix_bug | Fix the step function signature in src/ouroboros/attention.p | success | tests: 1471 -> 1471
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from backlog.py, me | failed | out of scope: targets 4 files, cap is 3
 2026-10-29 | fix_bug | Fix the step function signature in src/ouroboros/attention.p | duplicate | already completed: Fix the step function signature in src/ouroboros/attention.p
 2026-10-29 | fix_bug | Fix critical bug in step() function signature mismatch in sr | failed | no plan generated
@@ -97,4 +96,5 @@
 2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no plan generated
 2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no code generated
 2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no code generated
