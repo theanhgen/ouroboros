@@ -1,4 +1,3 @@
-2026-10-29 | fix_bug | Fix the `step` function signature in src/ouroboros/attention | failed | no code generated
 2026-10-29 | refactor | Extract JSON storage patterns from backlog.py into reusable  | failed | no code generated
 2026-10-29 | refactor | Extract JSON storage and atomic write patterns from backlog. | failed | out of scope: targets 4 files, cap is 3
 2026-10-29 | refactor | Extract duplicated JSON storage patterns from evaluation.py, | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-31 | refactor | Extract duplicated JSON storage patterns from multiple modul | failed | out of scope: targets 5 files, cap is 3
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no plan generated
+2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | generation failed: EditMismatch: /src/ouroboros/test_runner.py: not one of the 
