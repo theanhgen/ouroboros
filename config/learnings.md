@@ -1,4 +1,3 @@
-2026-10-30 | refactor | Extract JSON storage patterns into reusable helpers. Impleme | failed | no plan generated
 2026-10-30 | add_feature | Implement test_failure_triage in src/ouroboros/test_runner.p | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-10-30 | refactor | Extract duplicated JSON storage patterns from backlog.py, me | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-10-30 | add_test | Add comprehensive test coverage for RunnerOutcome.cluster_fa | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-10-31 | fix_bug | Improve _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
 2026-10-31 | add_feature | Add evidence-first verification gates to the improvement run | failed | no plan generated
+2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no code generated
