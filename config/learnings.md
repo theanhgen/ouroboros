@@ -1,4 +1,3 @@
-2026-10-29 | refactor | Extract JSON storage patterns from backlog.py, metrics.py, a | failed | out of scope: targets 4 files, cap is 3
 2026-10-29 | fix_bug | Fix the step function signature in src/ouroboros/attention.p | failed | no code generated
 2026-10-29 | fix_bug | Fix the step function signature in src/ouroboros/attention.p | failed | no code generated
 2026-10-29 | fix_bug | Fix the step function signature in src/ouroboros/attention.p | success | tests: 1471 -> 1471
@@ -98,3 +97,4 @@
 2026-10-31 | refactor | Consolidate duplicated JSON persistence logic by adding gene | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no plan generated
 2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no plan generated
