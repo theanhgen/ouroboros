@@ -1,4 +1,3 @@
-2026-10-30 | refactor | Extract duplicated JSON storage patterns into reusable helpe | failed | no plan generated
 2026-10-30 | refactor | Extract duplicated JSON storage patterns from backlog.py, me | failed | out of scope: targets 4 files, cap is 3
 2026-10-30 | refactor | Extract JSON storage patterns into reusable helpers. Impleme | failed | no plan generated
 2026-10-30 | add_feature | Implement test_failure_triage in src/ouroboros/test_runner.p | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
+2026-10-31 | fix_bug | Improve _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
