@@ -1,4 +1,3 @@
-2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-31 | refactor | Extract duplicated JSON storage patterns from multiple modul | failed | out of scope: targets 5 files, cap is 3
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no plan generated
 2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | generation failed: EditMismatch: /src/ouroboros/test_runner.py: not one of the 
@@ -98,3 +97,4 @@
 2026-11-01 | add_test | Add comprehensive unit tests for src/ouroboros/storage_helpe | failed | Too many lines changed: 384 > 200
 2026-11-01 | add_feature | Extract common JSON loading/saving utilities into src/ourobo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-01 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-11-01 | refactor | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
