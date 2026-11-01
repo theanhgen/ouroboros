@@ -1,4 +1,3 @@
-2026-10-30 | add_test | Add comprehensive unit tests for internal test_runner helper | failed | no code generated
 2026-10-30 | refactor | Extract duplicated JSON storage patterns from backlog.py and | failed | no plan generated
 2026-10-30 | refactor | Extract JSON storage path resolution and load/save helpers i | failed | no code generated
 2026-10-30 | refactor | Extract duplicated JSON storage logic from backlog.py into r | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-01 | fix_test | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
+2026-11-01 | fix_test | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
