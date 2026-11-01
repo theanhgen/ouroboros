@@ -1,4 +1,3 @@
-2026-10-31 | refactor | Extract duplicated JSON storage logic from backlog.py and me | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | reviewer rejected
 2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no code generated
 2026-10-31 | refactor | Extract duplicated JSON storage patterns from backlog.py, me | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-11-01 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
 2026-11-01 | add_test | Add comprehensive unit tests for src/ouroboros/storage_helpe | failed | no plan generated
 2026-11-02 | refactor | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
+2026-11-02 | fix_bug | Improve bug-fix validation pipeline to provide clearer failu | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
