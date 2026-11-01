@@ -1,4 +1,3 @@
-2026-10-30 | fix_test | Fix syntax errors in tests/test_test_runner.py that prevent  | failed | no plan generated
 2026-10-31 | add_test | Add unit tests for internal test_runner helper methods _extr | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-31 | refactor | Create src/ouroboros/storage_helpers.py with generic JSON I/ | failed | no code generated
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-01 | fix_test | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-11-01 | add_feature | Extract common JSON loading/saving utilities into src/ourobo | failed | no plan generated
