@@ -1,4 +1,3 @@
-2026-10-30 | fix_bug | Fix the _extract_error_type helper method in test_runner.py  | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-10-30 | fix_test | Fix syntax errors in tests/test_test_runner.py by separating | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-30 | fix_test | Fix syntax errors in tests/test_test_runner.py by separating | failed | generation failed: EditMismatch: tests/test_test_runner.py: SEARCH block not fo
 2026-10-30 | fix_bug | Fix _extract_error_type helper method in test_runner.py to p | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-01 | add_feature | Create a centralized storage_helper module to eliminate dupl | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-01 | add_test | Add comprehensive unit tests for _extract_error_type helper  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-01 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-11-01 | fix_bug | Fix the fix_bug pipeline by adding an early-stage evidence g | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
