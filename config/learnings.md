@@ -1,4 +1,3 @@
-2026-10-30 | add_test | Add comprehensive unit tests for RunnerOutcome.cluster_failu | failed | reviewer rejected
 2026-10-30 | refactor | Add JSON storage helpers to src/ouroboros/storage_helper.py: | failed | no plan generated
 2026-10-30 | add_test | Add comprehensive test coverage for RunnerOutcome.cluster_fa | failed | no plan generated
 2026-10-30 | add_test | Add comprehensive unit tests for RunnerOutcome.cluster_failu | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-01 | add_feature | Consolidate JSON loading/saving logic in backlog.py by repla | failed | no code generated
+2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
