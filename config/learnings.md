@@ -1,4 +1,3 @@
-2026-10-31 | add_test | Add unit tests for the _extract_error_type helper in src/our | failed | no code generated
 2026-10-31 | add_test | Add comprehensive unit tests for _extract_error_type helper  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-31 | refactor | Consolidate duplicated JSON persistence logic by adding gene | failed | no plan generated
 2026-10-31 | refactor | Add generic JSON storage helpers to src/ouroboros/storage_he | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | generation failed: EditMismatch: src/ouroboros/test_runner.py: SEARCH block not
 2026-11-02 | refactor | Extract common JSON loading/saving utilities from src/ourobo | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-02 | refactor | Consolidate JSON loading/saving utilities across the codebas | failed | out of scope: targets 4 files, cap is 3
+2026-11-02 | refactor | Extract common JSON loading/saving utilities from backlog.py | failed | out of scope: targets 4 files, cap is 3
