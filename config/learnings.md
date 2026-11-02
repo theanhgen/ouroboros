@@ -1,4 +1,3 @@
-2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-02 | refactor | Extract common JSON file operations from duplicated storage  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-02 | refactor | Extract common JSON file operations from duplicated storage  | failed | out of scope: targets 6 files, cap is 3
 2026-11-02 | refactor | Extract common JSON file operations from duplicated storage  | failed | out of scope: targets 4 files, cap is 3
+2026-11-02 | fix_bug | Fix _extract_error_type helper function in src/ouroboros/tes | failed | no plan generated
