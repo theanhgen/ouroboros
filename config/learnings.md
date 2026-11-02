@@ -1,4 +1,3 @@
-2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
 2026-10-31 | fix_bug | Fix _extract_error_type in src/ouroboros/test_runner.py to c | failed | no plan generated
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
+2026-11-02 | refactor | Extract common JSON loading/saving utilities from evaluation | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
