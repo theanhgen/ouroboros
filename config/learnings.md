@@ -1,4 +1,3 @@
-2026-10-31 | refactor | Consolidate duplicated JSON persistence logic by adding gene | failed | no plan generated
 2026-10-31 | add_test | Add unit tests for the _extract_error_type helper in src/our | failed | out of scope: targets 11 files, cap is 3
 2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no plan generated
 2026-10-31 | refactor | Extract duplicated JSON persistence logic by adding generic  | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-02 | add_feature | Extract common JSON loading/saving utilities from metrics.py | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-02 | refactor | Extract common JSON loading/saving utilities from backlog.py | failed | out of scope: targets 4 files, cap is 3
+2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
