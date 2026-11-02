@@ -1,4 +1,3 @@
-2026-11-01 | add_feature | Extract the 'history/prompt context/state path/JSON read-wri | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-11-01 | fix_test | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-01 | fix_test | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-01 | fix_test | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-11-02 | refactor | Extract common JSON loading/saving utilities from src/ourobo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-02 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-02 | add_test | Add comprehensive unit tests for _extract_error_type and _cr | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-11-02 | add_feature | Implement separate tracking for fix_test vs fix_bug outcomes | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
