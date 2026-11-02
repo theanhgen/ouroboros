@@ -1,4 +1,3 @@
-2026-10-31 | refactor | Extract duplicated JSON storage patterns from backlog.py, me | failed | out of scope: targets 4 files, cap is 3
 2026-10-31 | refactor | Consolidate duplicated JSON persistence logic by adding gene | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no plan generated
 2026-10-31 | fix_test | Fix the _extract_error_type helper method in src/ouroboros/t | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-02 | fix_bug | Improve bug-fix validation pipeline to provide clearer failu | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-02 | refactor | Consolidate duplicated JSON loading/saving patterns into sha | failed | out of scope: targets 7 files, cap is 3
+2026-11-02 | refactor | Extract common JSON loading/saving utilities into src/ourobo | failed | out of scope: targets 4 files, cap is 3
