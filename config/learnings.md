@@ -1,4 +1,3 @@
-2026-10-31 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
 2026-10-31 | fix_bug | Fix _extract_error_type in src/ouroboros/test_runner.py to c | failed | no plan generated
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-02 | add_test | Add comprehensive unit tests for _extract_error_type and _cr | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
+2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
