@@ -1,4 +1,3 @@
-2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
 2026-11-01 | fix_test | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
 2026-11-01 | fix_test | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-02 | add_test | Add comprehensive unit tests for _extract_error_type and _cr | failed | no plan generated
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-11-02 | fix_test | Add focused unit tests for _extract_error_type and _create_l | failed | no plan generated
