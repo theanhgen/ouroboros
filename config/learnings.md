@@ -1,4 +1,3 @@
-2026-10-31 | refactor | Add generic JSON storage helpers to src/ouroboros/storage_he | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-10-31 | refactor | Extract duplicated JSON persistence logic into storage_helpe | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | reviewer rejected
 2026-10-31 | refactor | Consolidate duplicated JSON persistence logic by updating ba | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-02 | refactor | Extract common JSON loading/saving utilities from backlog.py | failed | out of scope: targets 4 files, cap is 3
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
 2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
+2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
