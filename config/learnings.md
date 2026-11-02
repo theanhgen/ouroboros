@@ -1,4 +1,3 @@
-2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | reviewer rejected
 2026-10-31 | refactor | Consolidate duplicated JSON persistence logic by updating ba | failed | no code generated
 2026-10-31 | fix_bug | Fix the _extract_error_type helper method in src/ouroboros/t | failed | no plan generated
 2026-10-31 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | reviewer rejected
+2026-11-02 | refactor | Consolidate JSON loading/saving utilities into storage_helpe | failed | no plan generated
