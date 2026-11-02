@@ -1,4 +1,3 @@
-2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-01 | add_feature | Consolidate JSON loading/saving logic in backlog.py by repla | failed | no code generated
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-01 | add_feature | Extract the 'history/prompt context/state path/JSON read-wri | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-11-02 | refactor | Extract common JSON loading/saving utilities from backlog.py | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
+2026-11-02 | refactor | Extract common JSON loading/saving utilities from src/ourobo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
