@@ -1,4 +1,3 @@
-2026-11-02 | refactor | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
 2026-11-02 | fix_bug | Improve bug-fix validation pipeline to provide clearer failu | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-02 | refactor | Consolidate duplicated JSON loading/saving patterns into sha | failed | out of scope: targets 7 files, cap is 3
@@ -98,3 +97,4 @@
 2026-11-03 | add_test | Add comprehensive unit tests for the holographic HRR module' | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
+2026-11-03 | refactor | Centralize duplicated JSON loading/saving pattern in src/our | failed | no code generated
