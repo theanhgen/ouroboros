@@ -1,4 +1,3 @@
-2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
 2026-11-02 | add_test | Add comprehensive unit tests for the _extract_error_type hel | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-02 | add_feature | Extract common JSON loading/saving utilities from metrics.py | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | refactor | Centralize duplicated JSON loading/saving patterns in src/ou | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
+2026-11-03 | refactor | Consolidate backlog.py's JSON loading/saving into storage_he | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
