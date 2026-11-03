@@ -1,4 +1,3 @@
-2026-11-01 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-01 | fix_bug | Fix the fix_bug pipeline by adding an early-stage evidence g | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-11-01 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-01 | fix_test | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-03 | refactor | Expand storage_helper.py with centralized JSON loading/savin | failed | no code generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type helper function to properly capitali | failed | no code generated
+2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
