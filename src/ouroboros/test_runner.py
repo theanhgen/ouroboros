@@ -301,49 +301,50 @@ def _extract_error_type(message: str) -> str:
     # Convert to lowercase for case-insensitive matching
     lower_msg = message.lower()
     
-    # Enhanced "Failed requiring" handling - common pytest pattern
-    failed_requiring_patterns = [
-        r'failed requiring',
-        r'failed requiring that',
-        r'failed requiring to',
-        r'failed requiring the',
-        r'failed to require',
-        r'failed while requiring'
+    # Priority 1: Most specific framework-specific errors
+    pytest_patterns = {
+        "xfail": "ExpectedFailure",
+        "xpass": "UnexpectedSuccess",
+        "skip": "SkipTest",
+        "skipif": "SkipTest",
+        "mark": "MarkError",
+        "parametrize": "ParameterError",
+        "pytest.raises": "PytestRaisesError",
+        "pytest.approx": "PytestApproxError",
+        "pytest.importorskip": "PytestImportOrSkipError",
+    }
+    
+    for pattern, error_type in pytest_patterns.items():
+        if pattern in lower_msg:
+            return error_type
+    
+    # Priority 2: Standard Python error types (PascalCase)
+    standard_errors = [
+        "AssertionError", "TypeError", "ValueError", "ImportError", "KeyError",
+        "AttributeError", "SyntaxError", "NameError", "IndexError", "TimeoutError",
+        "ConnectionError", "OSError", "PermissionError", "FileNotFoundError",
+        "NotImplementedError", "RuntimeError", "StopIteration", "StopAsyncIteration",
+        "MemoryError", "OverflowError", "ZeroDivisionError", "RecursionError",
+        "NotADirectoryError", "IsADirectoryError", "BlockingIOError", "ChildProcessError",
+        "BrokenPipeError", "ConnectionAbortedError", "ConnectionRefusedError",
+        "ConnectionResetError", "FileExistsError", "InterruptedError", "ProcessLookupError"
     ]
-    for pattern in failed_requiring_patterns:
-        if re.search(pattern, lower_msg):
-            return "AssertionError"
     
-    # Pattern 1: Look for standard error types at the beginning or after colon
-    # e.g., "AssertionError: ...", "TypeError: ..."
-    error_match = re.search(r'\b([A-Za-z]+Error)\b\s*:', message)
-    if error_match:
-        return error_match.group(1)
+    for error_type in standard_errors:
+        if error_type.lower() in lower_msg:
+            return error_type
     
-    # Pattern 2: Handle warnings more comprehensively
-    # Many warnings follow pattern like "Warning: ..." or specific warning types
-    warning_match = re.search(r'\b(\w+Warning)\b\s*:', message)
-    if warning_match:
-        return warning_match.group(1)
+    # Priority 3: Warning types (PascalCase with Warning suffix)
+    warning_types = [
+        "DeprecationWarning", "UserWarning", "ResourceWarning", "SyntaxWarning",
+        "FutureWarning", "ImportWarning", "RuntimeWarning", "BufferWarning"
+    ]
     
-    # Pattern 3: Handle "error:" patterns (e.g., "error: Something went wrong")
-    if "error:" in lower_msg:
-        # Extract error description after "error:"
-        error_desc = re.search(r'error:\s*(.+)', message, re.IGNORECASE)
-        if error_desc:
-            words = error_desc.group(1).strip().split()
-            if words:
-                # Return the first meaningful word, filtering common stop words
-                stop_words = {"the", "and", "or", "in", "on", "at", "to", "for", "with", "by", "of", "from"}
-                for word in words:
-                    word_clean = re.sub(r'[^\w]', '', word)
-                    if word_clean and word_clean.lower() not in stop_words and len(word_clean) > 2:
-                        return word_clean.title()
-        return "Error"
+    for warning in warning_types:
+        if warning.lower() in lower_msg:
+            return warning
     
-    # Pattern 4: Handle common test failure patterns
-    # These patterns are specific to test failures and need special categorization
-    
+    # Priority 4: Content-based error detection
     # Assertion-related patterns
     assertion_patterns = [
         "assertion", "assert", "expected", "actual", "mismatch",
@@ -410,59 +411,38 @@ def _extract_error_type(message: str) -> str:
         if pattern in lower_msg:
             return "SyntaxError"
     
-    # Pattern 5: Handle specific warning types
-    warning_types = [
-        "deprecationwarning", "userwarning", "resourcewarning", "syntaxwarning",
-        "futurewarning", "importwarning", "runtimewarning", "bufferwarning"
+    # Priority 5: Enhanced "Failed requiring" handling
+    failed_requiring_patterns = [
+        r'failed requiring',
+        r'failed requiring that',
+        r'failed requiring to',
+        r'failed requiring the',
+        r'failed to require',
+        r'failed while requiring'
     ]
-    for warning in warning_types:
-        if warning in lower_msg:
-            return warning.title()
+    for pattern in failed_requiring_patterns:
+        if re.search(pattern, lower_msg):
+            return "AssertionError"
     
-    # Pattern 6: Handle standard Python error types (case-insensitive check)
-    # This handles cases where error types appear without "Error" suffix or in different format
-    standard_errors = [
-        "assertionerror", "valueerror", "typeerror", "importerror", "keyerror",
-        "attributeerror", "syntaxerror", "nameerror", "indexerror", "timeouterror",
-        "connectionerror", "oserror", "permissionerror", "filenotfounderror",
-        "notimplementederror", "runtimeerror", "stopiteration", "stopasynciteration",
-        "memoryerror", "overflowerror", "zerodivisionerror", "recursionerror",
-        "notadirectoryerror", "isadirectoryerror", "blockingioerror", "childprocesserror",
-        "brokenpipeerror", "connectionabortederror", "connectionrefusederror",
-        "connectionreseterror", "fileexisterror", "interruptederror", "processlookuperror"
-    ]
+    # Priority 6: Generic error patterns (handled after specific patterns)
+    if "error:" in lower_msg:
+        error_desc = re.search(r'error:\s*(.+)', message, re.IGNORECASE)
+        if error_desc:
+            words = error_desc.group(1).strip().split()
+            if words:
+                stop_words = {"the", "and", "or", "in", "on", "at", "to", "for", "with", "by", "of", "from"}
+                for word in words:
+                    word_clean = re.sub(r'[^\w]', '', word)
+                    if word_clean and word_clean.lower() not in stop_words and len(word_clean) > 2:
+                        return word_clean.title()
+        return "Error"
     
-    for error_type in standard_errors:
-        if error_type in lower_msg:
-            return error_type.title()
-    
-    # Pattern 7: Handle test framework specific patterns
-    # These patterns are specific to pytest, unittest, etc.
-    
-    # Pytest-specific patterns
-    pytest_patterns = {
-        "xfail": "ExpectedFailure",
-        "xpass": "UnexpectedSuccess",
-        "skip": "SkipTest",
-        "skipif": "SkipTest",
-        "mark": "MarkError",
-        "parametrize": "ParameterError",
-        "pytest.raises": "PytestRaisesError",
-        "pytest.approx": "PytestApproxError",
-        "pytest.importorskip": "PytestImportOrSkipError",
-    }
-    
-    for pattern, error_type in pytest_patterns.items():
-        if pattern in lower_msg:
-            return error_type
-    
-    # Pattern 8: Fallback mechanism
-    # Extract first meaningful word from message as error type
-    skip_words = {"Error", "Exception", "Warning", "Traceback", "File", "test", "Test", "failed", "requiring"}
+    # Priority 7: Fallback mechanism (extract first meaningful word)
+    skip_words = {"error", "exception", "warning", "traceback", "file", "test", "test", "failed", "requiring"}
     words = message.split()
     for word in words:
         word = re.sub(r'[^\w]', '', word)
-        if word and word not in skip_words and len(word) > 2:
+        if word and word.lower() not in skip_words and len(word) > 2:
             return word.title()
     
     return "Unknown"
@@ -519,6 +499,8 @@ def _create_line_range(line: Optional[int]) -> str:
     if line is None:
         return "unknown"
     
+    # The function currently handles single line numbers.
+    # For ranges, additional context would be needed from failure details
     return str(line)
 
 
