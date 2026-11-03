@@ -1,4 +1,3 @@
-2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
 2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no code generated
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-11-03 | refactor | Consolidate JSON loading/saving in backlog.py to use storage | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | refactor | Refactor backlog.py to use centralized storage_helper utilit | reverted | New test errors detected: 0 errors before, 2 after
+2026-11-03 | add_test | Add test_similarity_zero_vector to tests/test_holographic.py | failed | no code generated
