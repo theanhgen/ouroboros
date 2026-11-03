@@ -1,4 +1,3 @@
-2026-11-01 | fix_test | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-01 | add_feature | Extract common JSON loading/saving utilities into src/ourobo | failed | no plan generated
 2026-11-01 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-01 | add_test | Add unit tests for RunnerOutcome.cluster_failures_by_root_ca | failed | no plan generated
@@ -97,4 +96,5 @@
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | refactor | Replace duplicated JSON loading and saving logic in backlog. | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-11-03 | refactor | Create centralized JSON loading/saving utilities in storage_ | failed | no plan generated
 2026-11-03 | refactor | Create centralized JSON loading/saving utilities in storage_ | failed | no plan generated
