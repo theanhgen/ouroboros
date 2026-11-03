@@ -1,4 +1,3 @@
-2026-11-02 | refactor | Extract common JSON loading/saving utilities from src/ourobo | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-02 | refactor | Consolidate JSON loading/saving utilities across the codebas | failed | out of scope: targets 4 files, cap is 3
 2026-11-02 | refactor | Extract common JSON loading/saving utilities from backlog.py | failed | out of scope: targets 4 files, cap is 3
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-03 | add_feature | Implement test_failure_triage in src/ouroboros/improvement.p | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-11-03 | fix_bug | Fix _extract_error_type helper function in src/ouroboros/tes | failed | no plan generated
+2026-11-03 | refactor | Consolidate JSON loading/saving in backlog.py to use storage | reverted | New test errors detected: 0 errors before, 2 after
