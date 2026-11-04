@@ -1,4 +1,3 @@
-2026-11-03 | add_test | Add comprehensive unit tests for _extract_error_type and _cr | failed | no plan generated
 2026-11-03 | refactor | Expand storage_helper.py with centralized JSON loading/savin | failed | no code generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type helper function to properly capitali | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-04 | refactor | Extract duplicated JSON I/O patterns from src/ouroboros/back | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-04 | refactor | Consolidate duplicated JSON I/O patterns from src/ouroboros/ | failed | no code generated
 2026-11-04 | refactor | Extract duplicated JSON I/O patterns from src/ouroboros/back | failed | no code generated
+2026-11-04 | add_feature | Implement text and fact encoding functions in holographic.py | failed | no plan generated
