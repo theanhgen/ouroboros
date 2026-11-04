@@ -284,7 +284,24 @@ def build_summary(history: List[Dict[str, Any]]) -> str:
     total = len(history)
     if not total:
         return ""
-    outcomes = Counter(str(r.get("outcome")) for r in history)
+
+    # Normalize missing or empty values to indicate failures
+    def norm_outcome(val: Any) -> str:
+        if val is None or val == "":
+            return "failed"
+        return str(val)
+
+    def norm_task_type(val: Any) -> str:
+        if val is None or val == "":
+            return "failure"
+        return str(val)
+
+    # Build outcome counts with normalization
+    outcomes = Counter(norm_outcome(r.get("outcome")) for r in history)
+    # Ensure "failed" appears if any missing outcomes were normalized
+    if "None" in outcomes:
+        outcomes["failed"] = outcomes.pop("None")
+
     lines = [
         "Outcomes: failed = no change was produced, or it was refused before the "
         "tests ran. reverted = the change was applied, tests or coverage "
@@ -294,14 +311,25 @@ def build_summary(history: List[Dict[str, Any]]) -> str:
     ]
     for outcome, count in outcomes.most_common():
         lines.append(f"- {outcome}: {count} ({round(100 * count / total)}%)")
+
+    # Group by normalized task type
     by_type: Dict[str, Counter] = {}
     for record in history:
-        by_type.setdefault(str(record.get("task_type")), Counter())[str(record.get("outcome"))] += 1
+        tt = norm_task_type(record.get("task_type"))
+        occ = norm_outcome(record.get("outcome"))
+        by_type.setdefault(tt, Counter())[occ] += 1
+
+    # Clean up any remaining "None" keys in the counters (defensive)
+    for tt, cntr in by_type.items():
+        if "None" in cntr:
+            cntr["failed"] = cntr.pop("None")
+
     lines.append("By task type:")
     for task_type, counts in sorted(by_type.items(), key=lambda c: -sum(c[1].values())):
+        count_strs = [f"{n} {o}" for o, n in counts.most_common()]
         lines.append(
             f"- {task_type}: {sum(counts.values())} attempts, "
-            + ", ".join(f"{n} {o}" for o, n in counts.most_common())
+            + ", ".join(count_strs)
         )
     return "\n".join(lines)
 
