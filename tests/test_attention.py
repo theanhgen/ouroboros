@@ -201,6 +201,77 @@ def test_summary_states_totals():
     assert "- failed: 14 (88%)" in summary
 
 
+def test_build_summary_empty_history():
+    assert attention.build_summary([]) == ""
+
+
+def test_build_summary_single_successful_task():
+    history = [{
+        "task_id": "t1",
+        "task_type": "fix_bug",
+        "description": "Fix the issue",
+        "outcome": "merged",
+        "feedback": "All tests passed",
+        "test_delta": "",
+    }]
+    summary = attention.build_summary(history)
+    assert "Improvement attempts on record: 1" in summary
+    assert "- merged: 1 (100%)" in summary
+    assert "- fix_bug: 1 attempts, 1 merged" in summary
+    assert "Outcomes:" in summary
+    assert "By task type:" in summary
+
+
+def test_build_summary_failure_items_included():
+    history = [
+        {"task_id": "t1", "task_type": "fix_bug", "description": "", "outcome": "failed", "feedback": "", "test_delta": ""},
+        {"task_id": "t2", "task_type": "fix_bug", "description": "", "outcome": "reverted", "feedback": "", "test_delta": ""},
+    ]
+    summary = attention.build_summary(history)
+    assert "- failed: 1 (50%)" in summary
+    assert "- reverted: 1 (50%)" in summary
+    assert "failed = no change was produced" in summary
+    assert "reverted = the change was applied" in summary
+
+
+def test_build_summary_long_summaries_are_truncated_appropriately():
+    # Create a history that would generate a long summary (many entries)
+    history = [
+        {
+            "task_id": f"t{i}",
+            "task_type": "fix_bug",
+            "description": "x",
+            "outcome": "failed",
+            "feedback": "x" * 1000,      # Long feedback
+            "test_delta": "x" * 1000,    # Long test delta
+        }
+        for i in range(200)
+    ]
+    summary = attention.build_summary(history)
+    # Verify the summary stays within a reasonable length (e.g., 2000 chars)
+    assert len(summary) <= 2000
+    # Basic sanity checks
+    assert "Outcomes:" in summary
+    assert "Improvement attempts on record:" in summary
+
+
+def test_build_summary_different_task_types_with_metadata():
+    history = [
+        {"task_id": "t1", "task_type": "fix_bug", "outcome": "failed"},
+        {"task_id": "t2", "task_type": "refactor", "outcome": "merged"},
+        {"task_id": "t3", "task_type": "add_test", "outcome": "reverted"},
+        {"task_id": "t4", "task_type": "refactor", "outcome": "failed"},
+    ]
+    summary = attention.build_summary(history)
+    # Check each task type appears in the "By task type:" section
+    assert "- fix_bug: 1 attempts, 1 failed" in summary
+    assert "- refactor: 2 attempts" in summary
+    # Ensure both outcomes for refactor are listed
+    assert "1 merged" in summary
+    assert "1 failed" in summary
+    assert "- add_test: 1 attempts, 1 reverted" in summary
+
+
 # -- validation --
 
 SOURCE = "One task attempted 14 times."
