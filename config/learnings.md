@@ -1,4 +1,3 @@
-2026-11-02 | fix_bug | Fix the _extract_error_type helper in src/ouroboros/test_run | failed | no plan generated
 2026-11-02 | refactor | Extract common JSON loading/saving utilities from backlog.py | failed | no plan generated
 2026-11-02 | refactor | Consolidate JSON loading/saving utilities in backlog.py to u | failed | generation failed: EditMismatch: /src/ouroboros/backlog.py: not one of the file
 2026-11-02 | refactor | Extract common JSON loading/saving utilities from backlog.py | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | success | tests: 1471 -> 1471
 2026-11-03 | refactor | Extract atomic JSON write logic from src/ouroboros/backlog.p | failed | no plan generated
 2026-11-04 | refactor | Refactor _extract_error_type in src/ouroboros/test_runner.py | failed | no plan generated
+2026-11-04 | add_test | Add test_similarity_zero_vector to tests/test_holographic.py | reverted | Test regression detected: 0 failures before, 1 after
