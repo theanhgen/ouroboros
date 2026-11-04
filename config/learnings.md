@@ -1,4 +1,3 @@
-2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type helper function to properly capitali | failed | no code generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | refactor | Add centralized JSON loading/saving utilities to storage_hel | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-04 | refactor | Extract duplicated JSON I/O patterns from src/ouroboros/back | failed | no code generated
 2026-11-04 | add_feature | Implement text and fact encoding functions in holographic.py | failed | no plan generated
 2026-11-04 | refactor | Refactor src/ouroboros/backlog.py to use storage_helper util | failed | no plan generated
+2026-11-04 | refactor | Extract duplicated JSON I/O patterns from backlog.py and wik | failed | no code generated
