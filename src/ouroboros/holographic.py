@@ -115,6 +115,9 @@ def similarity(a: "np.ndarray", b: "np.ndarray") -> float:
         raise ValueError(f"Vector shapes must match: {a.shape} vs {b.shape}")
     if a.size == 0:
         return 0.0
+    # Check for zero-valued vectors (all elements are zero)
+    if np.all(a == 0) or np.all(b == 0):
+        return 0.0
     value = float(np.mean(np.cos(a - b)))
     if math.isnan(value):
         return 0.0
