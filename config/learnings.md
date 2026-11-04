@@ -1,4 +1,3 @@
-2026-11-02 | refactor | Extract common JSON loading/saving utilities from backlog.py | failed | no code generated
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
 2026-11-02 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-04 | refactor | Extract duplicate JSON I/O and file path resolution logic fr | failed | no plan generated
 2026-11-04 | refactor | Extract atomic JSON write pattern from backlog.py to storage | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-04 | add_feature | Add early-gate metrics collection for bug-fix tasks in src/o | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-11-04 | refactor | Extract and consolidate duplicated 'resolve path → ensure pa | failed | no plan generated
