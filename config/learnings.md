@@ -1,4 +1,3 @@
-2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-02 | fix_test | Add focused unit tests for _extract_error_type and _create_l | failed | no plan generated
 2026-11-02 | add_test | Add comprehensive unit tests for _extract_error_type and _cr | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-04 | add_test | Add comprehensive unit tests for cross_post_bluesky in src/o | failed | no code generated
 2026-11-04 | add_test | Add comprehensive unit tests for the build_summary function  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-04 | refactor | Extract duplicated JSON I/O patterns from src/ouroboros/back | failed | no plan generated
+2026-11-04 | refactor | Consolidate duplicated JSON I/O pattern in backlog.py functi | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
