@@ -1,4 +1,3 @@
-2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | refactor | Add centralized JSON loading/saving utilities to storage_hel | failed | no code generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-11-04 | refactor | Refactor src/ouroboros/backlog.py to use storage_helper util | failed | no plan generated
 2026-11-04 | refactor | Extract duplicated JSON I/O patterns from backlog.py and wik | failed | no code generated
 2026-11-04 | refactor | Consolidate backlog JSON I/O into storage_helper utilities:  | failed | no plan generated
+2026-11-04 | add_test | Add comprehensive unit tests for the build_summary function  | failed | no code generated
