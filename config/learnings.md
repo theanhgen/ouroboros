@@ -1,4 +1,3 @@
-2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no code generated
 2026-11-02 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
 2026-11-02 | refactor | Extract common JSON loading/saving utilities from src/ourobo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-02 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-04 | add_test | Add comprehensive edge case tests for validate_post function | failed | no plan generated
 2026-11-04 | add_test | Add a test for validate_post function: when title contains a | failed | no code generated
 2026-11-04 | add_test | Add comprehensive unit tests for src/ouroboros/holographic.s | failed | no plan generated
+2026-11-04 | refactor | Extract duplicated atomic JSON write/read pattern from src/o | failed | no plan generated
