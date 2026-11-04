@@ -1,4 +1,3 @@
-2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no code generated
 2026-11-03 | add_test | Add comprehensive unit tests for _extract_error_type and _cr | failed | no code generated
 2026-11-03 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-11-04 | add_feature | Implement text and fact encoding functions in holographic.py | failed | no plan generated
 2026-11-04 | refactor | Consolidate duplicated JSON I/O patterns from src/ouroboros/ | failed | no plan generated
 2026-11-04 | fix_bug | Fix the bug in src/ouroboros/attention.py: the build_summary | success | tests: 1476 -> 1476
+2026-11-04 | add_feature | Implement a bug triage stage in the improvement pipeline tha | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
