@@ -1,4 +1,3 @@
-2026-11-02 | add_test | Add comprehensive unit tests for _extract_error_type and _cr | failed | no code generated
 2026-11-02 | refactor | Extract common JSON file operations from duplicated storage  | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-02 | refactor | Extract common JSON file operations from duplicated storage  | failed | out of scope: targets 6 files, cap is 3
 2026-11-02 | refactor | Extract common JSON file operations from duplicated storage  | failed | out of scope: targets 4 files, cap is 3
@@ -98,3 +97,4 @@
 2026-11-04 | refactor | Consolidate duplicated JSON I/O pattern in backlog.py functi | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-04 | refactor | Extract duplicated JSON I/O patterns from src/ouroboros/back | failed | no code generated
 2026-11-04 | add_test | Add comprehensive test coverage for build_summary function i | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-11-04 | add_test | Add comprehensive test coverage for build_summary function i | reverted | Test regression detected: 0 failures before, 2 after
