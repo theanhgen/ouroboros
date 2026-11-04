@@ -1,4 +1,3 @@
-2026-11-03 | fix_bug | Fix _extract_error_type helper in src/ouroboros/test_runner. | failed | no plan generated
 2026-11-03 | refactor | Extract common JSON loading/saving utilities from duplicated | failed | out of scope: targets 6 files, cap is 3
 2026-11-03 | fix_bug | Fix _extract_error_type helper to properly capitalize error  | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-04 | add_feature | Implement text and fact encoding functions in holographic.py | reverted | Test regression detected: 0 failures before, 5 after
 2026-11-04 | add_test | Add comprehensive unit tests for build_summary function in s | success | tests: 1471 -> 1476
 2026-11-04 | refactor | Consolidate duplicated JSON I/O patterns from src/ouroboros/ | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-11-04 | add_feature | Implement text and fact encoding functions in holographic.py | failed | no plan generated
