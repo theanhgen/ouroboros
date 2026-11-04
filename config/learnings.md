@@ -1,4 +1,3 @@
-2026-11-02 | refactor | Extract common JSON file operations from duplicated storage  | failed | out of scope: targets 4 files, cap is 3
 2026-11-02 | fix_bug | Fix _extract_error_type helper function in src/ouroboros/tes | failed | no plan generated
 2026-11-02 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-04 | add_test | Add comprehensive test coverage for build_summary function i | reverted | Test regression detected: 0 failures before, 2 after
 2026-11-04 | add_test | Add comprehensive unit tests for validate_post function in s | reverted | Test regression detected: 0 failures before, 7 after
 2026-11-04 | refactor | Consolidate duplicated JSON I/O patterns from src/ouroboros/ | failed | no code generated
+2026-11-04 | refactor | Extract duplicated JSON I/O patterns from backlog.py functio | failed | no plan generated
