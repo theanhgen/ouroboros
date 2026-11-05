@@ -12,34 +12,15 @@ from statistics import mean
 
 from .model_defaults import DEFAULT_OPENAI_MODEL
 from .storage import load_json_file, save_json_file, update_json_file
-from .storage_helper import _resolve_repo_path, extract_items
+from .storage_helper import extract_items
 
 log = logging.getLogger(__name__)
 
 BACKLOG_FILE = "config/backlog.json"
 
 
-def _load_backlog_items(repo_root: Path) -> List[Dict[str, Any]]:
-    """Load backlog items from the backlog file.
-    
-    Handles reading the JSON file with directory creation, default values,
-    and error handling. Returns the items list from the file.
-    """
-    data = load_json_file(
-        _resolve_repo_path(repo_root, BACKLOG_FILE),
-        default={"items": []},
-        error_msg="Corrupt backlog file, returning empty",
-        logger=log,
-    )
-    return extract_items(data)
 
 
-def _save_backlog_items(repo_root: Path, items: List[Dict[str, Any]]) -> None:
-    """Save backlog items to the backlog file.
-    
-    Writes the items to the file with atomic write logic.
-    """
-    save_json_file(_resolve_repo_path(repo_root, BACKLOG_FILE), {"items": items})
 
 
 
@@ -48,12 +29,18 @@ def _save_backlog_items(repo_root: Path, items: List[Dict[str, Any]]) -> None:
 
 def load_backlog(repo_root: Path) -> List[Dict[str, Any]]:
     """Load backlog items from the backlog file."""
-    return _load_backlog_items(repo_root)
+    data = load_json_file(
+        repo_root / BACKLOG_FILE,
+        default={"items": []},
+        error_msg="Corrupt backlog file, returning empty",
+        logger=log,
+    )
+    return extract_items(data)
 
 
 def save_backlog(repo_root: Path, items: List[Dict[str, Any]]) -> None:
     """Save backlog items to the backlog file."""
-    _save_backlog_items(repo_root, items)
+    save_json_file(repo_root / BACKLOG_FILE, {"items": items})
 
 
 def _update_backlog(repo_root: Path, mutate) -> Any:
@@ -81,7 +68,7 @@ def _update_backlog(repo_root: Path, mutate) -> Any:
         return new_data
     
     update_json_file(
-        _resolve_repo_path(repo_root, BACKLOG_FILE), _apply, default={"items": []}
+        repo_root / BACKLOG_FILE, _apply, default={"items": []}
     )
     
     return captured_result
