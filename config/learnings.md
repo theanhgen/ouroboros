@@ -1,4 +1,3 @@
-2026-11-03 | refactor | Create centralized JSON loading/saving utilities in storage_ | failed | no code generated
 2026-11-03 | refactor | Create centralized JSON loading/saving utilities in storage_ | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-03 | refactor | Extract the common JSON loading/saving pattern into centrali | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-05 | refactor | Replace _load_backlog_items and _save_backlog_items function | failed | reviewer rejected
 2026-11-05 | refactor | Extract duplicated JSON I/O pattern from src/ouroboros/backl | failed | no plan generated
 2026-11-05 | refactor | Fix concrete runtime bugs in src/ouroboros/backlog.py by ref | failed | no code generated
+2026-11-05 | refactor | Consolidate JSON I/O in backlog.py to use storage_helper uti | failed | reviewer rejected
