@@ -1,4 +1,3 @@
-2026-11-03 | fix_bug | Fix _extract_error_type helper function in src/ouroboros/tes | failed | no plan generated
 2026-11-03 | refactor | Consolidate JSON loading/saving in backlog.py to use storage | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | refactor | Refactor backlog.py to use centralized storage_helper utilit | reverted | New test errors detected: 0 errors before, 2 after
@@ -98,3 +97,4 @@
 2026-11-05 | refactor | Extract duplicated JSON I/O patterns from backlog.py, evalua | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-05 | refactor | Simplify and refactor _extract_error_type() in test_runner.p | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
+2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
