@@ -1,4 +1,3 @@
-2026-11-03 | add_test | Add comprehensive unit tests for the holographic HRR module' | failed | generation failed: EditMismatch: tests/test_holographic.py: SEARCH block not fo
 2026-11-03 | refactor | Centralize duplicated JSON loading/saving pattern into stora | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | refactor | Centralize duplicated JSON loading/saving patterns in src/ou | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by up | failed | no code generated
 2026-11-05 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by re | failed | no plan generated
 2026-11-05 | fix_bug | Fix concrete runtime NameError bugs in src/ouroboros/backlog | failed | no plan generated
+2026-11-05 | refactor | Add failure taxonomy extraction to test_runner.RunnerOutcome | failed | no plan generated
