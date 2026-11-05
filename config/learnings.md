@@ -1,4 +1,3 @@
-2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | add_test | Add comprehensive unit tests for the holographic HRR module  | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-03 | add_test | Add comprehensive unit tests for holographic HRR module (src | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-03 | add_test | Add comprehensive unit tests for the holographic HRR module' | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-11-05 | fix_bug | Fix concrete runtime bugs in src/ouroboros/backlog.py by ref | failed | reviewer rejected
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by pr | failed | no plan generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by re | failed | no plan generated
+2026-11-05 | refactor | Create centralized storage helpers to eliminate duplicated J | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
