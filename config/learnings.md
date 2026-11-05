@@ -1,4 +1,3 @@
-2026-11-03 | add_test | Add test_similarity_zero_vector to tests/test_holographic.py | reverted | Test regression detected: 0 failures before, 1 after
 2026-11-03 | refactor | Centralize duplicated JSON loading/saving patterns in storag | failed | no code generated
 2026-11-03 | refactor | Centralize duplicated JSON loading/saving pattern into stora | failed | reviewer rejected
 2026-11-03 | refactor | Refactor backlog JSON loading and saving to use the centrali | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by el | failed | no code generated
 2026-11-05 | refactor | Extract duplicated JSON I/O patterns into centralized storag | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-05 | fix_bug | Fix runtime NameError bugs in backlog.py by importing JSON u | failed | no plan generated
+2026-11-05 | refactor | Extract failure taxonomy from test_runner.RunnerOutcome to c | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
