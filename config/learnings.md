@@ -1,4 +1,3 @@
-2026-11-03 | refactor | Centralize duplicated JSON loading/saving patterns in src/ou | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | refactor | Consolidate backlog.py's JSON loading/saving into storage_he | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-03 | add_test | Add test_similarity_zero_vector to tests/test_holographic.py | reverted | Test regression detected: 0 failures before, 1 after
@@ -98,3 +97,4 @@
 2026-11-05 | refactor | Add failure taxonomy extraction to test_runner.RunnerOutcome | failed | no plan generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
+2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by el | failed | no code generated
