@@ -1,4 +1,3 @@
-2026-11-03 | add_test | Add test_similarity_zero_vector to tests/test_holographic.py | failed | no code generated
 2026-11-03 | refactor | Consolidate JSON loading/saving in backlog.py to use storage | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-03 | fix_bug | Refactor backlog.py to use centralized storage_helper utilit | failed | no code generated
 2026-11-03 | refactor | Centralize duplicated JSON loading/saving patterns in src/ou | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-11-05 | refactor | Centralize duplicated JSON I/O patterns in storage_helper.py | failed | out of scope: targets 4 files, cap is 3
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | success | tests: 1483 -> 1483
+2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
