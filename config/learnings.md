@@ -1,4 +1,3 @@
-2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | refactor | Centralize duplicated JSON loading/saving pattern in src/our | failed | no code generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | reviewer rejected
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by re | failed | no code generated
 2026-11-05 | fix_bug | Refactor src/ouroboros/backlog.py to eliminate duplicated JS | failed | no plan generated
 2026-11-05 | refactor | Enhance RunnerOutcome.cluster_failures_by_root_cause() and t | failed | no plan generated
+2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by pr | failed | no code generated
