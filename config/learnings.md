@@ -1,4 +1,3 @@
-2026-11-03 | refactor | Create centralized JSON loading/saving utilities in storage_ | failed | no plan generated
 2026-11-03 | refactor | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | add_test | Add comprehensive unit tests for _extract_error_type helper  | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-04 | refactor | Refactor src/ouroboros/backlog.py to use storage_helper util | failed | no plan generated
 2026-11-04 | refactor | Consolidate backlog JSON I/O into storage_helper utilities.  | failed | reviewer rejected
 2026-11-04 | improve_docs | Improve documentation for storage_helper.py to include examp | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-11-05 | add_test | Add comprehensive unit tests for the build_summary function  | failed | no code generated
