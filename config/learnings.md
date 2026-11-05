@@ -1,4 +1,3 @@
-2026-11-03 | fix_bug | Fix similarity to treat zero-valued vectors (norm zero) as h | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | success | tests: 1471 -> 1471
 2026-11-03 | refactor | Extract atomic JSON write logic from src/ouroboros/backlog.p | failed | no plan generated
 2026-11-04 | refactor | Refactor _extract_error_type in src/ouroboros/test_runner.py | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | duplicate | already completed: Fix runtime NameError bugs in src/ouroboros/backlog.py by st
 2026-11-05 | fix_bug | Fix NameError bugs in src/ouroboros/backlog.py by standardiz | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
 2026-11-05 | refactor | Extract and fix duplicate JSON I/O patterns in storage_helpe | failed | out of scope: targets 4 files, cap is 3
+2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
