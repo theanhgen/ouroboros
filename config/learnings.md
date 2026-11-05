@@ -1,4 +1,3 @@
-2026-11-04 | fix_bug | Fix similarity function to return 0.0 for zero-valued vector | failed | no plan generated
 2026-11-04 | fix_bug | Fix similarity function to return 0.0 for zero-valued vector | success | tests: 1471 -> 1471
 2026-11-04 | refactor | Extract and consolidate the duplicated 'resolve path → ensur | failed | no code generated
 2026-11-04 | refactor | Extract and consolidate the duplicated 'resolve path → ensur | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-11-05 | refactor | Replace duplicated JSON I/O implementations in src/ouroboros | reverted | New test errors detected: 0 errors before, 6 after
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by re | failed | no plan generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
+2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by re | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
