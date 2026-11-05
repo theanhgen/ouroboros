@@ -1,4 +1,3 @@
-2026-11-04 | add_feature | Add early-gate metrics collection for bug-fix tasks in src/o | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-11-04 | refactor | Extract and consolidate duplicated 'resolve path → ensure pa | failed | no plan generated
 2026-11-04 | add_test | Add comprehensive test for validate_post function in src/our | failed | no plan generated
 2026-11-04 | add_test | Add comprehensive test for validate_post function to improve | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-05 | add_feature | Implement test_failure_triage function in src/ouroboros/test | failed | no plan generated
 2026-11-05 | refactor | Extract duplicated JSON I/O patterns from src/ouroboros/back | failed | out of scope: targets 4 files, cap is 3
 2026-11-05 | refactor | Extract duplicated JSON I/O path resolution and atomic write | failed | out of scope: targets 4 files, cap is 3
+2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
