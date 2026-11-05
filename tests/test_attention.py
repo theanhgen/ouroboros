@@ -272,6 +272,120 @@ def test_build_summary_different_task_types_with_metadata():
     assert "- add_test: 1 attempts, 1 reverted" in summary
 
 
+def test_build_summary_normalization_of_outcome_and_task_type():
+    """Test that None and empty string values are normalized to 'failed' and 'failure'."""
+    history = [
+        {"task_id": "t1", "task_type": None, "outcome": None},
+        {"task_id": "t2", "task_type": "", "outcome": ""},
+        {"task_id": "t3", "task_type": "fix_bug", "outcome": "merged"},
+    ]
+    summary = attention.build_summary(history)
+    # Two entries with normalized failed/failure
+    assert "- failed: 2 (67%)" in summary or "- failed: 2 (66%)" in summary
+    assert "- failure: 2 attempts" in summary
+    assert "- fix_bug: 1 attempts" in summary
+    # Ensure no stray "None:" appears
+    assert "None:" not in summary
+
+
+def test_build_summary_all_entry_types():
+    """Test that all improvement history entry types (failed, reverted, merged) are handled."""
+    history = [
+        {"task_id": "t1", "task_type": "type1", "outcome": "failed"},
+        {"task_id": "t2", "task_type": "type2", "outcome": "reverted"},
+        {"task_id": "t3", "task_type": "type3", "outcome": "merged"},
+    ]
+    summary = attention.build_summary(history)
+    assert "- failed: 1 (33%)" in summary
+    assert "- reverted: 1 (33%)" in summary
+    assert "- merged: 1 (33%)" in summary
+    # Verify each type appears in "By task type:"
+    assert "- type1: 1 attempts, 1 failed" in summary
+    assert "- type2: 1 attempts, 1 reverted" in summary
+    assert "- type3: 1 attempts, 1 merged" in summary
+
+
+def test_build_summary_task_type_normalization():
+    """Test that missing or empty task_type is normalized to 'failure'."""
+    history = [
+        {"task_id": "t1", "task_type": None, "outcome": "failed"},
+        {"task_id": "t2", "task_type": "", "outcome": "merged"},
+        {"task_id": "t3", "task_type": "refactor", "outcome": "reverted"},
+    ]
+    summary = attention.build_summary(history)
+    # Two normalized to failure
+    assert "- failure: 2 attempts" in summary
+    # Ensure both outcomes under failure
+    assert "1 failed" in summary
+    assert "1 merged" in summary
+    assert "- refactor: 1 attempts, 1 reverted" in summary
+
+
+def test_build_summary_percentages_correct():
+    """Test that percentages are calculated correctly."""
+    history = [
+        {"task_id": "t1", "outcome": "failed"},
+        {"task_id": "t2", "outcome": "failed"},
+        {"task_id": "t3", "outcome": "merged"},
+    ]
+    summary = attention.build_summary(history)
+    # 2 failed (66.666...% => 67% after rounding)
+    assert "- failed: 2 (67%)" in summary
+    # 1 merged (33.333...% => 33%)
+    assert "- merged: 1 (33%)" in summary
+
+
+def test_build_summary_with_missing_task_type():
+    """Test handling of records that have no task_type field."""
+    history = [
+        {"task_id": "t1", "outcome": "failed"},
+        {"task_id": "t2", "task_type": "fix_bug", "outcome": "merged"},
+    ]
+    summary = attention.build_summary(history)
+    assert "- failure: 1 attempts" in summary
+    assert "- fix_bug: 1 attempts" in summary
+
+
+def test_build_summary_long_summary_truncation():
+    """Ensure long summaries (many entries) are truncated to a reasonable length."""
+    history = [
+        {
+            "task_id": f"t{i}",
+            "task_type": "fix_bug",
+            "description": "x",
+            "outcome": "failed",
+            "feedback": "x" * 1000,
+            "test_delta": "x" * 1000,
+        }
+        for i in range(200)
+    ]
+    summary = attention.build_summary(history)
+    # The summary should be under 2500 characters (allowing some overhead)
+    assert len(summary) <= 2500
+    # Should still contain essential sections
+    assert "Outcomes:" in summary
+    assert "By task type:" in summary
+    assert "Improvement attempts on record: 200" in summary
+
+
+def test_build_summary_outcomes_ordering():
+    """Test that outcomes are listed in descending frequency order."""
+    history = [
+        {"task_id": "t1", "outcome": "failed"},
+        {"task_id": "t2", "outcome": "failed"},
+        {"task_id": "t3", "outcome": "reverted"},
+        {"task_id": "t4", "outcome": "merged"},
+    ]
+    summary = attention.build_summary(history)
+    lines = summary.split("\n")
+    # Find the outcome lines
+    outcome_lines = [line for line in lines if line.startswith("- ")]
+    # Outcomes should be failed, reverted, merged (since failed has highest count)
+    assert outcome_lines[0].startswith("- failed:")
+    assert outcome_lines[1].startswith("- reverted:")
+    assert outcome_lines[2].startswith("- merged:")
+
+
 # -- validation --
 
 SOURCE = "One task attempted 14 times."
