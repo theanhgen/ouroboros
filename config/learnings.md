@@ -1,4 +1,3 @@
-2026-11-03 | refactor | Centralize duplicated JSON loading/saving patterns in src/ou | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-03 | refactor | Consolidate duplicated JSON loading/saving patterns across m | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-03 | fix_bug | Fix similarity to treat zero-valued vectors (norm zero) as h | failed | no plan generated
 2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | success | tests: 1471 -> 1471
@@ -98,3 +97,4 @@
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | duplicate | already completed: Fix runtime NameError bugs in src/ouroboros/backlog.py by st
+2026-11-05 | fix_bug | Fix NameError bugs in src/ouroboros/backlog.py by standardiz | failed | generation failed: EditMismatch: src/ouroboros/backlog.py: SEARCH block not fou
