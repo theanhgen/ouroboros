@@ -1,4 +1,3 @@
-2026-11-03 | fix_bug | Fix _extract_error_type and _create_line_range helper functi | failed | no plan generated
 2026-11-03 | refactor | Refactor backlog.py to use centralized storage_helper utilit | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-03 | add_test | Add test_similarity_zero_vector to tests/test_holographic.py | failed | no code generated
 2026-11-03 | add_test | Add test_similarity_zero_vector to tests/test_holographic.py | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
+2026-11-05 | refactor | Centralize duplicated JSON I/O patterns in storage_helper.py | failed | out of scope: targets 4 files, cap is 3
