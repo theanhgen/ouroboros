@@ -1,4 +1,3 @@
-2026-11-04 | refactor | Extract duplicated JSON I/O patterns from backlog.py into st | failed | no code generated
 2026-11-04 | refactor | Refactor src/ouroboros/backlog.py to use storage_helper util | failed | generation failed: EditMismatch: path/to/file.py: not one of the files provided
 2026-11-04 | refactor | Refactor src/ouroboros/backlog.py to use storage_helper util | failed | no plan generated
 2026-11-04 | refactor | Consolidate backlog JSON I/O into storage_helper utilities.  | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-06 | add_test | Add comprehensive unit tests for src/ouroboros/storage_helpe | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-11-06 | fix_bug | Implement structured failure triage in test_runner.py to clu | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
