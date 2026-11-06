@@ -1,4 +1,3 @@
-2026-11-05 | refactor | Extract duplicated JSON I/O pattern from src/ouroboros/backl | failed | no plan generated
 2026-11-05 | refactor | Fix concrete runtime bugs in src/ouroboros/backlog.py by ref | failed | no code generated
 2026-11-05 | refactor | Consolidate JSON I/O in backlog.py to use storage_helper uti | failed | reviewer rejected
 2026-11-05 | fix_bug | Fix concrete runtime bugs in src/ouroboros/backlog.py by ref | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-06 | fix_bug | Extract the duplicated JSON I/O pattern from src/ouroboros/b | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
