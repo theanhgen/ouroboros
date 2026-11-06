@@ -1,4 +1,3 @@
-2026-11-04 | add_test | Add a test for validate_post to verify that posts containing | failed | no code generated
 2026-11-04 | add_test | Add comprehensive test for the build_summary function in src | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-04 | add_test | Add comprehensive unit tests for cross_post_bluesky in src/o | failed | no code generated
 2026-11-04 | add_test | Add comprehensive unit tests for the build_summary function  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-11-06 | refactor | Extract duplicated JSON I/O path resolution logic from codeb | failed | no plan generated
 2026-11-06 | add_test | Add a comprehensive unit test for src/ouroboros/backlog.py's | failed | no code generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
+2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
