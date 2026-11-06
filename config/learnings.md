@@ -1,4 +1,3 @@
-2026-11-04 | improve_docs | Improve documentation for storage_helper.py to include examp | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-05 | add_test | Add comprehensive unit tests for the build_summary function  | failed | no code generated
 2026-11-05 | add_test | Add comprehensive unit tests for the build_summary function  | success | tests: 1476 -> 1483
 2026-11-05 | refactor | Replace _load_backlog_items and _save_backlog_items function | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-11-06 | add_feature | Create centralized storage_helper.py module to consolidate d | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-06 | add_test | Add unit tests for src/ouroboros/storage_helper.extract_item | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-06 | refactor | Create a centralized storage_helper.py module to consolidate | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-11-06 | refactor | Extract the duplicated JSON I/O pattern from src/ouroboros/b | failed | no plan generated
