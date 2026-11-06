@@ -1,4 +1,3 @@
-2026-11-04 | add_test | Add comprehensive unit tests for the build_summary function  | failed | no code generated
 2026-11-04 | refactor | Consolidate duplicated JSON I/O patterns from src/ouroboros/ | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-04 | refactor | Extract duplicated JSON I/O patterns from backlog.py into st | failed | no code generated
 2026-11-04 | refactor | Refactor src/ouroboros/backlog.py to use storage_helper util | failed | generation failed: EditMismatch: path/to/file.py: not one of the files provided
@@ -98,3 +97,4 @@
 2026-11-06 | refactor | Extract the duplicated JSON I/O pattern from src/ouroboros/b | failed | no code generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
+2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
