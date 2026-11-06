@@ -1,4 +1,3 @@
-2026-11-04 | add_feature | Implement text and fact encoding functions in holographic.py | reverted | Test regression detected: 0 failures before, 5 after
 2026-11-04 | add_test | Add comprehensive unit tests for build_summary function in s | success | tests: 1471 -> 1476
 2026-11-04 | refactor | Consolidate duplicated JSON I/O patterns from src/ouroboros/ | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-04 | add_feature | Implement text and fact encoding functions in holographic.py | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
+2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
