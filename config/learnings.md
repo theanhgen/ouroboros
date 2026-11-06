@@ -1,4 +1,3 @@
-2026-11-04 | refactor | Consolidate duplicated JSON I/O patterns from src/ouroboros/ | failed | no code generated
 2026-11-04 | refactor | Extract duplicated JSON I/O patterns from src/ouroboros/back | failed | no code generated
 2026-11-04 | add_feature | Implement text and fact encoding functions in holographic.py | failed | no plan generated
 2026-11-04 | refactor | Refactor src/ouroboros/backlog.py to use storage_helper util | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-06 | add_test | Add comprehensive unit tests for src/ouroboros/storage_helpe | failed | no plan generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | out of scope: targets 14 files, cap is 3
+2026-11-06 | refactor | Extract atomic JSON I/O utilities from storage_helper.py to  | failed | out of scope: targets 4 files, cap is 3
