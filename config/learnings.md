@@ -1,4 +1,3 @@
-2026-11-04 | refactor | Refactor src/ouroboros/backlog.py to use storage_helper util | failed | no plan generated
 2026-11-04 | refactor | Consolidate backlog JSON I/O into storage_helper utilities.  | failed | reviewer rejected
 2026-11-04 | improve_docs | Improve documentation for storage_helper.py to include examp | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-05 | add_test | Add comprehensive unit tests for the build_summary function  | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-06 | add_test | Add comprehensive unit tests for src/ouroboros/storage_helpe | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-06 | fix_bug | Implement structured failure triage in test_runner.py to clu | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-11-06 | add_feature | Create centralized storage_helper.py module to consolidate d | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-11-06 | add_test | Add unit tests for src/ouroboros/storage_helper.extract_item | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
