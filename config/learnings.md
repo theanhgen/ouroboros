@@ -1,4 +1,3 @@
-2026-11-05 | add_test | Add comprehensive unit tests for the build_summary function  | success | tests: 1476 -> 1483
 2026-11-05 | refactor | Replace _load_backlog_items and _save_backlog_items function | failed | reviewer rejected
 2026-11-05 | refactor | Extract duplicated JSON I/O pattern from src/ouroboros/backl | failed | no plan generated
 2026-11-05 | refactor | Fix concrete runtime bugs in src/ouroboros/backlog.py by ref | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-06 | refactor | Create a centralized storage_helper.py module to consolidate | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-06 | refactor | Extract the duplicated JSON I/O pattern from src/ouroboros/b | failed | no plan generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
+2026-11-06 | fix_bug | Extract the duplicated JSON I/O pattern from src/ouroboros/b | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
