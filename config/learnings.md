@@ -1,5 +1,4 @@
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
-2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-06 | add_test | Add a comprehensive unit test for format_priority_report in  | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-06 | refactor | Extract duplicated JSON I/O path resolution logic from codeb | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-07 | refactor | Move the three JSON I/O helper functions _normalize_text_for | failed | no code generated
 2026-11-07 | add_test | Add comprehensive unit tests for test_failure_triage and clu | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-07 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by ex | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
+2026-11-07 | refactor | Move duplicate JSON I/O helper functions _normalize_text_for | failed | no plan generated
