@@ -1,4 +1,3 @@
-2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-05 | refactor | Centralize duplicated JSON I/O patterns in storage_helper.py | failed | out of scope: targets 4 files, cap is 3
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-07 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by co | failed | no code generated
 2026-11-07 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-07 | refactor | Consolidate JSON I/O patterns in src/ouroboros/backlog.py by | failed | no code generated
+2026-11-07 | refactor | Consolidate duplicated JSON I/O patterns across modules into | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
