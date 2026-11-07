@@ -1,4 +1,3 @@
-2026-11-05 | refactor | Simplify and refactor _extract_error_type() in test_runner.p | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-07 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by co | failed | no plan generated
 2026-11-07 | refactor | Consolidate JSON I/O operations in src/ouroboros/backlog.py  | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-07 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by co | failed | no code generated
+2026-11-07 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
