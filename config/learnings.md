@@ -1,4 +1,3 @@
-2026-11-05 | refactor | Add failure taxonomy extraction to test_runner.RunnerOutcome | failed | no plan generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by el | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-07 | refactor | Replace .storage imports in src/ouroboros/backlog.py with .s | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-07 | refactor | Refactor backlog.py to use storage_helper consistently inste | failed | no plan generated
 2026-11-07 | fix_bug | Add test-trigger validation in improvement.py _retry_with_ro | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
+2026-11-07 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
