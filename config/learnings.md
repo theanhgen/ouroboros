@@ -1,4 +1,3 @@
-2026-11-05 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by re | failed | no plan generated
 2026-11-05 | fix_bug | Fix concrete runtime NameError bugs in src/ouroboros/backlog | failed | no plan generated
 2026-11-05 | refactor | Add failure taxonomy extraction to test_runner.RunnerOutcome | failed | no plan generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-07 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-07 | add_feature | Add structured failure triage in test_runner.py to cluster f | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-07 | refactor | Replace .storage imports in src/ouroboros/backlog.py with .s | reverted | New test errors detected: 0 errors before, 2 after
+2026-11-07 | refactor | Refactor backlog.py to use storage_helper consistently inste | failed | no plan generated
