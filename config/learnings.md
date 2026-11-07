@@ -1,4 +1,3 @@
-2026-11-05 | add_feature | Implement test_failure_triage function in src/ouroboros/test | failed | no plan generated
 2026-11-05 | refactor | Extract duplicated JSON I/O patterns from src/ouroboros/back | failed | out of scope: targets 4 files, cap is 3
 2026-11-05 | refactor | Extract duplicated JSON I/O path resolution and atomic write | failed | out of scope: targets 4 files, cap is 3
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-07 | refactor | Create src/ouroboros/storage_helper.py module that consolida | failed | no plan generated
 2026-11-07 | refactor | Extract duplicate JSON I/O helper functions from src/ourobor | failed | no code generated
 2026-11-07 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by ex | failed | no plan generated
+2026-11-07 | refactor | Extract duplicate JSON I/O helper functions (_normalize_text | failed | no plan generated
