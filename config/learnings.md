@@ -1,4 +1,3 @@
-2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by re | failed | no code generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-07 | refactor | Extract duplicate JSON I/O helper functions into src/ourobor | failed | no code generated
 2026-11-07 | add_test | Add comprehensive unit tests for test_failure_triage and clu | failed | no code generated
 2026-11-07 | refactor | Create src/ouroboros/storage_helper.py to consolidate duplic | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-11-07 | refactor | Move the three JSON I/O helper functions _normalize_text_for | failed | no code generated
