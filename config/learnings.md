@@ -1,4 +1,3 @@
-2026-11-05 | refactor | Enhance RunnerOutcome.cluster_failures_by_root_cause() and t | failed | no plan generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by pr | failed | no code generated
 2026-11-05 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by up | failed | no code generated
 2026-11-05 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by re | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-07 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-07 | fix_bug | Fix the 0% success rate in fix_bug lane by adding validation | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-11-07 | add_feature | Add structured failure triage in src/ouroboros/test_runner.p | failed | no code generated
+2026-11-07 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
