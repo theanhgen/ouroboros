@@ -1,4 +1,3 @@
-2026-11-06 | refactor | Extract atomic JSON I/O utilities from storage_helper.py to  | failed | out of scope: targets 4 files, cap is 3
 2026-11-06 | refactor | Extract the duplicated JSON I/O pattern from src/ouroboros/b | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-06 | refactor | Extract the duplicated JSON I/O pattern from src/ouroboros/b | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-08 | add_test | Add comprehensive unit tests for _load_json_list and _bounde | failed | no plan generated
 2026-11-08 | add_test | Add comprehensive unit tests for cluster_failures_by_root_ca | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
 2026-11-08 | fix_bug | Fix file path normalization in test failure clustering to st | failed | reviewer rejected
+2026-11-08 | fix_bug | Fix file path normalization in _normalize_file_path to corre | failed | no code generated
