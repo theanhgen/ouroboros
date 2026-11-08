@@ -1,4 +1,3 @@
-2026-11-06 | refactor | Extract duplicated JSON I/O path resolution and atomic write | failed | no plan generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
 2026-11-06 | refactor | Extract duplicated JSON I/O path resolution and atomic write | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
@@ -98,3 +97,4 @@
 2026-11-08 | refactor | Extract duplicate text normalization helpers (_normalize_tex | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-08 | refactor | Extract duplicate JSON I/O helper functions and standardize  | failed | out of scope: targets 5 files, cap is 3
 2026-11-08 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by ex | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
+2026-11-08 | add_test | Add comprehensive unit tests for cluster_failures_by_root_ca | failed | no plan generated
