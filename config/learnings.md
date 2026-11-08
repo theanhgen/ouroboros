@@ -1,4 +1,3 @@
-2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-06 | add_test | Add a comprehensive unit test file for src/ouroboros/backlog | failed | reviewer rejected
@@ -98,3 +97,4 @@
 2026-11-07 | refactor | Move text normalization helper functions (_normalize_text_fo | failed | no plan generated
 2026-11-08 | add_test | Add comprehensive unit tests for internal helper functions i | failed | no plan generated
 2026-11-08 | refactor | Move text normalization helpers from src/ouroboros/backlog.p | failed | no code generated
+2026-11-08 | add_test | Add comprehensive unit tests for test_failure_triage and clu | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
