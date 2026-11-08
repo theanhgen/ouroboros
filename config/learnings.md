@@ -1,4 +1,3 @@
-2026-11-06 | add_test | Add a comprehensive unit test for src/ouroboros/backlog.py's | failed | no code generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
@@ -98,3 +97,4 @@
 2026-11-07 | refactor | Extract duplicate text normalization helpers (_FILLER, _norm | failed | no code generated
 2026-11-07 | refactor | Move text normalization helper functions (_normalize_text_fo | failed | no plan generated
 2026-11-08 | add_test | Add comprehensive unit tests for internal helper functions i | failed | no plan generated
+2026-11-08 | refactor | Move text normalization helpers from src/ouroboros/backlog.p | failed | no code generated
