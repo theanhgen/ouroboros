@@ -1,4 +1,3 @@
-2026-11-07 | add_feature | Add structured failure triage in src/ouroboros/test_runner.p | failed | no code generated
 2026-11-07 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-07 | add_feature | Add structured failure triage in test_runner.py to cluster f | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-07 | refactor | Replace .storage imports in src/ouroboros/backlog.py with .s | reverted | New test errors detected: 0 errors before, 2 after
@@ -98,3 +97,4 @@
 2026-11-08 | fix_bug | Fix file path normalization in _normalize_file_path to corre | failed | no plan generated
 2026-11-08 | fix_bug | Fix file path normalization in _normalize_file_path to corre | failed | no code generated
 2026-11-08 | fix_bug | Fix _normalize_file_path in src/ouroboros/test_runner.py to  | failed | no code generated
+2026-11-08 | refactor | Replace duplicated JSON I/O patterns in backlog.py and metri | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
