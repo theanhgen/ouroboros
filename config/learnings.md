@@ -1,4 +1,3 @@
-2026-11-06 | refactor | Extract common JSON I/O patterns from storage_helper utiliti | failed | out of scope: targets 4 files, cap is 3
 2026-11-06 | fix_bug | Standardize storage imports in backlog.py to fix runtime Nam | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-08 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by ex | failed | no plan generated
 2026-11-08 | add_test | Add comprehensive unit tests for cluster_failures_by_root_ca | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-08 | refactor | Extract common path resolution and JSON I/O helpers into sto | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
+2026-11-08 | fix_bug | Fix file path normalization in test failure clustering to st | failed | no plan generated
