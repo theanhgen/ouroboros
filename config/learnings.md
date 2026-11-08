@@ -1,4 +1,3 @@
-2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | reviewer rejected
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-08 | refactor | Extract duplicate JSON I/O helper functions into src/ourobor | failed | out of scope: targets 4 files, cap is 3
 2026-11-08 | refactor | Extract text normalization helper functions (_FILLER, _norma | failed | no plan generated
 2026-11-08 | refactor | Consolidate duplicate JSON I/O helper functions into src/our | failed | no code generated
+2026-11-08 | refactor | Extract duplicated text normalization helper functions and b | failed | no plan generated
