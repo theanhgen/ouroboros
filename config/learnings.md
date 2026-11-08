@@ -1,4 +1,3 @@
-2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-07 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no code generated
 2026-11-07 | fix_bug | Fix the 0% success rate in fix_bug lane by adding validation | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
@@ -98,3 +97,4 @@
 2026-11-08 | fix_bug | Fix file path normalization in _normalize_file_path to corre | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
 2026-11-08 | fix_bug | Update _normalize_file_path in src/ouroboros/test_runner.py  | failed | no plan generated
 2026-11-08 | fix_bug | Fix file path normalization in _normalize_file_path to corre | failed | no code generated
+2026-11-08 | refactor | Extract common JSON I/O and path resolution utilities into s | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
