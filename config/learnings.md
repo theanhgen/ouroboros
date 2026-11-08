@@ -1,4 +1,3 @@
-2026-11-06 | refactor | Create a centralized storage_helper.py module to consolidate | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-06 | refactor | Extract the duplicated JSON I/O pattern from src/ouroboros/b | failed | no plan generated
 2026-11-06 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | reverted | New test errors detected: 0 errors before, 2 after
 2026-11-06 | fix_bug | Extract the duplicated JSON I/O pattern from src/ouroboros/b | failed | generation failed: EmptyChanges: reply had no SEARCH/REPLACE blocks
@@ -98,3 +97,4 @@
 2026-11-08 | refactor | Extract text normalization helper functions from backlog.py  | failed | no plan generated
 2026-11-08 | fix_bug | Fix file path normalization in test failure clustering to co | failed | no code generated
 2026-11-08 | fix_bug | Fix file path normalization in _normalize_file_path to corre | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-11-08 | refactor | Extract text normalization helper functions (_FILLER, _norma | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
