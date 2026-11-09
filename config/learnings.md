@@ -1,4 +1,3 @@
-2026-11-07 | add_test | Add comprehensive tests for failure clustering and triage fu | failed | no code generated
 2026-11-07 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
 2026-11-07 | add_test | Add comprehensive tests for failure clustering and triage fu | failed | no code generated
 2026-11-07 | add_test | Add comprehensive tests for failure clustering and triage fu | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
@@ -98,3 +97,4 @@
 2026-11-09 | refactor | Consolidate duplicated JSON I/O patterns by extracting commo | failed | out of scope: targets forbidden file(s): src/ouroboros/evaluation.py
 2026-11-09 | add_feature | Implement bug fix verification mechanism that ties fixes to  | failed | out of scope: targets forbidden file(s): src/ouroboros/improvement.py
 2026-11-09 | refactor | Consolidate duplicated JSON I/O patterns in metrics.py to us | failed | no plan generated
+2026-11-09 | refactor | Replace duplicated JSON I/O and path resolution in src/ourob | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
