@@ -1,4 +1,3 @@
-2026-11-07 | fix_bug | Fix runtime NameError bugs in src/ouroboros/backlog.py by st | failed | no plan generated
 2026-11-07 | refactor | Consolidate JSON I/O patterns in src/ouroboros/backlog.py by | failed | no code generated
 2026-11-07 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by co | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-07 | refactor | Consolidate JSON I/O operations in backlog.py to use storage | reverted | New test errors detected: 0 errors before, 2 after
@@ -98,3 +97,4 @@
 2026-11-09 | fix_bug | Fix the _normalize_file_path function in src/ouroboros/test_ | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
 2026-11-09 | fix_bug | Fix _normalize_file_path in src/ouroboros/test_runner.py to  | failed | no code generated
 2026-11-09 | refactor | Extract common JSON I/O and path resolution utilities into s | failed | planning call failed: TruncatedResponse: hit max_tokens=24000 (finish_reason=lengt
+2026-11-09 | fix_bug | Fix _normalize_file_path in src/ouroboros/test_runner.py to  | success | tests: 1483 -> 1483
