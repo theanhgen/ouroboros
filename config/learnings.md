@@ -1,4 +1,3 @@
-2026-11-07 | fix_bug | Fix runtime NameError in src/ouroboros/backlog.py by standar | failed | no code generated
 2026-11-07 | refactor | Extract duplicated JSON I/O pattern from backlog.py into sto | failed | reviewer rejected
 2026-11-07 | refactor | Extract duplicated JSON I/O pattern from issue_scouting.py i | failed | no plan generated
 2026-11-07 | refactor | Fix runtime NameError bugs in src/ouroboros/backlog.py by co | failed | no plan generated
@@ -98,3 +97,4 @@
 2026-11-09 | refactor | Consolidate duplicated JSON I/O patterns by using the existi | failed | no code generated
 2026-11-09 | refactor | Consolidate duplicated JSON I/O patterns by using existing s | failed | no plan generated
 2026-11-09 | add_test | Add dedicated unit tests for _normalize_file_path in tests/t | failed | no code generated
+2026-11-09 | add_test | Create a dedicated test file tests/test_metrics.py that prov | failed | generation failed: TruncatedResponse: hit max_tokens=16000 (finish_reason=lengt
