@@ -464,24 +464,39 @@ def _normalize_file_path(file_path: str) -> str:
     # Convert to Path object
     path = Path(file_path)
     
-    # Try to get absolute path
+    # Get absolute path to handle both absolute and relative paths consistently
     try:
-        normalized = str(path.resolve())
+        absolute_path = path.resolve()
     except:
-        normalized = file_path
+        absolute_path = path
     
-    # Normalize path separators
-    normalized = normalized.replace('/', '.').replace('\\', '.')
+    # Get path components using Path.parts for cross-platform consistency
+    parts = absolute_path.parts
     
-    # Remove leading ./ or .\\
-    if normalized.startswith('./'):
-        normalized = normalized[2:]
-    elif normalized.startswith('.\\\\'):
-        normalized = normalized[3:]
+    # Filter out 'src/ouroboros/' directory component from any position
+    # This ensures identical logical test failures are grouped together
+    # regardless of OS path separators or whether the path is absolute/relative
+    filtered_parts = []
+    i = 0
+    while i < len(parts):
+        # Skip 'src/ouroboros' prefix if present anywhere in the path
+        if i < len(parts) - 1 and parts[i] == 'src' and parts[i+1] == 'ouroboros':
+            i += 2
+            continue
+        
+        filtered_parts.append(parts[i])
+        i += 1
     
-    # Remove .py extension
+    # Join filtered parts with dots for consistent categorization
+    normalized = '.'.join(filtered_parts)
+    
+    # Remove .py extension for cleaner file identification
     if normalized.endswith('.py'):
         normalized = normalized[:-3]
+    
+    # If normalization resulted in empty string, return "unknown"
+    if not normalized:
+        return "unknown"
     
     return normalized
 
